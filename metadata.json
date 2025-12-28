@@ -1,0 +1,9 @@
+{
+  "name": "Copy of History Detector",
+  "description": "A steampunk-styled museum guide interface simulating a device that reveals hidden history moments using a Keyhole Effect.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ]
+}
