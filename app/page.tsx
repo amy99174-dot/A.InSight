@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Smartphone, Ear, Sparkles, Settings, X, Volume2, VolumeX, Cloud, AlertTriangle, ArrowRight, Sliders, PlayCircle, Terminal, ScanEye, RotateCw } from 'lucide-react';
+import { Sparkles, Settings, X, Volume2, VolumeX, AlertTriangle, ArrowRight, Sliders, Terminal, RotateCw } from 'lucide-react';
 import { useCamera } from '../hooks/useCamera';
 import { useOrientation } from '../hooks/useOrientation';
 import { KeyholeViewer } from '../components/KeyholeViewer';
@@ -120,10 +120,7 @@ export default function Home() {
         return "";
     });
 
-    const [hasServerKey, setHasServerKey] = useState(true); // Assume server has key until proven otherwise? 
-    // Actually, we can check if user provided key. If not, we rely on server.
-    // Frontend doesn't know if server has key or not easily without an API check.
-    // We'll trust the process. If it fails, we show settings.
+
 
     // To keep UI consistent: "KEY MISSING" logic.
     // Previously: !!(userGoogleKey || import.meta.env.VITE_GEMINI_API_KEY)
