@@ -9,9 +9,9 @@ import { KeyholeViewer } from './components/KeyholeViewer';
 // Use types from provided file content if available, else locally
 const STEPS = {
   BOOT: 'BOOT',
-  PROXIMITY: 'PROXIMITY', 
+  PROXIMITY: 'PROXIMITY',
   LOCKED: 'LOCKED',
-  TUNING: 'TUNING', 
+  TUNING: 'TUNING',
   ANALYZING: 'ANALYZING',
   LISTEN: 'LISTEN',
   FOCUSING: 'FOCUSING', // WAS DUST_OFF
@@ -41,10 +41,10 @@ const CircularHUD = React.memo(({ color = "text-lime-400", active = false }: Cir
   <div className={`absolute inset-0 pointer-events-none z-50 ${color}`}>
     <svg viewBox="0 0 100 100" className="w-full h-full opacity-60">
       <circle cx="50" cy="50" r="49" fill="none" stroke="currentColor" strokeWidth="0.5" />
-      <circle 
-        cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="0.3" 
-        strokeDasharray="1 3" 
-        className={active ? "animate-spin-slow origin-center" : ""} 
+      <circle
+        cx="50" cy="50" r="44" fill="none" stroke="currentColor" strokeWidth="0.3"
+        strokeDasharray="1 3"
+        className={active ? "animate-spin-slow origin-center" : ""}
       />
       <path d="M50 2 V5" stroke="currentColor" strokeWidth="2" />
       <path d="M50 98 V95" stroke="currentColor" strokeWidth="2" />
@@ -108,7 +108,7 @@ export default function App() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const bgAudioRefs = useRef<HTMLAudioElement[]>([]);
   const [showSettings, setShowSettings] = useState(false);
-  const [userOpenAIKey, setUserOpenAIKey] = useState(() => localStorage.getItem("OPENAI_KEY") || "");
+  const [userOpenAIKey, setUserOpenAIKey] = useState(() => localStorage.getItem("OPENAI_KEY") || import.meta.env.VITE_OPENAI_API_KEY || "");
   const [userGoogleKey, setUserGoogleKey] = useState(() => localStorage.getItem("GOOGLE_KEY") || "");
 
   useEffect(() => {
@@ -116,7 +116,7 @@ export default function App() {
     localStorage.setItem("GOOGLE_KEY", userGoogleKey);
   }, [userOpenAIKey, userGoogleKey]);
 
-  const hasGoogleKey = !!(userGoogleKey || process.env.API_KEY);
+  const hasGoogleKey = !!(userGoogleKey || import.meta.env.VITE_GEMINI_API_KEY);
   const { videoRef, startCamera, stopCamera, captureImage } = useCamera();
   const { x, y, resetOrigin } = useOrientation();
   const scriptPages = splitTextIntoPages(fullScript);
@@ -186,7 +186,7 @@ ${plan.scriptPrompt}
       bgAudioUrls.forEach((url) => {
         const audio = new Audio(url);
         audio.loop = true;
-        audio.volume = 0.6; 
+        audio.volume = 0.6;
         bgAudioRefs.current.push(audio);
       });
     }
@@ -230,9 +230,9 @@ ${plan.scriptPrompt}
     setFocusRotation(prev => {
       const newRotation = prev + (delta * (180 / Math.PI));
       if (Math.abs(newRotation) > 120 && step === STEPS.FOCUSING) {
-         // --- VIBRATE: Focus Success ---
-         if (navigator.vibrate) navigator.vibrate(80);
-         setTimeout(() => setStep(STEPS.REVEAL), 100);
+        // --- VIBRATE: Focus Success ---
+        if (navigator.vibrate) navigator.vibrate(80);
+        setTimeout(() => setStep(STEPS.REVEAL), 100);
       }
       return newRotation;
     });
@@ -245,75 +245,75 @@ ${plan.scriptPrompt}
   };
 
   const toggleAudio = () => {
-      if (isPlayingAudio) {
-          if (audioRef.current) audioRef.current.pause();
-          bgAudioRefs.current.forEach(audio => audio.pause());
-          setIsPlayingAudio(false);
-      } else {
-          if (audioRef.current) audioRef.current.play();
-          bgAudioRefs.current.forEach(audio => audio.play().catch(() => {}));
-          setIsPlayingAudio(true);
-      }
+    if (isPlayingAudio) {
+      if (audioRef.current) audioRef.current.pause();
+      bgAudioRefs.current.forEach(audio => audio.pause());
+      setIsPlayingAudio(false);
+    } else {
+      if (audioRef.current) audioRef.current.play();
+      bgAudioRefs.current.forEach(audio => audio.play().catch(() => { }));
+      setIsPlayingAudio(true);
+    }
   };
 
   const handleTrigger = async () => {
     if (!hasGoogleKey && step === STEPS.BOOT) {
-        setShowSettings(true);
-        return;
+      setShowSettings(true);
+      return;
     }
 
     // ---------------------------------------------------------
     // 📳 HAPTIC FEEDBACK LOGIC
     // ---------------------------------------------------------
     if (navigator.vibrate) {
-        if (step === STEPS.BOOT) {
-            // Transition to PROXIMITY: Pulsing intermittent signal
-            navigator.vibrate([100, 50, 100]); 
-        } else if (step === STEPS.PROXIMITY) {
-            // Transition to LOCKED: Strong solid lock
-            navigator.vibrate(200); 
-        } else if (step === STEPS.LOCKED) {
-            // Trigger Click: Short tactile pulse
-            navigator.vibrate(50); 
-        } else {
-            // Generic UI tap
-            navigator.vibrate(20);
-        }
+      if (step === STEPS.BOOT) {
+        // Transition to PROXIMITY: Pulsing intermittent signal
+        navigator.vibrate([100, 50, 100]);
+      } else if (step === STEPS.PROXIMITY) {
+        // Transition to LOCKED: Strong solid lock
+        navigator.vibrate(200);
+      } else if (step === STEPS.LOCKED) {
+        // Trigger Click: Short tactile pulse
+        navigator.vibrate(50);
+      } else {
+        // Generic UI tap
+        navigator.vibrate(20);
+      }
     }
-    
+
     switch (step) {
-      case STEPS.BOOT:      
-        setStep(STEPS.PROXIMITY); 
+      case STEPS.BOOT:
+        setStep(STEPS.PROXIMITY);
         break;
-      case STEPS.PROXIMITY: 
-        setStep(STEPS.LOCKED); 
+      case STEPS.PROXIMITY:
+        setStep(STEPS.LOCKED);
         break;
-      case STEPS.LOCKED:    
+      case STEPS.LOCKED:
         const img = captureImage();
         if (img) {
           setCapturedImage(img);
           setStep(STEPS.TUNING);
-          stopCamera(); 
+          stopCamera();
         }
         break;
       case STEPS.TUNING:
-         if (capturedImage) {
-            setStep(STEPS.ANALYZING);
-            processCapture(capturedImage, historyScale, timeScale);
-         }
-         break;
+        if (capturedImage) {
+          setStep(STEPS.ANALYZING);
+          processCapture(capturedImage, historyScale, timeScale);
+        }
+        break;
       case STEPS.LISTEN:
         if (scriptPage < scriptPages.length - 1) setScriptPage(prev => prev + 1);
         else setStep(STEPS.FOCUSING);
         break;
-      case STEPS.REVEAL:    
+      case STEPS.REVEAL:
         setCapturedImage(null);
         setHistoryImage(null);
         setAudioUrl(null);
         setBgAudioUrls([]);
         setFullScript("");
         setScriptPage(0);
-        setStep(STEPS.BOOT); 
+        setStep(STEPS.BOOT);
         break;
       default: break;
     }
@@ -324,8 +324,8 @@ ${plan.scriptPrompt}
 
   return (
     <>
-      <div 
-        onClick={step !== STEPS.TUNING && step !== STEPS.FOCUSING ? handleTrigger : undefined} 
+      <div
+        onClick={step !== STEPS.TUNING && step !== STEPS.FOCUSING ? handleTrigger : undefined}
         onPointerDown={step === STEPS.FOCUSING ? handlePointerDown : undefined}
         onPointerMove={step === STEPS.FOCUSING ? handlePointerMove : undefined}
         onPointerUp={step === STEPS.FOCUSING ? handlePointerUp : undefined}
@@ -342,15 +342,15 @@ ${plan.scriptPrompt}
         {(step === STEPS.ANALYZING || step === STEPS.TUNING) && capturedImage && (
           <img src={capturedImage} className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale" />
         )}
-        
+
         {(step === STEPS.LISTEN || step === STEPS.FOCUSING) && historyImage && (
-           <div className="absolute inset-0 z-0">
-              <img 
-                src={historyImage} 
-                style={{ filter: `blur(${step === STEPS.FOCUSING ? blurAmount : 2}px)` }}
-                className="w-full h-full object-cover transition-all duration-100 opacity-40"
-              />
-           </div>
+          <div className="absolute inset-0 z-0">
+            <img
+              src={historyImage}
+              style={{ filter: `blur(${step === STEPS.FOCUSING ? blurAmount : 2}px)` }}
+              className="w-full h-full object-cover transition-all duration-100 opacity-40"
+            />
+          </div>
         )}
 
         {step === STEPS.BOOT && (
@@ -358,20 +358,20 @@ ${plan.scriptPrompt}
             <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(57,255,20,0.2)_0%,transparent_70%)]" />
             <div className="animate-ripple" />
             <div className="animate-ripple" style={{ animationDelay: '1s' }} />
-            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center z-10"> 
+            <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center z-10">
               {!hasGoogleKey ? (
-                  <div className="flex flex-col items-center">
-                    <AlertTriangle className="w-8 h-8 text-red-500 mb-2 animate-bounce" />
-                    <p className="text-xl font-bold text-red-500 tracking-wider">KEY MISSING</p>
-                    <p className="text-[10px] text-red-400 font-mono tracking-widest mt-1">OPEN SETTINGS</p>
-                  </div>
+                <div className="flex flex-col items-center">
+                  <AlertTriangle className="w-8 h-8 text-red-500 mb-2 animate-bounce" />
+                  <p className="text-xl font-bold text-red-500 tracking-wider">KEY MISSING</p>
+                  <p className="text-[10px] text-red-400 font-mono tracking-widest mt-1">OPEN SETTINGS</p>
+                </div>
               ) : (
-                  <>
-                    <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug animate-pulse drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                        正在探測<br/>展館中的歷史故事...
-                    </p>
-                    <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-3">SYSTEM ONLINE</p>
-                  </>
+                <>
+                  <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug animate-pulse drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
+                    正在探測<br />展館中的歷史故事...
+                  </p>
+                  <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-3">SYSTEM ONLINE</p>
+                </>
               )}
             </div>
           </div>
@@ -383,7 +383,7 @@ ${plan.scriptPrompt}
             <div className="animate-ripple" style={{ animationDuration: '1s', borderColor: 'rgba(57, 255, 20, 0.8)' }} />
             <div className="z-10 relative">
               <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                訊號接近<br/>請貼近展品感應區
+                訊號接近<br />請貼近展品感應區
               </p>
               <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-2">SIGNAL DETECTED</p>
             </div>
@@ -407,26 +407,26 @@ ${plan.scriptPrompt}
         {step === STEPS.TUNING && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-20 bg-black/60 backdrop-blur-sm p-8">
             <div className="flex items-center gap-2 text-lime-400 mb-4">
-               <Sliders className="w-5 h-5" />
-               <h3 className="text-lg font-bold tracking-widest">時空共振頻率</h3>
+              <Sliders className="w-5 h-5" />
+              <h3 className="text-lg font-bold tracking-widest">時空共振頻率</h3>
             </div>
             <div className="w-full space-y-5">
-                <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">TIMELINE PHASE</label>
-                    <div className="flex justify-between items-end mb-1">
-                        <span className="text-xs text-lime-300 font-bold">{TIME_SCALE_LABELS[timeScale]}</span>
-                        <span className="text-[10px] text-lime-400/50">LV.{timeScale}</span>
-                    </div>
-                    <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">TIMELINE PHASE</label>
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-xs text-lime-300 font-bold">{TIME_SCALE_LABELS[timeScale]}</span>
+                  <span className="text-[10px] text-lime-400/50">LV.{timeScale}</span>
                 </div>
-                <div className="space-y-1">
-                    <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">HISTORICAL FIDELITY</label>
-                    <div className="flex justify-between items-end mb-1">
-                        <span className="text-xs text-lime-300 font-bold">{HISTORY_SCALE_LABELS[historyScale]}</span>
-                        <span className="text-[10px] text-lime-400/50">LV.{historyScale}</span>
-                    </div>
-                    <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
+                <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">HISTORICAL FIDELITY</label>
+                <div className="flex justify-between items-end mb-1">
+                  <span className="text-xs text-lime-300 font-bold">{HISTORY_SCALE_LABELS[historyScale]}</span>
+                  <span className="text-[10px] text-lime-400/50">LV.{historyScale}</span>
                 </div>
+                <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
+              </div>
             </div>
             <button onClick={(e) => { e.stopPropagation(); handleTrigger(); }} className="mt-6 px-8 py-2 bg-lime-400 text-black font-bold tracking-widest rounded hover:bg-lime-300 transition-colors shadow-[0_0_15px_rgba(57,255,20,0.5)]">啟動解析</button>
           </div>
@@ -435,17 +435,17 @@ ${plan.scriptPrompt}
         {step === STEPS.ANALYZING && (
           <div className="absolute inset-0 bg-stone-900/90 flex flex-col items-center justify-center text-center rounded-full z-10">
             <div className="z-10 w-[60%] space-y-4">
-                <Sparkles className="w-8 h-8 text-lime-400 mx-auto animate-spin-slow opacity-80" />
-                <div className="space-y-1">
-                  <p className="text-lg font-bold text-lime-400 tracking-wider drop-shadow-md animate-pulse">{analysisText}</p>
-                  <div className="flex justify-between text-lime-400/60 font-mono text-[10px] tracking-widest px-2">
-                      <span>AI PROCESSING</span>
-                      <span>{isProcessing ? "..." : "DONE"}</span>
-                  </div>
+              <Sparkles className="w-8 h-8 text-lime-400 mx-auto animate-spin-slow opacity-80" />
+              <div className="space-y-1">
+                <p className="text-lg font-bold text-lime-400 tracking-wider drop-shadow-md animate-pulse">{analysisText}</p>
+                <div className="flex justify-between text-lime-400/60 font-mono text-[10px] tracking-widest px-2">
+                  <span>AI PROCESSING</span>
+                  <span>{isProcessing ? "..." : "DONE"}</span>
                 </div>
-                <div className="h-[2px] w-full bg-stone-700 relative overflow-hidden rounded-full">
-                  <div className="absolute top-0 left-0 h-full bg-lime-400 animate-[width_3s_ease-out_forwards] shadow-[0_0_10px_#39ff14]" style={{ width: '100%' }} />
-                </div>
+              </div>
+              <div className="h-[2px] w-full bg-stone-700 relative overflow-hidden rounded-full">
+                <div className="absolute top-0 left-0 h-full bg-lime-400 animate-[width_3s_ease-out_forwards] shadow-[0_0_10px_#39ff14]" style={{ width: '100%' }} />
+              </div>
             </div>
           </div>
         )}
@@ -453,47 +453,47 @@ ${plan.scriptPrompt}
         {step === STEPS.LISTEN && (
           <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-10 bg-black/60 backdrop-blur-[2px] transition-all">
             <button onClick={(e) => { e.stopPropagation(); toggleAudio(); }} className={`absolute top-16 right-10 p-2 rounded-full border ${isPlayingAudio ? 'border-lime-400/50 text-lime-400' : 'border-red-500/50 text-red-500 animate-pulse'} z-50`}>
-               {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
+              {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
             </button>
             <div className="absolute top-12 w-full flex flex-col items-center">
-               <h3 className="text-xl font-bold text-lime-300 border-b border-lime-400/30 pb-1 mb-1 inline-block drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{artifactName}</h3>
-               {!isPlayingAudio && <p className="text-[10px] text-red-400 font-mono tracking-widest">TAP ICON TO UNMUTE</p>}
+              <h3 className="text-xl font-bold text-lime-300 border-b border-lime-400/30 pb-1 mb-1 inline-block drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{artifactName}</h3>
+              {!isPlayingAudio && <p className="text-[10px] text-red-400 font-mono tracking-widest">TAP ICON TO UNMUTE</p>}
             </div>
             <div className="z-10 relative px-8 mt-6 w-full max-w-[85%] min-h-[140px] flex items-center justify-center">
               <p className="text-lg font-medium text-lime-100/90 tracking-wide leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,1)] text-justify">{scriptPages[scriptPage]}</p>
             </div>
             <div className="absolute bottom-16 flex flex-col items-center gap-3 w-full">
-               <div className="flex gap-1.5 justify-center">
-                  {scriptPages.map((_, i) => (
-                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === scriptPage ? 'w-6 bg-lime-400' : 'w-1.5 bg-lime-900/40'}`} />
-                  ))}
-               </div>
-               <div className="flex items-center gap-2 text-[10px] text-lime-400/60 font-mono animate-pulse">
-                  <span>{scriptPage < scriptPages.length - 1 ? "[ 點擊下一頁 ]" : "[ 點擊完成 ]"}</span>
-                  {scriptPage < scriptPages.length - 1 && <ArrowRight size={10} />}
-               </div>
+              <div className="flex gap-1.5 justify-center">
+                {scriptPages.map((_, i) => (
+                  <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === scriptPage ? 'w-6 bg-lime-400' : 'w-1.5 bg-lime-900/40'}`} />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-[10px] text-lime-400/60 font-mono animate-pulse">
+                <span>{scriptPage < scriptPages.length - 1 ? "[ 點擊下一頁 ]" : "[ 點擊完成 ]"}</span>
+                {scriptPage < scriptPages.length - 1 && <ArrowRight size={10} />}
+              </div>
             </div>
           </div>
         )}
 
         {step === STEPS.FOCUSING && (
           <div className="absolute inset-0 overflow-hidden text-center flex flex-col items-center justify-center rounded-full z-10 cursor-grab active:cursor-grabbing">
-             <div className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none transition-transform duration-75 ease-out" style={{ transform: `rotate(${focusRotation}deg)` }}>
-                <div className="w-[80%] h-[80%] rounded-full border-2 border-dashed border-lime-400/30" />
-                <div className="w-[85%] h-[85%] rounded-full border border-lime-400/10" />
-                <div className="absolute top-8 w-1 h-3 bg-lime-400/80" />
-                <div className="absolute bottom-8 w-1 h-3 bg-lime-400/30" />
-                <div className="absolute left-8 w-3 h-1 bg-lime-400/30" />
-                <div className="absolute right-8 w-3 h-1 bg-lime-400/30" />
-             </div>
-             <div className="z-10 pointer-events-none">
-                <RotateCw className="w-8 h-8 text-lime-400 animate-pulse mx-auto mb-4 opacity-80" />
-                <div className="space-y-1">
-                  <p className="text-lg font-bold text-lime-100 tracking-wider drop-shadow-md">旋轉鏡頭對焦</p>
-                  <p className="text-[10px] text-lime-400/60 font-mono tracking-[0.2em]">MANUAL FOCUS REQUIRED</p>
-                  <p className="text-[8px] text-lime-400/30 font-mono mt-1 tracking-widest">{Math.round(focusProgress * 100)}%</p>
-                </div>
-             </div>
+            <div className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none transition-transform duration-75 ease-out" style={{ transform: `rotate(${focusRotation}deg)` }}>
+              <div className="w-[80%] h-[80%] rounded-full border-2 border-dashed border-lime-400/30" />
+              <div className="w-[85%] h-[85%] rounded-full border border-lime-400/10" />
+              <div className="absolute top-8 w-1 h-3 bg-lime-400/80" />
+              <div className="absolute bottom-8 w-1 h-3 bg-lime-400/30" />
+              <div className="absolute left-8 w-3 h-1 bg-lime-400/30" />
+              <div className="absolute right-8 w-3 h-1 bg-lime-400/30" />
+            </div>
+            <div className="z-10 pointer-events-none">
+              <RotateCw className="w-8 h-8 text-lime-400 animate-pulse mx-auto mb-4 opacity-80" />
+              <div className="space-y-1">
+                <p className="text-lg font-bold text-lime-100 tracking-wider drop-shadow-md">旋轉鏡頭對焦</p>
+                <p className="text-[10px] text-lime-400/60 font-mono tracking-[0.2em]">MANUAL FOCUS REQUIRED</p>
+                <p className="text-[8px] text-lime-400/30 font-mono mt-1 tracking-widest">{Math.round(focusProgress * 100)}%</p>
+              </div>
+            </div>
           </div>
         )}
 
@@ -504,11 +504,13 @@ ${plan.scriptPrompt}
         )}
       </div>
 
-      <div className="fixed bottom-4 right-4 z-50">
-        <button onClick={(e) => { e.stopPropagation(); setShowSettings(true); }} className={`p-3 rounded-full border shadow-lg transition-colors ${hasGoogleKey ? 'bg-stone-900/80 text-lime-400 border-lime-900/50 hover:bg-stone-800' : 'bg-red-900/80 text-white border-red-500 animate-pulse'}`}>
-          <Settings size={20} />
-        </button>
-      </div>
+      {!hasGoogleKey && (
+        <div className="fixed bottom-4 right-4 z-50">
+          <button onClick={(e) => { e.stopPropagation(); setShowSettings(true); }} className={`p-3 rounded-full border shadow-lg transition-colors ${hasGoogleKey ? 'bg-stone-900/80 text-lime-400 border-lime-900/50 hover:bg-stone-800' : 'bg-red-900/80 text-white border-red-500 animate-pulse'}`}>
+            <Settings size={20} />
+          </button>
+        </div>
+      )}
 
       {showSettings && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
@@ -527,8 +529,8 @@ ${plan.scriptPrompt}
               <div className="border-t border-lime-900/50 pt-4">
                 <h3 className="text-sm font-bold flex items-center gap-2 mb-2 text-lime-300"><Terminal className="w-4 h-4" />神經網絡日誌 (Neural Log)</h3>
                 <div className="bg-black border border-lime-900/50 rounded p-2 overflow-hidden relative">
-                   <div className="absolute top-2 right-2 flex gap-1"><div className="w-2 h-2 rounded-full bg-lime-500 animate-pulse" /></div>
-                   <textarea readOnly value={debugLog} className="w-full h-48 bg-transparent text-[10px] text-lime-400/80 font-mono resize-none focus:outline-none leading-relaxed" />
+                  <div className="absolute top-2 right-2 flex gap-1"><div className="w-2 h-2 rounded-full bg-lime-500 animate-pulse" /></div>
+                  <textarea readOnly value={debugLog} className="w-full h-48 bg-transparent text-[10px] text-lime-400/80 font-mono resize-none focus:outline-none leading-relaxed" />
                 </div>
               </div>
               <div className="pt-2 flex justify-end">

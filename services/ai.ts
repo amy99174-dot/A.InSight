@@ -7,7 +7,7 @@ export interface AnalysisResult {
   visionPrompt: string;    // Prompt for Image Gen (Plan)
   scriptPrompt: string;    // The actual script content for TTS (Plan)
   ambienceCategory: string; // The category code for static audio lookup
-  era?: string;             
+  era?: string;
   imageStrength?: number;   // 0.0 to 1.0 (Controls Img2Img fidelity)
   usedPrompt?: string;      // ADDED: The raw system prompt used for this analysis
 }
@@ -21,8 +21,8 @@ function sanitizeKey(key: string | undefined): string {
 // Helper to get an authenticated Gemini client dynamically
 function getGenAI(userKey?: string) {
   // Prioritize user-provided key, then environment variable
-  const key = userKey ? sanitizeKey(userKey) : process.env.API_KEY;
-  
+  const key = userKey ? sanitizeKey(userKey) : import.meta.env.VITE_GEMINI_API_KEY;
+
   if (!key) {
     throw new Error("Google API Key is missing. Please check your settings.");
   }
@@ -38,9 +38,9 @@ function getGenAI(userKey?: string) {
  * @param timeScale 1 (Origin) to 5 (Future)
  */
 export async function analyzeArtifact(
-  base64Image: string, 
-  apiKey?: string, 
-  historyScale: number = 2, 
+  base64Image: string,
+  apiKey?: string,
+  historyScale: number = 2,
   timeScale: number = 3
 ): Promise<AnalysisResult> {
   try {
@@ -272,7 +272,7 @@ Combine the results from all agents into this exact JSON structure:
           {
             inlineData: {
               mimeType: 'image/jpeg',
-              data: base64Image.split(',')[1] 
+              data: base64Image.split(',')[1]
             }
           },
           {
@@ -284,12 +284,12 @@ Combine the results from all agents into this exact JSON structure:
 
     const text = response.text || "{}";
     const json = JSON.parse(text);
-    
+
     return {
       name: json.name || "未知文物",
       visionPrompt: json.visionPrompt || "Historical artifact close up, photorealistic.",
       scriptPrompt: json.scriptPrompt || "訊號模糊，無法解析歷史數據。",
-      ambienceCategory: json.ambienceCategory || "SOUND_QUIET", 
+      ambienceCategory: json.ambienceCategory || "SOUND_QUIET",
       era: json.era,
       imageStrength: json.imageStrength || 0.65,
       usedPrompt: promptTemplate // Return the raw prompt for debugging
@@ -298,7 +298,7 @@ Combine the results from all agents into this exact JSON structure:
   } catch (error) {
     console.error("AI Analysis Failed:", error);
     if (error instanceof Error && error.message.includes("API Key")) {
-        throw error;
+      throw error;
     }
     return {
       name: "訊號干擾",
@@ -323,8 +323,8 @@ Combine the results from all agents into this exact JSON structure:
  * 四、忠實使用 visionPrompt，不做改寫。
  */
 export async function generateHistoryVision(
-  prompt: string, 
-  apiKey: string | undefined, 
+  prompt: string,
+  apiKey: string | undefined,
   originalImageBase64: string,
   imageStrength: number = 0.5 // Kept for interface compatibility, but Prompt drives adherence now
 ): Promise<string> {
@@ -340,7 +340,7 @@ export async function generateHistoryVision(
       model: 'gemini-2.5-flash-image',
       contents: {
         parts: [
-          { 
+          {
             text: prompt // Direct pass-through
           },
           {
@@ -353,19 +353,19 @@ export async function generateHistoryVision(
       },
       config: {
         imageConfig: {
-          aspectRatio: "1:1" 
+          aspectRatio: "1:1"
         }
       }
     });
 
     const candidates = response.candidates;
     if (candidates && candidates.length > 0) {
-       const parts = candidates[0].content.parts;
-       for (const part of parts) {
-         if (part.inlineData && part.inlineData.data) {
-           return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-         }
-       }
+      const parts = candidates[0].content.parts;
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        }
+      }
     }
     throw new Error("No image data returned from Gemini");
   } catch (error) {
@@ -378,7 +378,7 @@ export async function generateHistoryVision(
  * PHASE 2: EXECUTE AUDIO (OpenAI TTS)
  */
 export async function generateAudioGuide(script: string, userApiKey?: string): Promise<string | null> {
-  const openAIKey = sanitizeKey(userApiKey || process.env.OPENAI_API_KEY);
+  const openAIKey = sanitizeKey(userApiKey || import.meta.env.VITE_OPENAI_API_KEY);
   if (!openAIKey) return null;
 
   try {
@@ -397,7 +397,7 @@ export async function generateAudioGuide(script: string, userApiKey?: string): P
     });
 
     if (!response.ok) {
-        throw new Error(`TTS API Error`);
+      throw new Error(`TTS API Error`);
     }
     const blob = await response.blob();
     return URL.createObjectURL(blob);
