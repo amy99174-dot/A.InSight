@@ -18,3 +18,13 @@ export interface ArtifactData {
   historyImage: string;
   description: string;
 }
+
+export interface AnalysisResult {
+  name: string;
+  visionPrompt: string;
+  scriptPrompt: string;
+  ambienceCategory: string;
+  era?: string;
+  imageStrength?: number;
+  usedPrompt?: string;
+}
