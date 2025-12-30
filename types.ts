@@ -27,4 +27,6 @@ export interface AnalysisResult {
   era?: string;
   imageStrength?: number;
   usedPrompt?: string;
+  category?: string; // New field
+  summary?: string;  // New field
 }

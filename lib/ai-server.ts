@@ -39,7 +39,7 @@ Current Settings -> timeScale: ${timeScale} (1-5), historyScale: ${historyScale}
 【角色設定】
 你是一個「展品辨識引擎」（Artifact Identifier）。
 任務是根據使用者照片中可見的物件，找出唯一主要物件並產出基本結構化描述。
-在辨識主要物件後，需額外輸出 styleRef、manufacturingMethod 與 preFormState。
+在辨識主要物件後，需額外輸出 styleRef, manufacturingMethod, preFormState, 以及 category。
 
 【核心規則】
 一、僅判斷主要物件（A 方案）
@@ -343,10 +343,14 @@ export async function generateAudioGuideServer(script: string, userApiKey?: stri
       })
     });
 
-    if (!response.ok) throw new Error("TTS API Error");
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("OpenAI TTS API Error:", response.status, response.statusText, errorText);
+      throw new Error(`TTS API Error: ${response.status} ${errorText}`);
+    }
     return await response.arrayBuffer();
   } catch (error) {
-    console.error("Server TTS Failed", error);
+    console.error("Server TTS Failed Details:", error);
     return null;
   }
 }

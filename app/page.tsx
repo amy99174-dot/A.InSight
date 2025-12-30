@@ -120,6 +120,38 @@ export default function Home() {
         return "";
     });
 
+    // Session Management
+    const [sessionId, setSessionId] = useState<number | null>(null);
+
+    useEffect(() => {
+        const initSession = async () => {
+            // 1. Check if ID exists in sessionStorage
+            const storedId = sessionStorage.getItem('session_id');
+            if (storedId) {
+                setSessionId(Number(storedId));
+                console.log("Restored Session ID:", storedId);
+                return;
+            }
+
+            // 2. If not, call API to check in
+            try {
+                const res = await fetch('/api/session', { method: 'POST' });
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.id) {
+                        setSessionId(data.id);
+                        sessionStorage.setItem('session_id', String(data.id));
+                        console.log("New Session Created:", data.id);
+                    }
+                }
+            } catch (e) {
+                console.error("Session Check-in Failed", e);
+            }
+        };
+
+        initSession();
+    }, []);
+
 
 
     // To keep UI consistent: "KEY MISSING" logic.
@@ -165,7 +197,8 @@ export default function Home() {
                     image,
                     historyScale: hScale,
                     timeScale: tScale,
-                    apiKey: userGoogleKey // Pass if user provided
+                    apiKey: userGoogleKey, // Pass if user provided
+                    sessionId: sessionId // Send Session ID
                 })
             });
 
@@ -377,7 +410,7 @@ ${plan.scriptPrompt}
     const blurAmount = 12 * (1 - focusProgress);
 
     return (
-        <>
+        <div className="fixed inset-0 flex items-center justify-center bg-black overflow-hidden h-screen w-screen">
             <div
                 onClick={step !== STEPS.TUNING && step !== STEPS.FOCUSING ? handleTrigger : undefined}
                 onPointerDown={step === STEPS.FOCUSING ? handlePointerDown : undefined}
@@ -594,6 +627,6 @@ ${plan.scriptPrompt}
                     </div>
                 </div>
             )}
-        </>
+        </div>
     );
 }
