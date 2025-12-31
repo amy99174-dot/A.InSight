@@ -23,6 +23,7 @@ export default function RootLayout({
             <head>
 
 
+                <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@100;400;700;800&display=swap" rel="stylesheet" />
             </head>
             <body suppressHydrationWarning>
                 <div id="root">{children}</div>

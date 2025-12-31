@@ -443,99 +443,47 @@ ${plan.scriptPrompt}
                 )}
 
                 {/* Scanner UI Overlay */}
-                {(step === STEPS.BOOT || step === STEPS.PROXIMITY || step === STEPS.LOCKED || step === STEPS.TUNING || step === STEPS.ANALYZING) && (
-                    <ScannerUI
-                        isScanning={step === STEPS.LOCKED || step === STEPS.PROXIMITY}
-                        isAnalyzing={step === STEPS.ANALYZING}
-                        onScan={handleTrigger}
-                        statusText={step === STEPS.LOCKED ? "TARGET LOCKED" : step === STEPS.PROXIMITY ? "SIGNAL DETECTED" : "SYSTEM ONLINE"}
-                    >
-                        {/* Tuning UI as Child */}
-                        {step === STEPS.TUNING && (
-                            <div className="bg-black/80 backdrop-blur-md p-6 rounded-2xl border border-[#00ff9d]/30 text-center w-[280px]">
-                                <div className="flex items-center justify-center gap-2 text-[#00ff9d] mb-4">
-                                    <Sliders className="w-5 h-5" />
-                                    <h3 className="text-sm font-bold tracking-widest">時空共振頻率</h3>
-                                </div>
-                                <div className="w-full space-y-4 mb-4">
-                                    <div className="space-y-1 text-left">
-                                        <label className="text-[10px] font-mono text-[#00ff9d]/60 uppercase tracking-widest block">TIMELINE PHASE</label>
-                                        <div className="flex justify-between items-end mb-1">
-                                            <span className="text-xs text-[#00ff9d] font-bold">{TIME_SCALE_LABELS[timeScale]}</span>
-                                            <span className="text-[10px] text-[#00ff9d]/50">LV.{timeScale}</span>
-                                        </div>
-                                        <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-1 bg-[#00ff9d]/20 rounded-lg appearance-none cursor-pointer accent-[#00ff9d]" />
-                                    </div>
-                                    <div className="space-y-1 text-left">
-                                        <label className="text-[10px] font-mono text-[#00ff9d]/60 uppercase tracking-widest block">HISTORICAL FIDELITY</label>
-                                        <div className="flex justify-between items-end mb-1">
-                                            <span className="text-xs text-[#00ff9d] font-bold">{HISTORY_SCALE_LABELS[historyScale]}</span>
-                                            <span className="text-[10px] text-[#00ff9d]/50">LV.{historyScale}</span>
-                                        </div>
-                                        <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-1 bg-[#00ff9d]/20 rounded-lg appearance-none cursor-pointer accent-[#00ff9d]" />
-                                    </div>
-                                </div>
-                                <button onClick={(e) => { e.stopPropagation(); handleTrigger(); }} className="w-full px-4 py-3 bg-[#00ff9d] text-black font-bold tracking-widest rounded hover:bg-[#00cc7d] transition-colors shadow-[0_0_15px_rgba(0,255,157,0.4)] text-xs">
-                                    啟動解析 (START)
-                                </button>
-                            </div>
-                        )}
-                    </ScannerUI>
-                )}
+                <ScannerUI
+                    step={step}
+                    onScan={handleTrigger}
+                    // Data Props
+                    proximityDistance={0.8} // Mock, or hook up to real logic if available
+                    tuningValues={{ timeScale, historyScale }}
+                    artifactName={artifactName}
+                    scriptText={splitTextIntoPages(fullScript)[scriptPage]}
+                    analysisProgress={isProcessing ? 45 : 0}
+                    focusProgress={Math.round(focusProgress * 100)}
+                    resultImage={historyImage}
+                />
 
-                {/* Legacy Logic for LISTEN/FOCUSING/REVEAL (Keep as is for now or integrate later) */}
-                {step === STEPS.LISTEN && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-10 bg-black/60 backdrop-blur-[2px] transition-all">
-                        <button onClick={(e) => { e.stopPropagation(); toggleAudio(); }} className={`absolute top-16 right-10 p-2 rounded-full border ${isPlayingAudio ? 'border-lime-400/50 text-lime-400' : 'border-red-500/50 text-red-500 animate-pulse'} z-50`}>
-                            {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                        </button>
-                        <div className="absolute top-12 w-full flex flex-col items-center">
-                            <h3 className="text-xl font-bold text-lime-300 border-b border-lime-400/30 pb-1 mb-1 inline-block drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{artifactName}</h3>
-                            {!isPlayingAudio && <p className="text-[10px] text-red-400 font-mono tracking-widest">TAP ICON TO UNMUTE</p>}
-                        </div>
-                        <div className="z-10 relative px-8 mt-6 w-full max-w-[85%] min-h-[140px] flex items-center justify-center">
-                            <p className="text-lg font-medium text-lime-100/90 tracking-wide leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,1)] text-justify">{scriptPages[scriptPage]}</p>
-                        </div>
-                        <div className="absolute bottom-16 flex flex-col items-center gap-3 w-full">
-                            <div className="flex gap-1.5 justify-center">
-                                {scriptPages.map((_, i) => (
-                                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === scriptPage ? 'w-6 bg-lime-400' : 'w-1.5 bg-lime-900/40'}`} />
-                                ))}
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] text-lime-400/60 font-mono animate-pulse">
-                                <span>{scriptPage < scriptPages.length - 1 ? "[ 點擊下一頁 ]" : "[ 點擊完成 ]"}</span>
-                                {scriptPage < scriptPages.length - 1 && <ArrowRight size={10} />}
-                            </div>
+                {/* Overlays for Interaction (Inputs) */}
+                {step === STEPS.TUNING && (
+                    <div className="absolute inset-0 z-50 flex flex-col items-center justify-center pointer-events-none">
+                        {/* Invisible clickable areas or Styled Inputs matching the ring positions? 
+                            The HTML design puts values in the center. Let's put standard sliders at the bottom for usability 
+                            or overlay them transparently. For now, I'll put them at the bottom 1/3 for easy thumb access
+                            matching the "Human Interface" requirement. padding-top pushes them down.
+                         */}
+                        <div className="w-[200px] h-[200px] pointer-events-auto flex flex-col justify-end gap-6 pb-10 opacity-0 hover:opacity-100 transition-opacity">
+                            {/* Hidden inputs interaction layer - User can see them when interacting */}
+                            <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-8 cursor-pointer" />
+                            <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-8 cursor-pointer" />
                         </div>
                     </div>
                 )}
 
+                {/* Invisible Touch Layer for Focusing (Rotation) */}
                 {step === STEPS.FOCUSING && (
-                    <div className="absolute inset-0 overflow-hidden text-center flex flex-col items-center justify-center rounded-full z-10 cursor-grab active:cursor-grabbing">
-                        <div className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none transition-transform duration-75 ease-out" style={{ transform: `rotate(${focusRotation}deg)` }}>
-                            <div className="w-[80%] h-[80%] rounded-full border-2 border-dashed border-lime-400/30" />
-                            <div className="w-[85%] h-[85%] rounded-full border border-lime-400/10" />
-                            <div className="absolute top-8 w-1 h-3 bg-lime-400/80" />
-                            <div className="absolute bottom-8 w-1 h-3 bg-lime-400/30" />
-                            <div className="absolute left-8 w-3 h-1 bg-lime-400/30" />
-                            <div className="absolute right-8 w-3 h-1 bg-lime-400/30" />
-                        </div>
-                        <div className="z-10 pointer-events-none">
-                            <RotateCw className="w-8 h-8 text-lime-400 animate-pulse mx-auto mb-4 opacity-80" />
-                            <div className="space-y-1">
-                                <p className="text-lg font-bold text-lime-100 tracking-wider drop-shadow-md">旋轉鏡頭對焦</p>
-                                <p className="text-[10px] text-lime-400/60 font-mono tracking-[0.2em]">MANUAL FOCUS REQUIRED</p>
-                                <p className="text-[8px] text-lime-400/30 font-mono mt-1 tracking-widest">{Math.round(focusProgress * 100)}%</p>
-                            </div>
-                        </div>
-                    </div>
+                    <div
+                        className="absolute inset-0 z-50 cursor-grab active:cursor-grabbing touch-none"
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                    />
                 )}
 
-                {step === STEPS.REVEAL && historyImage && (
-                    <div className="absolute inset-0 z-20 rounded-full bg-black">
-                        <KeyholeViewer imageSrc={historyImage} position={{ x, y }} />
-                    </div>
-                )}
+
+
             </div>
 
             {!hasGoogleKey && (
