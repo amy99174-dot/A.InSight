@@ -56,6 +56,14 @@ body {
   animation: spin-slow 10s linear infinite;
 }
 
+.animate-spin-slow-reverse {
+  animation: spin-slow 10s linear infinite reverse;
+}
+
+.animate-spin-fast {
+  animation: spin-slow 1s linear infinite;
+}
+
 /* --- 修正：更明顯的斷續震動 --- */
 @keyframes intermittent-shake {
 

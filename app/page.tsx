@@ -5,6 +5,7 @@ import { Sparkles, Settings, X, Volume2, VolumeX, AlertTriangle, ArrowRight, Sli
 import { useCamera } from '../hooks/useCamera';
 import { useOrientation } from '../hooks/useOrientation';
 import { KeyholeViewer } from '../components/KeyholeViewer';
+import ScannerUI from '../components/ScannerUI';
 
 // Note: analyzeArtifact etc are replaced by API calls
 
@@ -416,20 +417,21 @@ ${plan.scriptPrompt}
                 onPointerDown={step === STEPS.FOCUSING ? handlePointerDown : undefined}
                 onPointerMove={step === STEPS.FOCUSING ? handlePointerMove : undefined}
                 onPointerUp={step === STEPS.FOCUSING ? handlePointerUp : undefined}
-                className={`relative w-[380px] h-[380px] bg-stone-950 shadow-2xl select-none rounded-full ring-4 ring-stone-800 overflow-hidden ${step !== STEPS.TUNING ? 'cursor-pointer' : ''} touch-none`}
+                className={`relative w-[380px] h-[380px] rounded-full overflow-hidden shadow-2xl select-none touch-none bg-black ${step !== STEPS.TUNING ? 'cursor-pointer' : ''}`}
             >
-                <CircularHUD color={hasGoogleKey ? "text-lime-400" : "text-red-500"} active={true} />
-
+                {/* Background Video Layer */}
                 {(step === STEPS.BOOT || step === STEPS.PROXIMITY || step === STEPS.LOCKED) && (
                     <div className="absolute inset-0 z-0">
                         <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-60 filter sepia-[0.3] contrast-125" />
                     </div>
                 )}
 
+                {/* Captured Image Layer */}
                 {(step === STEPS.ANALYZING || step === STEPS.TUNING) && capturedImage && (
                     <img src={capturedImage} className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale" />
                 )}
 
+                {/* History Image Layer */}
                 {(step === STEPS.LISTEN || step === STEPS.FOCUSING) && historyImage && (
                     <div className="absolute inset-0 z-0">
                         <img
@@ -440,103 +442,48 @@ ${plan.scriptPrompt}
                     </div>
                 )}
 
-                {step === STEPS.BOOT && (
-                    <div className="absolute inset-0 rounded-full z-10">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(57,255,20,0.2)_0%,transparent_70%)]" />
-                        <div className="animate-ripple" />
-                        <div className="animate-ripple" style={{ animationDelay: '1s' }} />
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center z-10">
-                            {!hasGoogleKey ? (
-                                <div className="flex flex-col items-center">
-                                    <AlertTriangle className="w-8 h-8 text-red-500 mb-2 animate-bounce" />
-                                    <p className="text-xl font-bold text-red-500 tracking-wider">KEY MISSING</p>
-                                    <p className="text-[10px] text-red-400 font-mono tracking-widest mt-1">OPEN SETTINGS</p>
+                {/* Scanner UI Overlay */}
+                {(step === STEPS.BOOT || step === STEPS.PROXIMITY || step === STEPS.LOCKED || step === STEPS.TUNING || step === STEPS.ANALYZING) && (
+                    <ScannerUI
+                        isScanning={step === STEPS.LOCKED || step === STEPS.PROXIMITY}
+                        isAnalyzing={step === STEPS.ANALYZING}
+                        onScan={handleTrigger}
+                        statusText={step === STEPS.LOCKED ? "TARGET LOCKED" : step === STEPS.PROXIMITY ? "SIGNAL DETECTED" : "SYSTEM ONLINE"}
+                    >
+                        {/* Tuning UI as Child */}
+                        {step === STEPS.TUNING && (
+                            <div className="bg-black/80 backdrop-blur-md p-6 rounded-2xl border border-[#00ff9d]/30 text-center w-[280px]">
+                                <div className="flex items-center justify-center gap-2 text-[#00ff9d] mb-4">
+                                    <Sliders className="w-5 h-5" />
+                                    <h3 className="text-sm font-bold tracking-widest">時空共振頻率</h3>
                                 </div>
-                            ) : (
-                                <>
-                                    <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug animate-pulse drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                                        正在探測<br />展館中的歷史故事...
-                                    </p>
-                                    <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-3">SYSTEM ONLINE</p>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.PROXIMITY && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center animate-intermittent-shake rounded-full z-10">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(57,255,20,0.3)_0%,transparent_60%)]" />
-                        <div className="animate-ripple" style={{ animationDuration: '1s', borderColor: 'rgba(57, 255, 20, 0.8)' }} />
-                        <div className="z-10 relative">
-                            <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                                訊號接近<br />請貼近展品感應區
-                            </p>
-                            <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-2">SIGNAL DETECTED</p>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.LOCKED && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-10">
-                        <div className="absolute inset-0 rounded-full border-[6px] border-lime-400/50 animate-pulse shadow-[inset_0_0_20px_#39ff14]" />
-                        <div className="absolute top-1/2 left-1/2 w-12 h-12 border border-lime-400 -translate-x-1/2 -translate-y-1/2" />
-                        <div className="z-10 relative mt-8 space-y-2">
-                            <p className="text-xl font-bold text-lime-400 tracking-wider drop-shadow-[0_2px_8px_rgba(0,0,0,1)]">鎖定目標</p>
-                            <p className="text-[10px] text-lime-400/80 font-mono tracking-[0.2em]">TARGET LOCKED</p>
-                        </div>
-                        <div className="absolute bottom-16 z-10">
-                            <p className="text-[10px] text-lime-400/80 font-mono animate-bounce tracking-widest drop-shadow-md">[ 按下板機捕捉 ]</p>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.TUNING && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-20 bg-black/60 backdrop-blur-sm p-8">
-                        <div className="flex items-center gap-2 text-lime-400 mb-4">
-                            <Sliders className="w-5 h-5" />
-                            <h3 className="text-lg font-bold tracking-widest">時空共振頻率</h3>
-                        </div>
-                        <div className="w-full space-y-5">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">TIMELINE PHASE</label>
-                                <div className="flex justify-between items-end mb-1">
-                                    <span className="text-xs text-lime-300 font-bold">{TIME_SCALE_LABELS[timeScale]}</span>
-                                    <span className="text-[10px] text-lime-400/50">LV.{timeScale}</span>
+                                <div className="w-full space-y-4 mb-4">
+                                    <div className="space-y-1 text-left">
+                                        <label className="text-[10px] font-mono text-[#00ff9d]/60 uppercase tracking-widest block">TIMELINE PHASE</label>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <span className="text-xs text-[#00ff9d] font-bold">{TIME_SCALE_LABELS[timeScale]}</span>
+                                            <span className="text-[10px] text-[#00ff9d]/50">LV.{timeScale}</span>
+                                        </div>
+                                        <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-1 bg-[#00ff9d]/20 rounded-lg appearance-none cursor-pointer accent-[#00ff9d]" />
+                                    </div>
+                                    <div className="space-y-1 text-left">
+                                        <label className="text-[10px] font-mono text-[#00ff9d]/60 uppercase tracking-widest block">HISTORICAL FIDELITY</label>
+                                        <div className="flex justify-between items-end mb-1">
+                                            <span className="text-xs text-[#00ff9d] font-bold">{HISTORY_SCALE_LABELS[historyScale]}</span>
+                                            <span className="text-[10px] text-[#00ff9d]/50">LV.{historyScale}</span>
+                                        </div>
+                                        <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-1 bg-[#00ff9d]/20 rounded-lg appearance-none cursor-pointer accent-[#00ff9d]" />
+                                    </div>
                                 </div>
-                                <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
+                                <button onClick={(e) => { e.stopPropagation(); handleTrigger(); }} className="w-full px-4 py-3 bg-[#00ff9d] text-black font-bold tracking-widest rounded hover:bg-[#00cc7d] transition-colors shadow-[0_0_15px_rgba(0,255,157,0.4)] text-xs">
+                                    啟動解析 (START)
+                                </button>
                             </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">HISTORICAL FIDELITY</label>
-                                <div className="flex justify-between items-end mb-1">
-                                    <span className="text-xs text-lime-300 font-bold">{HISTORY_SCALE_LABELS[historyScale]}</span>
-                                    <span className="text-[10px] text-lime-400/50">LV.{historyScale}</span>
-                                </div>
-                                <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
-                            </div>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); handleTrigger(); }} className="mt-6 px-8 py-2 bg-lime-400 text-black font-bold tracking-widest rounded hover:bg-lime-300 transition-colors shadow-[0_0_15px_rgba(57,255,20,0.5)]">啟動解析</button>
-                    </div>
+                        )}
+                    </ScannerUI>
                 )}
 
-                {step === STEPS.ANALYZING && (
-                    <div className="absolute inset-0 bg-stone-900/90 flex flex-col items-center justify-center text-center rounded-full z-10">
-                        <div className="z-10 w-[60%] space-y-4">
-                            <Sparkles className="w-8 h-8 text-lime-400 mx-auto animate-spin-slow opacity-80" />
-                            <div className="space-y-1">
-                                <p className="text-lg font-bold text-lime-400 tracking-wider drop-shadow-md animate-pulse">{analysisText}</p>
-                                <div className="flex justify-between text-lime-400/60 font-mono text-[10px] tracking-widest px-2">
-                                    <span>AI PROCESSING</span>
-                                    <span>{isProcessing ? "..." : "DONE"}</span>
-                                </div>
-                            </div>
-                            <div className="h-[2px] w-full bg-stone-700 relative overflow-hidden rounded-full">
-                                <div className="absolute top-0 left-0 h-full bg-lime-400 animate-[width_3s_ease-out_forwards] shadow-[0_0_10px_#39ff14]" style={{ width: '100%' }} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
+                {/* Legacy Logic for LISTEN/FOCUSING/REVEAL (Keep as is for now or integrate later) */}
                 {step === STEPS.LISTEN && (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-10 bg-black/60 backdrop-blur-[2px] transition-all">
                         <button onClick={(e) => { e.stopPropagation(); toggleAudio(); }} className={`absolute top-16 right-10 p-2 rounded-full border ${isPlayingAudio ? 'border-lime-400/50 text-lime-400' : 'border-red-500/50 text-red-500 animate-pulse'} z-50`}>

@@ -146,7 +146,7 @@ export default function AdminPage() {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-gray-50 text-gray-500 font-sans">
                 <Loader2 className="h-10 w-10 animate-spin mr-3" />
-                <span>Loading Analytics...</span>
+                <span>正在載入分析數據...</span>
             </div>
         );
     }
