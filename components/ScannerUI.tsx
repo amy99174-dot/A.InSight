@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Activity, Disc, Globe, ShieldCheck } from 'lucide-react';
 
@@ -8,11 +7,11 @@ interface ScannerUIProps {
     // Data Props
     proximityDistance?: number; // e.g., 0.8
     tuningValues?: { timeScale: number; historyScale: number };
+    activeParameter?: 'time' | 'history'; // New Prop for Active Ring
     analysisProgress?: number; // 0-100
     artifactName?: string;
     scriptText?: string;
-    focusProgress?: number; // 0-100
-    // Dynamic content for REVEAL state
+    focusProgress?: number;
     resultImage?: string | null;
 }
 
@@ -21,6 +20,7 @@ export default function ScannerUI({
     onScan,
     proximityDistance = 0.8,
     tuningValues = { timeScale: 1, historyScale: 1 },
+    activeParameter = 'time',
     analysisProgress = 0,
     artifactName = "Unknown Artifact",
     scriptText = "",
@@ -28,140 +28,185 @@ export default function ScannerUI({
     resultImage
 }: ScannerUIProps) {
 
-    // Internal ticker for random UI effects (like the random numbers in the HTML)
+    // Internal ticker for random UI numbers
     const [ticker, setTicker] = useState(0);
 
     useEffect(() => {
         const interval = setInterval(() => {
             setTicker(prev => (prev + 1) % 100);
-        }, 500);
+        }, 200);
         return () => clearInterval(interval);
     }, []);
 
     // Helper for Time Scale Label in Tuning
+    // Display: 01 - 05
     const getTimeScaleLabel = (val: number) => {
-        const labels = ["", "起源", "誕生", "全盛", "遺棄", "未來"];
-        return labels[val] || "L-" + val;
+        return "0" + val;
     };
 
     // Helper for History Fidelity Label
+    // Display: HIGH / MID / LOW
     const getHistoryLabel = (val: number) => {
-        const labels = ["", "傳說", "通史", "正史"];
-        return labels[val] || "Level " + val;
+        if (val === 3) return "HIGH";
+        if (val === 2) return "MID";
+        return "LOW";
     };
 
     return (
-        <div className="relative w-full h-full text-white font-mono select-none overflow-hidden">
+        <div className="relative w-full h-full text-white font-mono pointer-events-none">
 
-            {/* LAYER 0: 視覺基底 - Note: The real camera video is BEHIND this component in app/page.tsx. 
-               We just layer overlays here. The HTML 'bg-layer' is replaced by transparency + CSS filters if needed.
-               However, we can add the 'scan-line-bg' effect here.
-            */}
-            <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0),rgba(255,255,255,0)_50%,rgba(0,0,0,0.5)_50%,rgba(0,0,0,0.5))] bg-[length:100%_4px] opacity-30 pointer-events-none"></div>
-
-            {/* LAYER 1: 全域 HUD (Always Visible) */}
-            <div className="absolute inset-0 pointer-events-none z-10">
-                {/* 外部裝飾圈 */}
-                <div className="center-xy w-[370px] h-[370px] border border-white/10 rounded-full"></div>
-                {/* 刻度圈 */}
-                <div className="center-xy w-[350px] h-[350px] border border-white/20 rounded-full animate-spin-centered"
-                    style={{ borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.1)' }}></div>
-
-                {/* 頂部狀態標籤 */}
-                <div className="absolute top-6 left-1/2 -translate-x-1/2 text-[9px] bg-black/80 backdrop-blur-sm border border-white/30 px-3 py-0.5 rounded-full tracking-widest">
-                    A.InSight SYS.V3.2
-                </div>
-            </div>
-
-            {/* LAYER 2: 狀態內容 (Conditional Rendering) */}
-
-            {/* 1. BOOT (啟動) */}
+            {/* --- STATE: BOOT (系統啟動) --- */}
             {step === 'BOOT' && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center z-20 animate-in fade-in duration-500">
-                    <div className="relative w-24 h-24 flex items-center justify-center mb-4">
-                        <div className="absolute inset-0 border border-white rounded-full animate-pulse-opacity"></div>
-                        <div className="absolute inset-0 border-t border-white rounded-full animate-spin-self-slow"></div>
-                        <div className="text-3xl font-black tracking-tighter">系統</div>
+                <div className="absolute inset-0 animate-in fade-in duration-500">
+                    <div className="center-xy">
+                        {/* Pulse Ring */}
+                        <div className="absolute w-[180px] h-[180px] border border-white rounded-full opacity-60 animate-ping-custom"></div>
+                        {/* OS Logo */}
+                        <div className="flex flex-col items-center gap-1">
+                            <div className="text-3xl font-black tracking-tighter">OS</div>
+                            <div className="text-[10px] tracking-widest border-t border-white pt-1">正在探測歷史訊號</div>
+                        </div>
                     </div>
-                    <div className="text-sm font-bold tracking-widest mb-1">系統校正中</div>
-                    <div className="text-[9px] opacity-60">感測器初始化...</div>
                 </div>
             )}
 
-            {/* 2. PROXIMITY (接近偵測) */}
+            {/* --- STATE: PROXIMITY (訊號偵測) --- */}
             {step === 'PROXIMITY' && (
-                <div className="absolute inset-0 z-20 animate-in fade-in duration-300">
-                    <div className="center-xy w-[120px] h-[120px]">
-                        <div className="w-full h-full bg-white/10 rounded-full animate-ping-custom"></div>
+                <div className="absolute inset-0 animate-in fade-in duration-300">
+                    {/* Double Ripple Radar */}
+                    <div className="center-xy">
+                        <div className="absolute w-[120px] h-[120px] bg-white/20 rounded-full animate-ping-custom"></div>
                     </div>
-                    <div className="center-xy w-[180px] h-[180px]">
-                        <div className="w-full h-full border border-white/30 rounded-full animate-ping-custom" style={{ animationDelay: '0.3s' }}></div>
-                    </div>
-
-                    <div className="center-xy flex flex-col items-center text-center bg-black/60 p-6 rounded-full backdrop-blur-sm border border-white/10">
-                        <div className="text-xl font-bold">訊號偵測</div>
-                        <div className="text-[9px] border-t border-white/50 w-full pt-1 mt-1 tracking-widest">接近目標中</div>
+                    <div className="center-xy">
+                        <div className="absolute w-[200px] h-[200px] border border-white/40 rounded-full animate-ping-custom" style={{ animationDelay: '0.4s' }}></div>
                     </div>
 
-                    <div className="absolute bottom-16 w-full text-center">
-                        <span className="text-2xl font-bold font-mono">{(0.3 + (ticker / 100)).toFixed(1)}</span>
+                    {/* Center Info */}
+                    <div className="center-xy flex flex-col items-center bg-black/60 p-4 rounded-full backdrop-blur-[2px] border border-white/10">
+                        <div className="text-xl font-bold tracking-tight">訊號偵測</div>
+                        <div className="text-[9px] tracking-widest mt-1 opacity-80">接近目標中</div>
+                    </div>
+
+                    {/* Distance Metric */}
+                    <div className="absolute bottom-16 left-0 right-0 text-center">
+                        <span className="text-2xl font-bold">{(0.3 + (ticker / 100)).toFixed(1)}</span>
                         <span className="text-[9px] ml-1">M</span>
                     </div>
                 </div>
             )}
 
-            {/* 3. LOCKED (鎖定) */}
+            {/* --- STATE: LOCKED (鎖定目標) --- */}
             {step === 'LOCKED' && (
-                <div className="absolute inset-0 z-20 animate-in fade-in duration-200">
-                    <div className="center-xy w-[200px] h-[200px]">
-                        {/* CSS Clip Path implementation for arcs */}
-                        <div className="absolute inset-0 border-t-2 border-white rounded-full" style={{ clipPath: 'inset(0 20% 80% 20%)' }}></div>
-                        <div className="absolute inset-0 border-b-2 border-white rounded-full" style={{ clipPath: 'inset(80% 20% 0 20%)' }}></div>
-                        <div className="absolute inset-0 border-l-2 border-white/50 rounded-full" style={{ clipPath: 'inset(40% 90% 40% 0)' }}></div>
-                        <div className="absolute inset-0 border-r-2 border-white/50 rounded-full" style={{ clipPath: 'inset(40% 0 40% 90%)' }}></div>
+                <div className="absolute inset-0 animate-in fade-in duration-200">
+                    {/* Arcs via clip-path */}
+                    <div className="center-xy w-[240px] h-[240px]">
+                        {/* Top Arc */}
+                        <div className="absolute inset-0 border-2 border-white rounded-full" style={{ clipPath: 'inset(0 0 80% 0)' }}></div>
+                        {/* Bottom Arc */}
+                        <div className="absolute inset-0 border-2 border-white rounded-full" style={{ clipPath: 'inset(80% 0 0 0)' }}></div>
+                        {/* Left Bracket */}
+                        <div className="absolute inset-0 border-l-2 border-white rounded-full" style={{ clipPath: 'inset(25% 0 25% 0)' }}></div>
+                        {/* Right Bracket */}
+                        <div className="absolute inset-0 border-r-2 border-white rounded-full" style={{ clipPath: 'inset(25% 0 25% 0)' }}></div>
                     </div>
 
+                    {/* Center Target */}
                     <div className="center-xy w-2 h-2 bg-white rounded-full animate-pulse"></div>
 
-                    <div className="absolute top-[35%] w-full text-center">
-                        <div className="text-[10px] bg-white text-black px-2 inline-block rounded-sm font-bold tracking-widest">鎖定目標</div>
+                    {/* Status Label */}
+                    <div className="absolute top-[32%] w-full text-center">
+                        <span className="bg-white text-black px-2 py-0.5 text-[10px] font-bold tracking-widest rounded-sm">鎖定目標</span>
                     </div>
-                    <div className="absolute bottom-[30%] w-full text-center">
-                        <div className="text-[10px] animate-bounce tracking-widest cursor-pointer" onClick={onScan}>[ 點擊掃描 ]</div>
+
+                    {/* Action Prompt */}
+                    <div className="absolute bottom-[28%] w-full text-center">
+                        <div className="text-[10px] tracking-widest animate-bounce">[ 按下快門捕捉 ]</div>
                     </div>
                 </div>
             )}
 
-            {/* 4. TUNING (調整) - Note: The sliders are overlayed in page.tsx, this just provides the visuals behind/around them */}
+            {/* --- STATE: TUNING (參數調整) --- */}
             {step === 'TUNING' && (
-                <div className="absolute inset-0 z-20 bg-black/60 backdrop-blur-[2px] animate-in fade-in">
-                    <div className="center-xy w-[260px] h-[260px]">
-                        {/* 外圈 (時空相位) */}
-                        <div className="absolute inset-0">
-                            <div className="absolute inset-0 rounded-full border border-white/20"></div>
-                            <div className="absolute inset-0 rounded-full conic-ring-white opacity-80" style={{ maskImage: 'radial-gradient(transparent 60%, black 61%)' }}></div>
+                <div className="absolute inset-0 animate-in fade-in bg-black/80 backdrop-blur-[1px]">
+                    <div className="center-xy w-[280px] h-[280px]">
+
+                        {/* === Outer Ring: Time Scale === */}
+                        <div className={`absolute inset-0 transition-opacity duration-300 ${activeParameter === 'time' ? 'opacity-100' : 'opacity-30'}`}>
+                            {/* CSS Ticks via Repeating Conic Gradient */}
+                            <div className="absolute inset-0 rounded-full"
+                                style={{
+                                    background: 'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.8) 0deg 2deg, transparent 2deg 10deg)',
+                                    maskImage: 'radial-gradient(transparent 65%, black 66%)', // Ring mask
+                                    WebkitMaskImage: 'radial-gradient(transparent 65%, black 66%)',
+                                }}>
+                            </div>
+
+                            {/* Value Fill */}
+                            <div className="absolute inset-0 rounded-full"
+                                style={{
+                                    background: `conic-gradient(white 0deg ${tuningValues.timeScale * 72}deg, transparent 0deg)`,
+                                    WebkitMaskImage: 'radial-gradient(transparent 65%, black 66%)',
+                                    maskImage: 'radial-gradient(transparent 65%, black 66%)',
+                                    mixBlendMode: 'overlay'
+                                }}></div>
+
+                            {/* Active Indicator (Glow when active) */}
+                            {activeParameter === 'time' && (
+                                <div className="absolute inset-[-5px] rounded-full border border-white/50 animate-pulse"></div>
+                            )}
                         </div>
 
-                        {/* 內圈 (解析精度) */}
-                        <div className="absolute inset-[30px]">
-                            <div className="absolute inset-0 rounded-full border border-white/20"></div>
-                            <div className="absolute inset-0 rounded-full conic-ring-inner" style={{ maskImage: 'radial-gradient(transparent 60%, black 61%)' }}></div>
+                        {/* === Inner Ring: History Scale === */}
+                        <div className={`absolute inset-[35px] transition-opacity duration-300 ${activeParameter === 'history' ? 'opacity-100' : 'opacity-30'}`}>
+                            {/* CSS Ticks */}
+                            <div className="absolute inset-0 rounded-full"
+                                style={{
+                                    background: 'repeating-conic-gradient(from 0deg, rgba(255,255,255,0.8) 0deg 2deg, transparent 2deg 30deg)',
+                                    maskImage: 'radial-gradient(transparent 60%, black 61%)',
+                                    WebkitMaskImage: 'radial-gradient(transparent 60%, black 61%)',
+                                    transform: 'rotate(180deg)'
+                                }}>
+                            </div>
+
+                            {/* Value Fill */}
+                            <div className="absolute inset-0 rounded-full"
+                                style={{
+                                    background: `conic-gradient(white 0deg ${tuningValues.historyScale * 120}deg, transparent 0deg)`,
+                                    WebkitMaskImage: 'radial-gradient(transparent 60%, black 61%)',
+                                    maskImage: 'radial-gradient(transparent 60%, black 61%)',
+                                    transform: 'rotate(180deg)'
+                                }}></div>
+
+                            {/* Active Indicator */}
+                            {activeParameter === 'history' && (
+                                <div className="absolute inset-[-5px] rounded-full border border-white/50 animate-pulse"></div>
+                            )}
                         </div>
 
-                        {/* Note: The interactive sliders are rendered as children in page.tsx, so we leave the center relatively clear or just show values */}
-                        <div className="center-xy flex flex-col text-center z-10 gap-8 pointer-events-none opacity-50">
-                            {/* Visual placeholders for where the sliders are */}
+                        {/* Center Values Overlay (Integrated) */}
+                        <div className="center-xy flex flex-col items-center gap-4 z-20">
+                            {/* Top Value (TimeScale) */}
+                            <div className={`flex flex-col items-center pt-2 transition-opacity duration-300 ${activeParameter === 'time' ? 'opacity-100' : 'opacity-40'}`}>
+                                <span className="text-[9px] tracking-widest mb-0.5">時間軸</span>
+                                <span className="text-3xl font-bold tracking-tighter">{getTimeScaleLabel(tuningValues.timeScale)}</span>
+                            </div>
+
+                            {/* Divider */}
+                            <div className="w-8 h-[1px] bg-white/30"></div>
+
+                            {/* Bottom Value (HistoryScale) */}
+                            <div className={`flex flex-col items-center pb-2 transition-opacity duration-300 ${activeParameter === 'history' ? 'opacity-100' : 'opacity-40'}`}>
+                                <span className="text-[9px] tracking-widest mb-0.5">史實度</span>
+                                <span className="text-xl font-bold tracking-tighter">{getHistoryLabel(tuningValues.historyScale)}</span>
+                            </div>
                         </div>
+
                     </div>
-                    {/* Values Display for Tuning (Replaces the static text in HTML) */}
-                    <div className="center-xy flex flex-col text-center z-10 gap-1 mt-1 pointer-events-none">
-                        <div className="flex flex-col border-b border-white/20 pb-1 w-24">
-                            <span className="text-[8px] opacity-60 tracking-widest">時空相位</span>
-                            <span className="text-lg font-bold">{getTimeScaleLabel(tuningValues.timeScale)}</span>
-                        </div>
-                        <div className="flex flex-col w-24 pt-1">
-                            <span className="text-[8px] opacity-60 tracking-widest">解析精度</span>
-                            <span className="text-md font-bold text-white/90">{getHistoryLabel(tuningValues.historyScale)}</span>
+
+                    {/* Helper Prompt */}
+                    <div className="absolute bottom-16 w-full text-center">
+                        <div className="text-[9px] opacity-50 tracking-widest animate-pulse">
+                            [ ⟵ 調頻 ⟶ ] [ ↕ 切換 ]
                         </div>
                     </div>
                 </div>
@@ -169,86 +214,96 @@ export default function ScannerUI({
 
             {/* 5. ANALYZING (解析) */}
             {step === 'ANALYZING' && (
-                <div className="absolute inset-0 z-20 animate-in fade-in">
-                    <div className="center-xy w-[280px] h-[280px] border border-white/10 rounded-full"></div>
-                    <div className="center-xy w-[220px] h-[220px] rounded-full border-t-2 border-white animate-spin-centered"></div>
-                    <div className="center-xy w-[200px] h-[200px] rounded-full border-b border-dashed border-white/50 animate-spin-centered" style={{ animationDuration: '8s', animationDirection: 'reverse' }}></div>
+                <div className="absolute inset-0 animate-in fade-in">
+                    {/* Rotating Rings */}
+                    <div className="center-xy">
+                        <div className="absolute w-[200px] h-[200px] border-t-2 border-white rounded-full animate-spin-slow"></div>
+                        <div className="absolute w-[180px] h-[180px] border-b-2 border-white/50 rounded-full animate-spin" style={{ animationDuration: '3s', animationDirection: 'reverse' }}></div>
+                    </div>
 
-                    <div className="center-xy flex flex-col text-center bg-black/80 p-6 rounded-full border border-white/10">
-                        <div className="text-sm font-bold mb-1 tracking-widest">解析中</div>
-                        <div className="text-[9px] opacity-60">解碼歷史數據...</div>
-                        <div className="mt-2 font-mono text-xl">{Math.min(99, Math.floor(ticker + (Math.random() * 10)))}%</div>
+                    {/* Center Progress Pulse */}
+                    <div className="center-xy flex flex-col items-center bg-black/50 p-6 rounded-full backpack-blur-sm">
+                        <div className="text-2xl font-black animate-pulse">{analysisProgress}%</div>
+                        <div className="text-[9px] tracking-widest mt-1">數據解析中</div>
+                        {/* Optional: Show what is happening */}
+                        <div className="text-[8px] opacity-50 mt-1">歷史訊號重構...</div>
                     </div>
                 </div>
             )}
 
-            {/* 6. LISTEN (解說) */}
+            {/* 6. LISTEN (聆聽) */}
             {step === 'LISTEN' && (
-                <div className="absolute inset-0 z-20 bg-black/90 animate-in fade-in duration-500">
-                    <div className="absolute top-12 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full"></div>
-
-                    <div className="absolute top-16 w-full text-center px-4">
-                        <span className="text-xl font-bold border-b border-white/50 pb-1 tracking-widest">{artifactName}</span>
-                    </div>
-
-                    <div className="center-xy w-[260px] flex items-center justify-center text-center mt-4">
-                        <p className="text-sm leading-relaxed opacity-90 font-light tracking-wide line-clamp-6">
-                            {scriptText || "正在下載文物資料..."}
+                <div className="absolute inset-0 animate-in fade-in duration-1000">
+                    <div className="absolute inset-0 bg-black/40"></div>
+                    {/* Subtitles at bottom */}
+                    <div className="absolute bottom-12 left-6 right-6 text-center">
+                        <p className="text-sm font-medium leading-relaxed drop-shadow-md bg-black/50 p-2 rounded-lg">
+                            {scriptText || "..."}
                         </p>
                     </div>
 
-                    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
-                        {/* Static dots for UI decoration */}
-                        <div className="w-2 h-2 bg-white rounded-full"></div>
-                        <div className="w-2 h-2 bg-white/30 rounded-full"></div>
-                        <div className="w-2 h-2 bg-white/30 rounded-full"></div>
+                    {/* Play Indicator */}
+                    <div className="absolute top-8 right-8 animate-pulse">
+                        <div className="flex gap-1">
+                            <div className="w-1 h-3 bg-white"></div>
+                            <div className="w-1 h-3 bg-white"></div>
+                        </div>
                     </div>
                 </div>
             )}
 
             {/* 7. FOCUSING (對焦) */}
             {step === 'FOCUSING' && (
-                <div className="absolute inset-0 z-20 animate-in fade-in">
-                    <div className="center-xy w-[280px] h-[280px] border border-white/20 rounded-full"></div>
+                <div className="absolute inset-0 animate-in fade-in">
+                    {/* Rotational Guide */}
+                    <div className="center-xy w-[280px] h-[280px] opacity-50">
+                        <div className="absolute inset-0 border border-white/30 rounded-full border-dashed"></div>
+                        {/* Focus Marker */}
+                        <div className="absolute top-0 left-1/2 w-1 h-4 bg-red-500 -translate-x-1/2 -translate-y-2"></div>
+                    </div>
 
-                    <div className="center-xy w-[260px] h-[260px]">
-                        <div className="absolute inset-0 rounded-full animate-spin-self-slow opacity-60"
-                            style={{
-                                background: 'conic-gradient(from 0deg, transparent 0%, transparent 80%, white 100%)',
-                                maskImage: 'radial-gradient(transparent 68%, black 69%)'
-                            }}>
+                    {/* Dynamic Rotation Helper */}
+                    <div
+                        className="center-xy w-[280px] h-[280px] transition-transform duration-75 ease-out"
+                        style={{ transform: `translate(-50%, -50%) rotate(${focusProgress * 180}deg)` }} // Visual feedback
+                    >
+                        <div className="absolute top-0 left-1/2 w-4 h-4 border-2 border-white rounded-full -translate-x-1/2 -translate-y-1/2 bg-black"></div>
+                    </div>
+
+                    {/* Center Status */}
+                    <div className="center-xy">
+                        <div className="text-[10px] bg-black px-2 py-1 border border-white">
+                            對焦中 {Math.round(focusProgress)}%
                         </div>
-                    </div>
-
-                    <div className="center-xy w-[100px] h-[100px] border border-white rounded-full flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm">
-                        <div className="text-[10px] mb-1 tracking-widest">對焦</div>
-                        <div className="text-2xl font-bold">{Math.round(focusProgress)}<span className="text-[10px]">%</span></div>
-                    </div>
-
-                    <div className="absolute bottom-12 w-full text-center">
-                        <div className="text-[10px] opacity-70 tracking-widest">[ 旋轉鏡頭 ]</div>
                     </div>
                 </div>
             )}
 
-            {/* 8. REVEAL (結果) */}
+            {/* 8. REVEAL (影像還原完成) */}
             {step === 'REVEAL' && (
-                <div className="absolute inset-0 z-20 animate-in zoom-in duration-700">
-                    {/* 遮罩：使用超粗邊框模擬 Keyhole */}
-                    <div className="center-xy pointer-events-none z-20">
-                        <div className="w-[220px] h-[220px] rounded-full border-[200px] border-black shadow-[inset_0_0_20px_rgba(255,255,255,0.2)]"></div>
+                <div className="absolute inset-0 animate-in zoom-in duration-1000">
+                    {/* Keyhole Mask - Thick Borders used to create keyhole */}
+                    <div className="absolute inset-0 border-[100px] border-black rounded-full pointer-events-none transition-all duration-1000"
+                        style={{ borderWidth: '0px' }}> {/* Animate border to 0 to Reveal full image? Or keep keyhole? User said "Keyhole effect" */}
+                        {/* Actually, user prototype had a static keyhole or expanding? 
+                            "Keyhole effect using very thick border"
+                            Let's keep a subtle vignette or keyhole frame
+                        */}
                     </div>
 
-                    {/* 清晰圖片層 */}
-                    {resultImage && (
-                        <div className="absolute inset-0 bg-cover bg-center z-10"
-                            style={{ backgroundImage: `url('${resultImage}')` }}>
+                    {/* Info Overlay */}
+                    <div className="absolute top-1/4 left-0 right-0 text-center pointer-events-none">
+                        <div className="inline-block border border-white/50 bg-black/60 px-3 py-1 backdrop-blur-md">
+                            <h2 className="text-xl font-bold tracking-wider">{artifactName}</h2>
+                            <div className="w-full h-[1px] bg-white/50 my-1"></div>
+                            <div className="text-[9px] tracking-widest">影像還原完成</div>
                         </div>
-                    )}
+                    </div>
 
-                    <div className="absolute bottom-12 w-full text-center z-30">
-                        <div className="text-[10px] bg-black text-white px-3 py-1 rounded-full border border-white/20 inline-block tracking-widest cursor-pointer" onClick={onScan}>
-                            影像還原完成 [重啟]
+                    {/* Reset Prompt */}
+                    <div className="absolute bottom-12 w-full text-center pointer-events-auto">
+                        <div className="text-[9px] animate-bounce cursor-pointer opacity-80" onClick={onScan}>
+                            [ 點擊重置系統 ]
                         </div>
                     </div>
                 </div>

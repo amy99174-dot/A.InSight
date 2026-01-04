@@ -242,7 +242,7 @@ Combine the results from all agents into this exact JSON structure:
     `;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-1.5-flash',
       config: {
         responseMimeType: 'application/json'
       },
@@ -286,7 +286,7 @@ export async function generateHistoryVisionServer(
   try {
     const ai = getGenAI(apiKey);
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-image',
+      model: 'gemini-1.5-flash',
       contents: {
         parts: [
           { text: prompt },

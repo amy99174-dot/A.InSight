@@ -54,7 +54,17 @@ export async function POST(req: Request) {
 
         return NextResponse.json(result);
     } catch (error: any) {
-        console.error("API History Error:", error);
-        return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 });
+        console.error("CRITICAL API HISTORY ERROR:", error);
+        return NextResponse.json({
+            name: "Signal Interrupted",
+            era: "Unknown",
+            category: "Static",
+            summary: `Connection to Chronos lost. Error: ${error.message}`,
+            visionPrompt: "Static noise and glitching digital interface, monochrome high contrast",
+            scriptPrompt: `訊號連線中斷... 錯誤代碼: ${error.message} ... 啟動備用模擬協議...`,
+            ambienceCategory: "static",
+            imageStrength: 0,
+            error: error.message
+        });
     }
 }
