@@ -307,39 +307,6 @@ ${plan.scriptPrompt}
         return () => { mounted = false; };
     }, [step, audioUrl, bgAudioUrls]);
 
-    const handlePointerDown = (e: React.PointerEvent) => {
-        e.currentTarget.setPointerCapture(e.pointerId);
-        const rect = e.currentTarget.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        lastAngleRef.current = Math.atan2(e.clientY - cy, e.clientX - cx);
-    };
-
-    const handlePointerMove = (e: React.PointerEvent) => {
-        if (lastAngleRef.current === null) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const cx = rect.left + rect.width / 2;
-        const cy = rect.top + rect.height / 2;
-        const currentAngle = Math.atan2(e.clientY - cy, e.clientX - cx);
-        let delta = currentAngle - lastAngleRef.current;
-        if (delta > Math.PI) delta -= 2 * Math.PI;
-        if (delta < -Math.PI) delta += 2 * Math.PI;
-        setFocusRotation(prev => {
-            const newRotation = prev + (delta * (180 / Math.PI));
-            if (Math.abs(newRotation) > 120 && step === STEPS.FOCUSING) {
-                if (navigator.vibrate) navigator.vibrate(80);
-                setTimeout(() => setStep(STEPS.REVEAL), 100);
-            }
-            return newRotation;
-        });
-        lastAngleRef.current = currentAngle;
-    };
-
-    const handlePointerUp = (e: React.PointerEvent) => {
-        lastAngleRef.current = null;
-        e.currentTarget.releasePointerCapture(e.pointerId);
-    };
-
     const toggleAudio = () => {
         if (isPlayingAudio) {
             if (audioRef.current) audioRef.current.pause();
@@ -358,23 +325,14 @@ ${plan.scriptPrompt}
             return;
         }
         if (navigator.vibrate) {
-            if (step === STEPS.BOOT) {
-                navigator.vibrate([100, 50, 100]);
-            } else if (step === STEPS.PROXIMITY) {
-                navigator.vibrate(200);
-            } else if (step === STEPS.LOCKED) {
-                navigator.vibrate(50);
-            } else {
-                navigator.vibrate(20);
-            }
+            if (step === STEPS.BOOT) navigator.vibrate([100, 50, 100]);
+            else if (step === STEPS.PROXIMITY) navigator.vibrate(200);
+            else if (step === STEPS.LOCKED) navigator.vibrate(50);
+            else navigator.vibrate(20);
         }
         switch (step) {
-            case STEPS.BOOT:
-                setStep(STEPS.PROXIMITY);
-                break;
-            case STEPS.PROXIMITY:
-                setStep(STEPS.LOCKED);
-                break;
+            case STEPS.BOOT: setStep(STEPS.PROXIMITY); break;
+            case STEPS.PROXIMITY: setStep(STEPS.LOCKED); break;
             case STEPS.LOCKED:
                 const img = captureImage();
                 if (img) {
@@ -393,6 +351,9 @@ ${plan.scriptPrompt}
                 if (scriptPage < scriptPages.length - 1) setScriptPage(prev => prev + 1);
                 else setStep(STEPS.FOCUSING);
                 break;
+            case STEPS.FOCUSING:
+                setStep(STEPS.REVEAL);
+                break;
             case STEPS.REVEAL:
                 setCapturedImage(null);
                 setHistoryImage(null);
@@ -406,199 +367,294 @@ ${plan.scriptPrompt}
         }
     };
 
+    // Keyboard Interaction for TUNING Step
+    useEffect(() => {
+        if (step !== STEPS.TUNING) return;
+
+        const handleKeyDown = (e: KeyboardEvent) => {
+            // Prevent default scrolling for arrow keys
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) {
+                e.preventDefault();
+            }
+
+            if (e.key === 'ArrowUp') {
+                setHistoryScale(prev => Math.min(prev + 1, 3));
+            } else if (e.key === 'ArrowDown') {
+                setHistoryScale(prev => Math.max(prev - 1, 1));
+            } else if (e.key === 'ArrowRight') {
+                setTimeScale(prev => Math.min(prev + 1, 5));
+            } else if (e.key === 'ArrowLeft') {
+                setTimeScale(prev => Math.max(prev - 1, 1));
+            } else if (e.key === 'Enter' || e.key === ' ') {
+                handleTrigger();
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [step]); // handleTrigger is constant
+
+    // Wheel Interaction for FOCUSING Step
+    const handleWheel = (e: React.WheelEvent) => {
+        if (step !== STEPS.FOCUSING) return;
+
+        const delta = e.deltaY * 0.2; // Sensitivity adjustment
+        const newRotation = focusRotation + delta;
+        setFocusRotation(newRotation);
+
+        // Auto trigger when rotation exceeds threshold (100 units = 100%)
+        if (Math.abs(newRotation) >= 100 && Math.abs(focusRotation) < 100) {
+            setTimeout(() => handleTrigger(), 500);
+        }
+    };
+
+    const getHistoryLabel = (val: number) => {
+        if (val === 3) return "HIGH";
+        if (val === 2) return "MID";
+        return "LOW";
+    };
+
     const focusProgress = Math.min(Math.abs(focusRotation) / 100, 1);
     const blurAmount = 12 * (1 - focusProgress);
 
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black overflow-hidden h-screen w-screen">
-            <div
-                onClick={step !== STEPS.TUNING && step !== STEPS.FOCUSING ? handleTrigger : undefined}
-                onPointerDown={step === STEPS.FOCUSING ? handlePointerDown : undefined}
-                onPointerMove={step === STEPS.FOCUSING ? handlePointerMove : undefined}
-                onPointerUp={step === STEPS.FOCUSING ? handlePointerUp : undefined}
-                className={`relative w-[380px] h-[380px] bg-stone-950 shadow-2xl select-none rounded-full ring-4 ring-stone-800 overflow-hidden ${step !== STEPS.TUNING ? 'cursor-pointer' : ''} touch-none`}
-            >
-                <CircularHUD color={hasGoogleKey ? "text-lime-400" : "text-red-500"} active={true} />
+        <div className="fixed inset-0 flex items-center justify-center bg-black overflow-hidden h-screen w-screen font-mono">
 
-                {(step === STEPS.BOOT || step === STEPS.PROXIMITY || step === STEPS.LOCKED) && (
-                    <div className="absolute inset-0 z-0">
-                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-60 filter sepia-[0.3] contrast-125" />
-                    </div>
-                )}
-
-                {(step === STEPS.ANALYZING || step === STEPS.TUNING) && capturedImage && (
-                    <img src={capturedImage} className="absolute inset-0 w-full h-full object-cover opacity-40 grayscale" />
-                )}
-
-                {(step === STEPS.LISTEN || step === STEPS.FOCUSING) && historyImage && (
-                    <div className="absolute inset-0 z-0">
-                        <img
-                            src={historyImage}
-                            style={{ filter: `blur(${step === STEPS.FOCUSING ? blurAmount : 2}px)` }}
-                            className="w-full h-full object-cover transition-all duration-100 opacity-40"
-                        />
-                    </div>
-                )}
-
-                {step === STEPS.BOOT && (
-                    <div className="absolute inset-0 rounded-full z-10">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(57,255,20,0.2)_0%,transparent_70%)]" />
-                        <div className="animate-ripple" />
-                        <div className="animate-ripple" style={{ animationDelay: '1s' }} />
-                        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full text-center z-10">
-                            {!hasGoogleKey ? (
-                                <div className="flex flex-col items-center">
-                                    <AlertTriangle className="w-8 h-8 text-red-500 mb-2 animate-bounce" />
-                                    <p className="text-xl font-bold text-red-500 tracking-wider">KEY MISSING</p>
-                                    <p className="text-[10px] text-red-400 font-mono tracking-widest mt-1">OPEN SETTINGS</p>
-                                </div>
-                            ) : (
-                                <>
-                                    <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug animate-pulse drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                                        正在探測<br />展館中的歷史故事...
-                                    </p>
-                                    <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-3">SYSTEM ONLINE</p>
-                                </>
-                            )}
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.PROXIMITY && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center animate-intermittent-shake rounded-full z-10">
-                        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(57,255,20,0.3)_0%,transparent_60%)]" />
-                        <div className="animate-ripple" style={{ animationDuration: '1s', borderColor: 'rgba(57, 255, 20, 0.8)' }} />
-                        <div className="z-10 relative">
-                            <p className="text-xl font-bold text-lime-400 tracking-wider leading-snug drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">
-                                訊號接近<br />請貼近展品感應區
-                            </p>
-                            <p className="text-[10px] text-lime-400/70 font-mono tracking-[0.2em] mt-2">SIGNAL DETECTED</p>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.LOCKED && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-10">
-                        <div className="absolute inset-0 rounded-full border-[6px] border-lime-400/50 animate-pulse shadow-[inset_0_0_20px_#39ff14]" />
-                        <div className="absolute top-1/2 left-1/2 w-12 h-12 border border-lime-400 -translate-x-1/2 -translate-y-1/2" />
-                        <div className="z-10 relative mt-8 space-y-2">
-                            <p className="text-xl font-bold text-lime-400 tracking-wider drop-shadow-[0_2px_8px_rgba(0,0,0,1)]">鎖定目標</p>
-                            <p className="text-[10px] text-lime-400/80 font-mono tracking-[0.2em]">TARGET LOCKED</p>
-                        </div>
-                        <div className="absolute bottom-16 z-10">
-                            <p className="text-[10px] text-lime-400/80 font-mono animate-bounce tracking-widest drop-shadow-md">[ 按下板機捕捉 ]</p>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.TUNING && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-20 bg-black/60 backdrop-blur-sm p-8">
-                        <div className="flex items-center gap-2 text-lime-400 mb-4">
-                            <Sliders className="w-5 h-5" />
-                            <h3 className="text-lg font-bold tracking-widest">時空共振頻率</h3>
-                        </div>
-                        <div className="w-full space-y-5">
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">TIMELINE PHASE</label>
-                                <div className="flex justify-between items-end mb-1">
-                                    <span className="text-xs text-lime-300 font-bold">{TIME_SCALE_LABELS[timeScale]}</span>
-                                    <span className="text-[10px] text-lime-400/50">LV.{timeScale}</span>
-                                </div>
-                                <input type="range" min="1" max="5" step="1" value={timeScale} onChange={(e) => setTimeScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
-                            </div>
-                            <div className="space-y-1">
-                                <label className="text-[10px] font-mono text-lime-400/60 uppercase tracking-widest block text-left">HISTORICAL FIDELITY</label>
-                                <div className="flex justify-between items-end mb-1">
-                                    <span className="text-xs text-lime-300 font-bold">{HISTORY_SCALE_LABELS[historyScale]}</span>
-                                    <span className="text-[10px] text-lime-400/50">LV.{historyScale}</span>
-                                </div>
-                                <input type="range" min="1" max="3" step="1" value={historyScale} onChange={(e) => setHistoryScale(Number(e.target.value))} className="w-full h-1 bg-lime-900/50 rounded-lg appearance-none cursor-pointer accent-lime-400" />
-                            </div>
-                        </div>
-                        <button onClick={(e) => { e.stopPropagation(); handleTrigger(); }} className="mt-6 px-8 py-2 bg-lime-400 text-black font-bold tracking-widest rounded hover:bg-lime-300 transition-colors shadow-[0_0_15px_rgba(57,255,20,0.5)]">啟動解析</button>
-                    </div>
-                )}
-
-                {step === STEPS.ANALYZING && (
-                    <div className="absolute inset-0 bg-stone-900/90 flex flex-col items-center justify-center text-center rounded-full z-10">
-                        <div className="z-10 w-[60%] space-y-4">
-                            <Sparkles className="w-8 h-8 text-lime-400 mx-auto animate-spin-slow opacity-80" />
-                            <div className="space-y-1">
-                                <p className="text-lg font-bold text-lime-400 tracking-wider drop-shadow-md animate-pulse">{analysisText}</p>
-                                <div className="flex justify-between text-lime-400/60 font-mono text-[10px] tracking-widest px-2">
-                                    <span>AI PROCESSING</span>
-                                    <span>{isProcessing ? "..." : "DONE"}</span>
-                                </div>
-                            </div>
-                            <div className="h-[2px] w-full bg-stone-700 relative overflow-hidden rounded-full">
-                                <div className="absolute top-0 left-0 h-full bg-lime-400 animate-[width_3s_ease-out_forwards] shadow-[0_0_10px_#39ff14]" style={{ width: '100%' }} />
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.LISTEN && (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center text-center rounded-full z-10 bg-black/60 backdrop-blur-[2px] transition-all">
-                        <button onClick={(e) => { e.stopPropagation(); toggleAudio(); }} className={`absolute top-16 right-10 p-2 rounded-full border ${isPlayingAudio ? 'border-lime-400/50 text-lime-400' : 'border-red-500/50 text-red-500 animate-pulse'} z-50`}>
-                            {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                        </button>
-                        <div className="absolute top-12 w-full flex flex-col items-center">
-                            <h3 className="text-xl font-bold text-lime-300 border-b border-lime-400/30 pb-1 mb-1 inline-block drop-shadow-[0_2px_4px_rgba(0,0,0,1)]">{artifactName}</h3>
-                            {!isPlayingAudio && <p className="text-[10px] text-red-400 font-mono tracking-widest">TAP ICON TO UNMUTE</p>}
-                        </div>
-                        <div className="z-10 relative px-8 mt-6 w-full max-w-[85%] min-h-[140px] flex items-center justify-center">
-                            <p className="text-lg font-medium text-lime-100/90 tracking-wide leading-relaxed drop-shadow-[0_2px_4px_rgba(0,0,0,1)] text-justify">{scriptPages[scriptPage]}</p>
-                        </div>
-                        <div className="absolute bottom-16 flex flex-col items-center gap-3 w-full">
-                            <div className="flex gap-1.5 justify-center">
-                                {scriptPages.map((_, i) => (
-                                    <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${i === scriptPage ? 'w-6 bg-lime-400' : 'w-1.5 bg-lime-900/40'}`} />
-                                ))}
-                            </div>
-                            <div className="flex items-center gap-2 text-[10px] text-lime-400/60 font-mono animate-pulse">
-                                <span>{scriptPage < scriptPages.length - 1 ? "[ 點擊下一頁 ]" : "[ 點擊完成 ]"}</span>
-                                {scriptPage < scriptPages.length - 1 && <ArrowRight size={10} />}
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.FOCUSING && (
-                    <div className="absolute inset-0 overflow-hidden text-center flex flex-col items-center justify-center rounded-full z-10 cursor-grab active:cursor-grabbing">
-                        <div className="absolute inset-0 rounded-full flex items-center justify-center pointer-events-none transition-transform duration-75 ease-out" style={{ transform: `rotate(${focusRotation}deg)` }}>
-                            <div className="w-[80%] h-[80%] rounded-full border-2 border-dashed border-lime-400/30" />
-                            <div className="w-[85%] h-[85%] rounded-full border border-lime-400/10" />
-                            <div className="absolute top-8 w-1 h-3 bg-lime-400/80" />
-                            <div className="absolute bottom-8 w-1 h-3 bg-lime-400/30" />
-                            <div className="absolute left-8 w-3 h-1 bg-lime-400/30" />
-                            <div className="absolute right-8 w-3 h-1 bg-lime-400/30" />
-                        </div>
-                        <div className="z-10 pointer-events-none">
-                            <RotateCw className="w-8 h-8 text-lime-400 animate-pulse mx-auto mb-4 opacity-80" />
-                            <div className="space-y-1">
-                                <p className="text-lg font-bold text-lime-100 tracking-wider drop-shadow-md">旋轉鏡頭對焦</p>
-                                <p className="text-[10px] text-lime-400/60 font-mono tracking-[0.2em]">MANUAL FOCUS REQUIRED</p>
-                                <p className="text-[8px] text-lime-400/30 font-mono mt-1 tracking-widest">{Math.round(focusProgress * 100)}%</p>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {step === STEPS.REVEAL && historyImage && (
-                    <div className="absolute inset-0 z-20 rounded-full bg-black">
-                        <KeyholeViewer imageSrc={historyImage} position={{ x, y }} />
-                    </div>
-                )}
-            </div>
-
+            {/* Development Controller / Settings Button */}
             {!hasGoogleKey && (
-                <div className="fixed bottom-4 right-4 z-50">
-                    <button onClick={(e) => { e.stopPropagation(); setShowSettings(true); }} className={`p-3 rounded-full border shadow-lg transition-colors ${hasGoogleKey ? 'bg-stone-900/80 text-lime-400 border-lime-900/50 hover:bg-stone-800' : 'bg-red-900/80 text-white border-red-500 animate-pulse'}`}>
-                        <Settings size={20} />
+                <div className="fixed top-4 left-4 z-50">
+                    <button onClick={() => setShowSettings(true)} className="bg-red-900/80 text-white border border-red-500 px-2 py-1 text-xs rounded animate-pulse">
+                        KEY MISSING - SETTINGS
                     </button>
                 </div>
             )}
 
+            <div
+                className="screen-container cursor-pointer"
+                onClick={step !== STEPS.TUNING && step !== STEPS.FOCUSING ? handleTrigger : undefined}
+                onWheel={step === STEPS.FOCUSING ? handleWheel : undefined}
+            >
+
+                {/* LAYER 0: Visual Base (Background) */}
+                <div id="bg-layer" className="absolute inset-0 bg-cover bg-center transition-all duration-500"
+                    style={{
+                        opacity: (step === STEPS.PROXIMITY || step === STEPS.LOCKED) ? 0.6 :
+                            (step === STEPS.TUNING || step === STEPS.FOCUSING) ? 0.2 :
+                                (step === STEPS.ANALYZING || step === STEPS.LISTEN) ? 0.1 :
+                                    (step === STEPS.REVEAL) ? 0 : 0.3, // REVEAL: Hide background
+                        filter: 'grayscale(100%) contrast(120%)'
+                    }}>
+
+                    {/* Camera Video Stream */}
+                    <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className={`w-full h-full object-cover ${capturedImage ? 'hidden' : 'block'}`}
+                    />
+
+                    {/* Captured Image Display */}
+                    {capturedImage && (
+                        <img src={capturedImage} className="w-full h-full object-cover" />
+                    )}
+                </div>
+
+                {/* Scan Line Texture */}
+                <div className="absolute inset-0 scan-line-bg opacity-30 pointer-events-none"></div>
+
+                {/* LAYER 1: Global HUD */}
+                <div className="absolute inset-0 pointer-events-none">
+                    {/* External Decoration Ring */}
+                    <div className={`center-xy w-[370px] h-[370px] border rounded-full ${step === STEPS.REVEAL ? 'border-white' : 'border-white/10'}`}></div>
+                    {/* Scale Ring */}
+                    <div className="center-xy w-[350px] h-[350px] border-white/20 rounded-full anim-spin-centered-slow"
+                        style={{ border: '1px dashed rgba(255,255,255,0.1)' }}></div>
+
+                    {/* Top Status Label */}
+                    <div className="absolute top-6 left-1/2 -translate-x-1/2 text-[9px] bg-black border border-white/30 px-2 rounded-full text-white">
+                        A.InSight
+                    </div>
+                </div>
+
+                {/* LAYER 2: State Content */}
+
+                {/* 1. BOOT */}
+                <div id="state-BOOT" className={`state-layer ${step === STEPS.BOOT ? 'active' : ''} flex flex-col items-center justify-center`}>
+                    <div className="relative w-24 h-24 flex items-center justify-center mb-4">
+                        <div className="absolute inset-0 border border-white rounded-full anim-pulse"></div>
+                        <div className="absolute inset-0 border-t border-white rounded-full anim-spin-self-slow"></div>
+                        <div className="text-2xl font-black tracking-tighter text-white whitespace-nowrap">正在探測歷史訊號</div>
+                    </div>
+
+                    <div className="text-sm font-bold tracking-widest mb-1 text-white">尋找中...</div>
+                    <div className="text-[9px] opacity-60 text-white">請在展區中隨意走動</div>
+                </div>
+
+                {/* 2. PROXIMITY */}
+                <div id="state-PROXIMITY" className={`state-layer ${step === STEPS.PROXIMITY ? 'active' : ''}`}>
+                    <div className="center-xy w-[120px] h-[120px]">
+                        <div className="w-full h-full bg-white/10 rounded-full anim-ping-wrapper"></div>
+                    </div>
+                    <div className="center-xy w-[180px] h-[180px]">
+                        <div className="w-full h-full border border-white/30 rounded-full anim-ping-wrapper" style={{ animationDelay: '0.3s' }}></div>
+                    </div>
+
+                    <div className="center-xy flex flex-col items-center text-center bg-black/60 p-6 rounded-full backdrop-blur-sm border border-white/10 text-white">
+                        <div className="text-xl font-bold">訊號偵測</div>
+                        <div className="text-[9px] border-t border-white/50 w-full pt-1 mt-1">接近目標中</div>
+                    </div>
+
+                    <div className="absolute bottom-16 w-full text-center text-white">
+                        <span className="text-2xl font-bold font-mono" id="dist-val">0.8</span>
+                        <span className="text-[9px] ml-1">M</span>
+                    </div>
+                </div>
+
+                {/* 3. LOCKED */}
+                <div id="state-LOCKED" className={`state-layer ${step === STEPS.LOCKED ? 'active' : ''}`}>
+                    <div className="center-xy w-[200px] h-[200px]">
+                        <div className="absolute top-0 left-0 w-full h-full border-t-2 border-white rounded-full"
+                            style={{ clipPath: 'inset(0 20% 80% 20%)' }}></div>
+                        <div className="absolute bottom-0 left-0 w-full h-full border-b-2 border-white rounded-full"
+                            style={{ clipPath: 'inset(80% 20% 0 20%)' }}></div>
+                        <div className="absolute top-0 left-0 w-full h-full border-l-2 border-white/50 rounded-full"
+                            style={{ clipPath: 'inset(40% 90% 40% 0)' }}></div>
+                        <div className="absolute top-0 left-0 w-full h-full border-r-2 border-white/50 rounded-full"
+                            style={{ clipPath: 'inset(40% 0 40% 90%)' }}></div>
+                    </div>
+
+                    <div className="center-xy w-2 h-2 bg-white rounded-full anim-pulse"></div>
+
+                    <div className="absolute top-[35%] w-full text-center">
+                        <div className="text-[10px] bg-white text-black px-2 inline-block rounded-sm font-bold">鎖定目標</div>
+                    </div>
+                    <div className="absolute bottom-[30%] w-full text-center text-white">
+                        <div className="text-[10px] animate-bounce">[ 按下快門捕捉 ]</div>
+                    </div>
+                </div>
+
+                {/* 4. TUNING - KEYBOARD CONTROLLED */}
+                <div id="state-TUNING" className={`state-layer bg-black/60 ${step === STEPS.TUNING ? 'active' : ''}`}>
+                    <div className="center-xy w-[260px] h-[260px]">
+
+                        {/* Outer Ring (Time Scale) */}
+                        <div className="absolute inset-0">
+                            <div className="absolute inset-0 rounded-full border border-white/20"></div>
+                            <div className="absolute inset-0 conic-ring"
+                                style={{ background: `conic-gradient(white 0deg ${timeScale * 72}deg, transparent 0deg)`, opacity: 0.8 }}></div>
+                        </div>
+
+                        {/* Inner Ring (History Fidelity) */}
+                        <div className="absolute inset-[30px]">
+                            <div className="absolute inset-0 rounded-full border border-white/20"></div>
+                            <div className="absolute inset-0 conic-ring"
+                                style={{ background: `conic-gradient(rgba(255,255,255,0.5) 0deg ${historyScale * 120}deg, transparent 0deg)` }}></div>
+                        </div>
+
+                        {/* Center Display */}
+                        <div className="center-xy flex flex-col text-center z-10 gap-2 text-white">
+                            <div className="flex flex-col border-b border-white/20 pb-1 w-20">
+                                <span className="text-[8px] opacity-60">時間軸</span>
+                                <span className="text-xl font-bold">L-0{timeScale}</span>
+                            </div>
+                            <div className="flex flex-col w-20">
+                                <span className="text-[8px] opacity-60">史實度</span>
+                                <span className="text-lg font-bold">{getHistoryLabel(historyScale)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* 5. ANALYZING */}
+                <div id="state-ANALYZING" className={`state-layer ${step === STEPS.ANALYZING ? 'active' : ''}`}>
+                    <div className="center-xy w-[280px] h-[280px] border border-white/10 rounded-full"></div>
+                    <div className="center-xy w-[220px] h-[220px] rounded-full border-t-2 border-white anim-spin-centered-slow"></div>
+                    <div className="center-xy w-[200px] h-[200px] rounded-full border-b border-dashed border-white/50 anim-spin-centered-slow" style={{ animationDuration: '8s', animationDirection: 'reverse' }}></div>
+
+                    <div className="center-xy flex flex-col text-center bg-black/80 p-4 rounded-full text-white">
+                        <div className="text-sm font-bold mb-1">解析中</div>
+                        <div className="text-[9px] opacity-60 text-stone-300">{analysisText}</div>
+                        <div className="mt-2 font-mono text-xl" id="percent-txt">{isProcessing ? "..." : "DONE"}</div>
+                    </div>
+                </div>
+
+                {/* 6. LISTEN */}
+                <div id="state-LISTEN" className={`state-layer bg-black/80 ${step === STEPS.LISTEN ? 'active' : ''}`}>
+                    <div className="absolute top-12 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full"></div>
+
+                    <div className="absolute top-16 w-full text-center text-white">
+                        <span className="text-xl font-bold border-b border-white pb-1">{artifactName}</span>
+                    </div>
+
+                    <div className="center-xy w-[260px] flex items-center justify-center text-center text-white">
+                        <p className="text-sm leading-relaxed opacity-90 font-light">
+                            {scriptPages[scriptPage]}
+                        </p>
+                    </div>
+
+                    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
+                        {scriptPages.map((_, i) => (
+                            <div key={i} className={`w-2 h-2 rounded-full ${i === scriptPage ? 'bg-white' : 'bg-white/30'}`}></div>
+                        ))}
+                    </div>
+
+                    <button onClick={(e) => { e.stopPropagation(); toggleAudio(); }} className={`absolute top-24 right-10 p-2 rounded-full border ${isPlayingAudio ? 'border-lime-400/50 text-lime-400' : 'border-red-500/50 text-red-500 animate-pulse'} z-50`}>
+                        {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
+                    </button>
+
+                    <div className="absolute bottom-12 w-full text-center text-[8px] text-white/50">
+                        點擊畫面繼續
+                    </div>
+                </div>
+
+                {/* 7. FOCUSING - WHEEL CONTROLLED */}
+                <div id="state-FOCUSING" className={`state-layer ${step === STEPS.FOCUSING ? 'active' : ''}`}>
+                    <div className="center-xy w-[280px] h-[280px] border border-white/20 rounded-full"></div>
+
+                    <div className="center-xy w-[260px] h-[260px]">
+                        <div className="absolute inset-0 rounded-full anim-spin-self-slow opacity-60"
+                            style={{
+                                background: 'conic-gradient(from 0deg, transparent 0%, transparent 80%, white 100%)',
+                                WebkitMask: 'radial-gradient(transparent 68%, black 69%)',
+                                mask: 'radial-gradient(transparent 68%, black 69%)',
+                                transform: `rotate(${focusRotation}deg)`
+                            }}>
+                        </div>
+                    </div>
+
+                    <div className="center-xy w-[100px] h-[100px] border border-white rounded-full flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm text-white">
+                        <div className="text-[10px] mb-1">對焦</div>
+                        <div className="text-2xl font-bold">{Math.round(focusProgress * 100)}<span className="text-[10px]">%</span></div>
+                    </div>
+
+                    <div className="absolute bottom-12 w-full text-center text-white">
+                        <div className="text-[10px] opacity-70">[ 旋轉對焦 ]</div>
+                    </div>
+                </div>
+
+                {/* 8. REVEAL - ORIGINAL KeyholeViewer Logic Preserved but SWAP GREEN TO WHITE */}
+                <div id="state-REVEAL" className={`state-layer ${step === STEPS.REVEAL ? 'active' : ''}`} style={{ zIndex: 50 }}>
+                    {step === STEPS.REVEAL && historyImage && (
+                        <div className="absolute inset-0 rounded-full bg-black">
+                            <KeyholeViewer imageSrc={historyImage} position={{ x, y }} />
+
+                            {/* Overlay Click-to-Reset (Restoring functionality) */}
+                            <div className="absolute bottom-12 w-full text-center z-30 pointer-events-auto">
+                                <div
+                                    className="text-[10px] bg-black text-white px-3 py-1 rounded-full border border-white/20 inline-block cursor-pointer"
+                                    onClick={handleTrigger}
+                                >
+                                    探測下一則歷史
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+
+            </div>
+
+            {/* KEEP SETTINGS MODAL */}
             {showSettings && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
                     <div className="w-full max-w-md bg-[#1a1816] border-2 border-[#39ff14] rounded-xl p-6 shadow-2xl relative text-lime-400 font-mono overflow-y-auto max-h-[80vh]">
