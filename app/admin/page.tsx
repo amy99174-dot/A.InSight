@@ -7,7 +7,7 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
     PieChart, Pie, Legend
 } from 'recharts';
-import { Loader2, Database, Activity, Clock, Users, Zap, Award, PieChart as PieIcon } from 'lucide-react';
+import { Loader2, Database, Activity, Clock, Users, Zap, Award, PieChart as PieIcon, Eye, X, Copy, Check, Search, Calendar, Filter, XCircle } from 'lucide-react';
 
 // Color palette
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
@@ -35,6 +35,8 @@ interface AnalyticsStats {
     lastActivity: string;
 }
 
+const TIME_COLORS = ['#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e']; // Indigo to Rose
+
 export default function AdminPage() {
     const [logs, setLogs] = useState<HistoryLog[]>([]);
     const [loading, setLoading] = useState(true);
@@ -49,6 +51,7 @@ export default function AdminPage() {
     const [eraData, setEraData] = useState<any[]>([]);
     const [artifactData, setArtifactData] = useState<any[]>([]);
     const [storyPrefData, setStoryPrefData] = useState<any[]>([]);
+    const [timePhaseData, setTimePhaseData] = useState<any[]>([]);
 
     useEffect(() => {
         fetchData();
@@ -140,19 +143,182 @@ export default function AdminPage() {
             { name: '通史 (General)', value: scaleCount['通史'] },
             { name: '正史 (Academic)', value: scaleCount['正史'] },
         ]);
+
+        // 5. Time Phase Preference (TimeScale Distribution)
+        // 1: 起因, 2: 鑄造, 3: 使用, 4: 流轉, 5: 未來
+        const timeCount: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+        const timeLabels: Record<number, string> = {
+            1: '起因 (靈感)',
+            2: '鑄造 (誕生)',
+            3: '使用 (全盛)',
+            4: '流轉 (遺棄)',
+            5: '未來 (命運)'
+        };
+
+        data.forEach(item => {
+            const tScale = item.input_settings?.timeScale;
+            if (tScale && tScale >= 1 && tScale <= 5) {
+                timeCount[tScale]++;
+            }
+        });
+
+        setTimePhaseData([
+            { name: timeLabels[1], value: timeCount[1] },
+            { name: timeLabels[2], value: timeCount[2] },
+            { name: timeLabels[3], value: timeCount[3] },
+            { name: timeLabels[4], value: timeCount[4] },
+            { name: timeLabels[5], value: timeCount[5] },
+        ]);
+    };
+
+    const [selectedLog, setSelectedLog] = useState<HistoryLog | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [copied, setCopied] = useState(false);
+
+    // Filter States
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterDate, setFilterDate] = useState("");
+
+    // Filter Logic
+    const filteredLogs = logs.filter(log => {
+        // 1. Text Search (ID or Name)
+        const searchLower = searchQuery.toLowerCase();
+        const idMatch = log.id.toString().includes(searchLower);
+        const nameMatch = (log.artifact_name || "").toLowerCase().includes(searchLower);
+        const textMatch = !searchQuery || idMatch || nameMatch;
+
+        // 2. Date Filter
+        let dateMatch = true;
+        if (filterDate) {
+            try {
+                // Normalize log date to YYYY-MM-DD
+                const logDate = new Date(log.created_at).toISOString().split('T')[0];
+                dateMatch = logDate === filterDate;
+            } catch (e) {
+                console.warn("Date parse error", e);
+                dateMatch = false;
+            }
+        }
+
+        return textMatch && dateMatch;
+    });
+
+    const clearFilters = () => {
+        setSearchQuery("");
+        setFilterDate("");
+    };
+
+    const openModal = (log: HistoryLog) => {
+        setSelectedLog(log);
+        setIsModalOpen(true);
+        setCopied(false);
+    };
+
+    const closeModal = () => {
+        setIsModalOpen(false);
+        setTimeout(() => setSelectedLog(null), 300); // Clear after animation
+    };
+
+    const handleCopy = async () => {
+        if (!selectedLog) return;
+        const textToCopy = selectedLog.summary || selectedLog.script_prompt || "尚無內容";
+        try {
+            await navigator.clipboard.writeText(textToCopy);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 2000);
+        } catch (err) {
+            console.error('Failed to copy text: ', err);
+        }
+    };
+
+    // Modal Component
+    const LogModal = () => {
+        if (!selectedLog || !isModalOpen) return null;
+
+        const content = selectedLog.summary || selectedLog.script_prompt || "尚無資料 (No Content Available)";
+        const isFallback = !selectedLog.summary;
+
+        return (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                {/* Backdrop */}
+                <div
+                    className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity"
+                    onClick={closeModal}
+                />
+
+                {/* Modal Content */}
+                <div className="relative w-full max-w-2xl bg-gray-900 border border-gray-700 rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in fade-in zoom-in-95 duration-200">
+                    {/* Header */}
+                    <div className="px-6 py-4 border-b border-gray-800 flex items-center justify-between bg-gray-950/50">
+                        <div>
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Database className="w-5 h-5 text-indigo-400" />
+                                {selectedLog.artifact_name || "未知文物"}
+                            </h3>
+                            <p className="text-gray-400 text-xs mt-1">
+                                編號: {selectedLog.id} • 年代: {selectedLog.era}
+                            </p>
+                        </div>
+                        <button
+                            onClick={closeModal}
+                            className="p-2 rounded-full hover:bg-gray-800 text-gray-400 hover:text-white transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    {/* Body */}
+                    <div className="p-6 overflow-y-auto custom-scrollbar">
+                        {isFallback && (
+                            <div className="mb-4 px-3 py-2 bg-amber-900/20 border border-amber-800/50 rounded-lg text-amber-200 text-xs flex items-center">
+                                <Activity className="w-3 h-3 mr-2" />
+                                摘要缺失，顯示原始導覽詞。
+                            </div>
+                        )}
+
+                        <div className="prose prose-invert max-w-none">
+                            <pre className="whitespace-pre-wrap font-sans text-gray-300 text-sm leading-relaxed">
+                                {content}
+                            </pre>
+                        </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="px-6 py-4 border-t border-gray-800 bg-gray-950/50 flex justify-end gap-3">
+                        <button
+                            onClick={handleCopy}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${copied
+                                ? 'bg-green-600 text-white shadow-lg shadow-green-900/20'
+                                : 'bg-gray-800 hover:bg-gray-700 text-gray-200 border border-gray-700'
+                                }`}
+                        >
+                            {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                            {copied ? '已複製' : '複製內容'}
+                        </button>
+                        <button
+                            onClick={closeModal}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium rounded-lg shadow-lg shadow-indigo-900/20 transition-all"
+                        >
+                            關閉
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
     };
 
     if (loading) {
         return (
             <div className="flex h-screen w-full items-center justify-center bg-gray-50 text-gray-500 font-sans">
                 <Loader2 className="h-10 w-10 animate-spin mr-3" />
-                <span>Loading Analytics...</span>
+                <span>載入數據中...</span>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8 font-sans text-gray-800">
+        <div className="min-h-screen bg-gray-100 p-8 font-sans text-gray-800 relative">
+            <LogModal />
             {/* Header */}
             <div className="mb-10 flex items-center justify-between">
                 <div>
@@ -191,9 +357,8 @@ export default function AdminPage() {
                 />
             </div>
 
-            {/* Level 2: Insights Charts (Grid Layout) */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                {/* 2.1 Top Artifacts */}
+            {/* Level 2: Top Artifacts (Moving to own row for better layout) */}
+            <div className="mb-8">
                 <ChartCard title="展品人氣排行 (Most Processed Artifacts)" icon={<Award className="w-5 h-5" />}>
                     <div className="h-[300px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
@@ -211,8 +376,11 @@ export default function AdminPage() {
                         </ResponsiveContainer>
                     </div>
                 </ChartCard>
+            </div>
 
-                {/* 2.2 Story Preference */}
+            {/* Level 3: Preference Charts (Side-by-Side) */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                {/* 3.1 Story Preference */}
                 <ChartCard title="敘事風格偏好 (Storytelling Preference)" icon={<PieIcon className="w-5 h-5" />}>
                     <div className="h-[300px] w-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
@@ -237,9 +405,35 @@ export default function AdminPage() {
                         </ResponsiveContainer>
                     </div>
                 </ChartCard>
+
+                {/* 3.2 Time Phase Preference */}
+                <ChartCard title="時空相位偏好 (Time Phase Preference)" icon={<Clock className="w-5 h-5" />}>
+                    <div className="h-[300px] w-full flex items-center justify-center">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={timePhaseData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius={60}
+                                    outerRadius={100}
+                                    fill="#8884d8"
+                                    paddingAngle={5}
+                                    dataKey="value"
+                                >
+                                    {timePhaseData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={TIME_COLORS[index % TIME_COLORS.length]} />
+                                    ))}
+                                </Pie>
+                                <Tooltip contentStyle={TooltipStyle} />
+                                <Legend verticalAlign="bottom" height={36} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </ChartCard>
             </div>
 
-            {/* Level 3: Era Trends */}
+            {/* Level 4: Era Trends */}
             <div className="mb-8">
                 <ChartCard title="歷史斷代分佈 (Era Distribution)" icon={<Activity className="w-5 h-5" />}>
                     <div className="h-[350px] w-full">
@@ -260,54 +454,107 @@ export default function AdminPage() {
                 </ChartCard>
             </div>
 
-            {/* Level 4: Raw Data Table */}
+            {/* Level 5: Raw Data Table */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                    <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                        <Database className="w-5 h-5 text-gray-500" />
-                        監控日誌 (System Logs)
-                    </h2>
-                    <span className="text-sm text-gray-500">Last update: {stats.lastActivity}</span>
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                            <Database className="w-5 h-5 text-gray-500" />
+                            監控日誌
+                        </h2>
+                        <span className="text-sm text-gray-500 font-normal">
+                            (共 {filteredLogs.length} 筆{logs.length !== filteredLogs.length ? `，篩選自 ${logs.length} 筆` : ''})
+                        </span>
+                    </div>
+
+                    {/* Filter Bar */}
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="text"
+                                placeholder="搜尋編號或文物..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 w-full md:w-64 transition-shadow"
+                            />
+                        </div>
+                        <div className="relative">
+                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                                type="date"
+                                value={filterDate}
+                                onChange={(e) => setFilterDate(e.target.value)}
+                                className="pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-shadow text-gray-600"
+                            />
+                        </div>
+                        {(searchQuery || filterDate) && (
+                            <button
+                                onClick={clearFilters}
+                                className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            >
+                                <XCircle className="w-4 h-4" />
+                                清除
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                         <thead>
                             <tr className="bg-gray-50 text-gray-500 text-xs uppercase tracking-wider font-semibold">
-                                <th className="px-6 py-4 border-b border-gray-100">ID</th>
-                                <th className="px-6 py-4 border-b border-gray-100">Session</th>
-                                <th className="px-6 py-4 border-b border-gray-100">Timestamp</th>
-                                <th className="px-6 py-4 border-b border-gray-100">Artifact</th>
-                                <th className="px-6 py-4 border-b border-gray-100">Era</th>
-                                <th className="px-6 py-4 border-b border-gray-100">Settings</th>
-                                <th className="px-6 py-4 border-b border-gray-100 w-1/4">Summary</th>
+                                <th className="px-6 py-4 border-b border-gray-100">編號</th>
+                                <th className="px-6 py-4 border-b border-gray-100">場次</th>
+                                <th className="px-6 py-4 border-b border-gray-100">紀錄時間</th>
+                                <th className="px-6 py-4 border-b border-gray-100">文物名稱</th>
+                                <th className="px-6 py-4 border-b border-gray-100">年代</th>
+                                <th className="px-6 py-4 border-b border-gray-100">參數</th>
+                                <th className="px-6 py-4 border-b border-gray-100 w-1/4">導覽詞</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100 font-mono text-sm">
-                            {logs.map((log) => (
-                                <tr key={log.id} className="hover:bg-indigo-50/40 transition-colors group">
-                                    <td className="px-6 py-4 text-gray-400">#{log.id}</td>
-                                    <td className="px-6 py-4">
-                                        {log.session_id ? (
-                                            <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-purple-50 text-purple-600 border border-purple-100/50">
-                                                S-{log.session_id}
-                                            </span>
-                                        ) : <span className="text-gray-300">-</span>}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
-                                        {new Date(log.created_at).toLocaleString('zh-TW', { hour12: false })}
-                                    </td>
-                                    <td className="px-6 py-4 font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
-                                        {log.artifact_name || "Unknown"}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-600">{log.era}</td>
-                                    <td className="px-6 py-4 text-xs text-gray-500">
-                                        H:{log.input_settings?.historyScale} / T:{log.input_settings?.timeScale}
-                                    </td>
-                                    <td className="px-6 py-4 text-gray-500 truncate max-w-[200px]" title={log.summary || log.script_prompt}>
-                                        {log.summary || "No Summary"}
+                            {filteredLogs.length > 0 ? (
+                                filteredLogs.map((log) => (
+                                    <tr key={log.id} className="hover:bg-indigo-50/40 transition-colors group">
+                                        <td className="px-6 py-4 text-gray-400">#{log.id}</td>
+                                        <td className="px-6 py-4">
+                                            {log.session_id ? (
+                                                <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-bold bg-purple-50 text-purple-600 border border-purple-100/50">
+                                                    S-{log.session_id}
+                                                </span>
+                                            ) : <span className="text-gray-300">-</span>}
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600 whitespace-nowrap">
+                                            {new Date(log.created_at).toLocaleString('zh-TW', { hour12: false })}
+                                        </td>
+                                        <td className="px-6 py-4 font-bold text-gray-900 group-hover:text-indigo-600 transition-colors">
+                                            {log.artifact_name || "Unknown"}
+                                        </td>
+                                        <td className="px-6 py-4 text-gray-600">{log.era}</td>
+                                        <td className="px-6 py-4 text-xs text-gray-500">
+                                            H:{log.input_settings?.historyScale} / T:{log.input_settings?.timeScale}
+                                        </td>
+                                        <td className="px-6 py-4">
+                                            <button
+                                                onClick={() => openModal(log)}
+                                                className="group flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 border border-transparent hover:border-indigo-100 transition-all"
+                                            >
+                                                <Eye className="w-3.5 h-3.5" />
+                                                點擊查看
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))
+                            ) : (
+                                <tr>
+                                    <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
+                                        <div className="flex flex-col items-center justify-center gap-2">
+                                            <Filter className="w-8 h-8 text-gray-300" />
+                                            <p>沒有符合篩選條件的日誌。</p>
+                                        </div>
                                     </td>
                                 </tr>
-                            ))}
+                            )}
                         </tbody>
                     </table>
                 </div>
