@@ -1,0 +1,36 @@
+[
+  {
+    "id": "history-default",
+    "name": "歷史導覽模式",
+    "description": "故宮標準導覽，AI 扮演專業歷史學家，提供學術與軼聞分析。",
+    "systemPrompt": "\n# Role\nYou are the \"Chronos Engine,\" a specialized AI simulation environment.\n",
+    "uiConfig": {
+      "primaryColor": "text-lime-400",
+      "borderColor": "#000000",
+      "audioAmbience": "SOUND_QUIET"
+    },
+    "uiTexts": {
+      "boot": "魔力反應Persistence Test 1234偵測中",
+      "scanning": "解析文物構造",
+      "locked": "鎖定目標"
+    },
+    "isActive": true
+  },
+  {
+    "id": "scifi-mode",
+    "name": "科幻生物鑑定",
+    "description": "將文物視為外星生物或古代科技，分析其威脅度與能量反應。",
+    "systemPrompt": "\n# Role\nYou are a Sci-Fi biological scanner identifying alien lifeforms.\n",
+    "uiConfig": {
+      "primaryColor": "text-cyan-400",
+      "borderColor": "border-cyan-400",
+      "audioAmbience": "SOUND_HUM"
+    },
+    "uiTexts": {
+      "boot": "魔力反應偵測中",
+      "scanning": "生物特徵掃描",
+      "locked": "目標鎖定"
+    },
+    "isActive": false
+  }
+]

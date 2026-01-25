@@ -5,6 +5,9 @@ import { Sparkles, Settings, X, Volume2, VolumeX, AlertTriangle, ArrowRight, Sli
 import { useCamera } from '../hooks/useCamera';
 import { useOrientation } from '../hooks/useOrientation';
 import { KeyholeViewer } from '../components/KeyholeViewer';
+import { ScannerDisplay } from '../components/ScannerDisplay';
+import { getScenariosAction } from './admin/scenarios/actions';
+import type { Scenario } from '../lib/AppTypes';
 
 // Note: analyzeArtifact etc are replaced by API calls
 
@@ -417,244 +420,86 @@ ${plan.scriptPrompt}
     const focusProgress = Math.min(Math.abs(focusRotation) / 100, 1);
     const blurAmount = 12 * (1 - focusProgress);
 
+    const [config, setConfig] = useState<Scenario | any>({
+        uiConfig: {
+            primaryColor: 'text-lime-400',
+            borderColor: 'border-white',
+            audioAmbience: ''
+        },
+        uiTexts: {
+            boot: '正在探測歷史訊號',
+            scanning: '訊號偵測',
+            locked: '鎖定目標'
+        },
+        name: 'Default Scenario'
+    });
+
+    // Fetch Active Scenario on Mount
+    useEffect(() => {
+        const fetchConfig = async () => {
+            try {
+                const scenarios = await getScenariosAction();
+                const active = scenarios.find((s: Scenario) => s.isActive) || scenarios[0];
+                if (active) {
+                    setConfig(active);
+                }
+            } catch (e) {
+                console.error("Failed to load scenario config", e);
+            }
+        };
+        fetchConfig();
+    }, []);
+
     return (
-        <div className="fixed inset-0 flex items-center justify-center bg-black overflow-hidden h-screen w-screen font-mono">
+        <main className="fixed inset-0 w-screen h-screen overflow-hidden bg-black">
+            {/* Import ScannerDisplay at top level, but I will assume it's imported or I will add import. 
+                 Wait, I cannot add import with this tool if I start from line 417.
+                 I need to check imports.
+                 I'll assume imports are missing and need to be added.
+                 But this tool is strictly line replacement.
+                 I should probably use multi_replace or rewrite the whole file if imports are needed.
+                 The user asked for replace?
+                 Let's check imports in file.
+                 Lines 1-8 are imports.
+                 I should probably do a full FILE REWRITE or use MULTI_REPLACE to add imports + change body.
+                 
+                 Strategy: I will use REPLACE for the body first.
+                 THEN I will add the import at the top.
+             */}
+            <ScannerDisplay
+                step={step}
+                config={config}
+                capturedImage={capturedImage}
+                historyImage={historyImage}
+                historyScale={historyScale}
+                timeScale={timeScale}
+                artifactName={artifactName}
+                scriptPages={scriptPages}
+                scriptPage={scriptPage}
+                analysisText={analysisText}
+                isProcessing={isProcessing}
+                focusRotation={focusRotation}
+                focusProgress={focusProgress}
 
-            {/* Development Controller / Settings Button */}
-            {!hasGoogleKey && (
-                <div className="fixed top-4 left-4 z-50">
-                    <button onClick={() => setShowSettings(true)} className="bg-red-900/80 text-white border border-red-500 px-2 py-1 text-xs rounded animate-pulse">
-                        KEY MISSING - SETTINGS
-                    </button>
-                </div>
-            )}
+                isPlayingAudio={isPlayingAudio}
+                hasGoogleKey={hasGoogleKey}
 
-            <div
-                className="screen-container cursor-pointer"
-                onClick={step !== STEPS.TUNING && step !== STEPS.FOCUSING ? handleTrigger : undefined}
-                onWheel={step === STEPS.FOCUSING ? handleWheel : undefined}
-            >
+                position={{ x, y }} // Use x, y from hook
+                videoRef={videoRef}
 
-                {/* LAYER 0: Visual Base (Background) */}
-                <div id="bg-layer" className="absolute inset-0 bg-cover bg-center transition-all duration-500"
-                    style={{
-                        opacity: (step === STEPS.PROXIMITY || step === STEPS.LOCKED) ? 0.6 :
-                            (step === STEPS.TUNING || step === STEPS.FOCUSING) ? 0.2 :
-                                (step === STEPS.ANALYZING || step === STEPS.LISTEN) ? 0.1 :
-                                    (step === STEPS.REVEAL) ? 0 : 0.3, // REVEAL: Hide background
-                        filter: 'grayscale(100%) contrast(120%)'
-                    }}>
+                onTrigger={handleTrigger}
+                onWheel={handleWheel}
+                onToggleAudio={toggleAudio}
+                onShowSettings={() => setShowSettings(true)}
+                onConfigChange={setConfig}
+            />
 
-                    {/* Camera Video Stream */}
-                    <video
-                        ref={videoRef}
-                        autoPlay
-                        playsInline
-                        muted
-                        className={`w-full h-full object-cover ${capturedImage ? 'hidden' : 'block'}`}
-                    />
-
-                    {/* Captured Image Display */}
-                    {capturedImage && (
-                        <img src={capturedImage} className="w-full h-full object-cover" />
-                    )}
-                </div>
-
-                {/* Scan Line Texture */}
-                <div className="absolute inset-0 scan-line-bg opacity-30 pointer-events-none"></div>
-
-                {/* LAYER 1: Global HUD */}
-                <div className="absolute inset-0 pointer-events-none">
-                    {/* External Decoration Ring */}
-                    <div className={`center-xy w-[370px] h-[370px] border rounded-full ${step === STEPS.REVEAL ? 'border-white' : 'border-white/10'}`}></div>
-                    {/* Scale Ring */}
-                    <div className="center-xy w-[350px] h-[350px] border-white/20 rounded-full anim-spin-centered-slow"
-                        style={{ border: '1px dashed rgba(255,255,255,0.1)' }}></div>
-
-                    {/* Top Status Label */}
-                    <div className="absolute top-6 left-1/2 -translate-x-1/2 text-[9px] bg-black border border-white/30 px-2 rounded-full text-white">
-                        A.InSight
-                    </div>
-                </div>
-
-                {/* LAYER 2: State Content */}
-
-                {/* 1. BOOT */}
-                <div id="state-BOOT" className={`state-layer ${step === STEPS.BOOT ? 'active' : ''} flex flex-col items-center justify-center`}>
-                    <div className="relative w-24 h-24 flex items-center justify-center mb-4">
-                        <div className="absolute inset-0 border border-white rounded-full anim-pulse"></div>
-                        <div className="absolute inset-0 border-t border-white rounded-full anim-spin-self-slow"></div>
-                        <div className="text-2xl font-black tracking-tighter text-white whitespace-nowrap">正在探測歷史訊號</div>
-                    </div>
-
-                    <div className="text-sm font-bold tracking-widest mb-1 text-white">尋找中...</div>
-                    <div className="text-[9px] opacity-60 text-white">請在展區中隨意走動</div>
-                </div>
-
-                {/* 2. PROXIMITY */}
-                <div id="state-PROXIMITY" className={`state-layer ${step === STEPS.PROXIMITY ? 'active' : ''}`}>
-                    <div className="center-xy w-[120px] h-[120px]">
-                        <div className="w-full h-full bg-white/10 rounded-full anim-ping-wrapper"></div>
-                    </div>
-                    <div className="center-xy w-[180px] h-[180px]">
-                        <div className="w-full h-full border border-white/30 rounded-full anim-ping-wrapper" style={{ animationDelay: '0.3s' }}></div>
-                    </div>
-
-                    <div className="center-xy flex flex-col items-center text-center bg-black/60 p-6 rounded-full backdrop-blur-sm border border-white/10 text-white">
-                        <div className="text-xl font-bold">訊號偵測</div>
-                        <div className="text-[9px] border-t border-white/50 w-full pt-1 mt-1">接近目標中</div>
-                    </div>
-
-                    <div className="absolute bottom-16 w-full text-center text-white">
-                        <span className="text-2xl font-bold font-mono" id="dist-val">0.8</span>
-                        <span className="text-[9px] ml-1">M</span>
-                    </div>
-                </div>
-
-                {/* 3. LOCKED */}
-                <div id="state-LOCKED" className={`state-layer ${step === STEPS.LOCKED ? 'active' : ''}`}>
-                    <div className="center-xy w-[200px] h-[200px]">
-                        <div className="absolute top-0 left-0 w-full h-full border-t-2 border-white rounded-full"
-                            style={{ clipPath: 'inset(0 20% 80% 20%)' }}></div>
-                        <div className="absolute bottom-0 left-0 w-full h-full border-b-2 border-white rounded-full"
-                            style={{ clipPath: 'inset(80% 20% 0 20%)' }}></div>
-                        <div className="absolute top-0 left-0 w-full h-full border-l-2 border-white/50 rounded-full"
-                            style={{ clipPath: 'inset(40% 90% 40% 0)' }}></div>
-                        <div className="absolute top-0 left-0 w-full h-full border-r-2 border-white/50 rounded-full"
-                            style={{ clipPath: 'inset(40% 0 40% 90%)' }}></div>
-                    </div>
-
-                    <div className="center-xy w-2 h-2 bg-white rounded-full anim-pulse"></div>
-
-                    <div className="absolute top-[35%] w-full text-center">
-                        <div className="text-[10px] bg-white text-black px-2 inline-block rounded-sm font-bold">鎖定目標</div>
-                    </div>
-                    <div className="absolute bottom-[30%] w-full text-center text-white">
-                        <div className="text-[10px] animate-bounce">[ 按下快門捕捉 ]</div>
-                    </div>
-                </div>
-
-                {/* 4. TUNING - KEYBOARD CONTROLLED */}
-                <div id="state-TUNING" className={`state-layer bg-black/60 ${step === STEPS.TUNING ? 'active' : ''}`}>
-                    <div className="center-xy w-[260px] h-[260px]">
-
-                        {/* Outer Ring (Time Scale) */}
-                        <div className="absolute inset-0">
-                            <div className="absolute inset-0 rounded-full border border-white/20"></div>
-                            <div className="absolute inset-0 conic-ring"
-                                style={{ background: `conic-gradient(white 0deg ${timeScale * 72}deg, transparent 0deg)`, opacity: 0.8 }}></div>
-                        </div>
-
-                        {/* Inner Ring (History Fidelity) */}
-                        <div className="absolute inset-[30px]">
-                            <div className="absolute inset-0 rounded-full border border-white/20"></div>
-                            <div className="absolute inset-0 conic-ring"
-                                style={{ background: `conic-gradient(rgba(255,255,255,0.5) 0deg ${historyScale * 120}deg, transparent 0deg)` }}></div>
-                        </div>
-
-                        {/* Center Display */}
-                        <div className="center-xy flex flex-col text-center z-10 gap-2 text-white">
-                            <div className="flex flex-col border-b border-white/20 pb-1 w-20">
-                                <span className="text-[8px] opacity-60">時間軸</span>
-                                <span className="text-xl font-bold">L-0{timeScale}</span>
-                            </div>
-                            <div className="flex flex-col w-20">
-                                <span className="text-[8px] opacity-60">史實度</span>
-                                <span className="text-lg font-bold">{getHistoryLabel(historyScale)}</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* 5. ANALYZING */}
-                <div id="state-ANALYZING" className={`state-layer ${step === STEPS.ANALYZING ? 'active' : ''}`}>
-                    <div className="center-xy w-[280px] h-[280px] border border-white/10 rounded-full"></div>
-                    <div className="center-xy w-[220px] h-[220px] rounded-full border-t-2 border-white anim-spin-centered-slow"></div>
-                    <div className="center-xy w-[200px] h-[200px] rounded-full border-b border-dashed border-white/50 anim-spin-centered-slow" style={{ animationDuration: '8s', animationDirection: 'reverse' }}></div>
-
-                    <div className="center-xy flex flex-col text-center bg-black/80 p-4 rounded-full text-white">
-                        <div className="text-sm font-bold mb-1">解析中</div>
-                        <div className="text-[9px] opacity-60 text-stone-300">{analysisText}</div>
-                        <div className="mt-2 font-mono text-xl" id="percent-txt">{isProcessing ? "..." : "DONE"}</div>
-                    </div>
-                </div>
-
-                {/* 6. LISTEN */}
-                <div id="state-LISTEN" className={`state-layer bg-black/80 ${step === STEPS.LISTEN ? 'active' : ''}`}>
-                    <div className="absolute top-12 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full"></div>
-
-                    <div className="absolute top-16 w-full text-center text-white">
-                        <span className="text-xl font-bold border-b border-white pb-1">{artifactName}</span>
-                    </div>
-
-                    <div className="center-xy w-[260px] flex items-center justify-center text-center text-white">
-                        <p className="text-sm leading-relaxed opacity-90 font-light">
-                            {scriptPages[scriptPage]}
-                        </p>
-                    </div>
-
-                    <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
-                        {scriptPages.map((_, i) => (
-                            <div key={i} className={`w-2 h-2 rounded-full ${i === scriptPage ? 'bg-white' : 'bg-white/30'}`}></div>
-                        ))}
-                    </div>
-
-                    <button onClick={(e) => { e.stopPropagation(); toggleAudio(); }} className={`absolute top-24 right-10 p-2 rounded-full border ${isPlayingAudio ? 'border-lime-400/50 text-lime-400' : 'border-red-500/50 text-red-500 animate-pulse'} z-50`}>
-                        {isPlayingAudio ? <Volume2 size={16} /> : <VolumeX size={16} />}
-                    </button>
-
-                    <div className="absolute bottom-12 w-full text-center text-[8px] text-white/50">
-                        點擊畫面繼續
-                    </div>
-                </div>
-
-                {/* 7. FOCUSING - WHEEL CONTROLLED */}
-                <div id="state-FOCUSING" className={`state-layer ${step === STEPS.FOCUSING ? 'active' : ''}`}>
-                    <div className="center-xy w-[280px] h-[280px] border border-white/20 rounded-full"></div>
-
-                    <div className="center-xy w-[260px] h-[260px]">
-                        <div className="absolute inset-0 rounded-full anim-spin-self-slow opacity-60"
-                            style={{
-                                background: 'conic-gradient(from 0deg, transparent 0%, transparent 80%, white 100%)',
-                                WebkitMask: 'radial-gradient(transparent 68%, black 69%)',
-                                mask: 'radial-gradient(transparent 68%, black 69%)',
-                                transform: `rotate(${focusRotation}deg)`
-                            }}>
-                        </div>
-                    </div>
-
-                    <div className="center-xy w-[100px] h-[100px] border border-white rounded-full flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm text-white">
-                        <div className="text-[10px] mb-1">對焦</div>
-                        <div className="text-2xl font-bold">{Math.round(focusProgress * 100)}<span className="text-[10px]">%</span></div>
-                    </div>
-
-                    <div className="absolute bottom-12 w-full text-center text-white">
-                        <div className="text-[10px] opacity-70">[ 旋轉對焦 ]</div>
-                    </div>
-                </div>
-
-                {/* 8. REVEAL - ORIGINAL KeyholeViewer Logic Preserved but SWAP GREEN TO WHITE */}
-                <div id="state-REVEAL" className={`state-layer ${step === STEPS.REVEAL ? 'active' : ''}`} style={{ zIndex: 50 }}>
-                    {step === STEPS.REVEAL && historyImage && (
-                        <div className="absolute inset-0 rounded-full bg-black">
-                            <KeyholeViewer imageSrc={historyImage} position={{ x, y }} />
-
-                            {/* Overlay Click-to-Reset (Restoring functionality) */}
-                            <div className="absolute bottom-12 w-full text-center z-30 pointer-events-auto">
-                                <div
-                                    className="text-[10px] bg-black text-white px-3 py-1 rounded-full border border-white/20 inline-block cursor-pointer"
-                                    onClick={handleTrigger}
-                                >
-                                    探測下一則歷史
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-            </div>
-
-            {/* KEEP SETTINGS MODAL */}
+            {/* KEEP SETTINGS MODAL (It's outside ScannerDisplay in original logic, but ScannerDisplay has a button for it) */}
+            {/* Wait, ScannerDisplay HAS the button "KEY MISSING".
+                The MODAL itself was in page.tsx.
+                ScannerDisplay calls `onShowSettings`.
+                So valid.
+            */}
             {showSettings && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm px-4">
                     <div className="w-full max-w-md bg-[#1a1816] border-2 border-[#39ff14] rounded-xl p-6 shadow-2xl relative text-lime-400 font-mono overflow-y-auto max-h-[80vh]">
@@ -683,6 +528,6 @@ ${plan.scriptPrompt}
                     </div>
                 </div>
             )}
-        </div>
+        </main>
     );
 }
