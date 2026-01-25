@@ -1,0 +1,39 @@
+{
+  "STEPS": {
+    "BOOT": "BOOT",
+    "PROXIMITY": "PROXIMITY",
+    "LOCKED": "LOCKED",
+    "TUNING": "TUNING",
+    "ANALYZING": "ANALYZING",
+    "LISTEN": "LISTEN",
+    "FOCUSING": "FOCUSING",
+    "REVEAL": "REVEAL"
+  },
+  "TIME_SCALE_LABELS": {
+    "1": "起因 / 靈感 (抽象自然)",
+    "2": "鑄造 / 誕生 (工匠視角)",
+    "3": "使用 / 全盛 (歷史靜物)",
+    "4": "流轉 / 遺棄 (出土塵封)",
+    "5": "未來 / 命運 (科幻遺跡)"
+  },
+  "HISTORY_SCALE_LABELS": {
+    "1": "軼聞 (神秘低語)",
+    "2": "通史 (文化習俗)",
+    "3": "正史 (考據學術)"
+  },
+  "title": "A.InSight",
+  "bootText": "正在探測歷史訊號",
+  "bootSubtext": "尋找中...",
+  "bootHint": "請在展區中隨意走動",
+  "proximityTitle": "訊號偵測",
+  "proximitySubtext": "接近目標中",
+  "lockedTitle": "鎖定目標",
+  "lockedSubtext": "[ 按下快門捕捉 ]",
+  "tuningRingOuter": "時間軸",
+  "tuningRingInner": "史實度",
+  "analyzingTitle": "解析中",
+  "listenHint": "點擊畫面繼續",
+  "focusTitle": "對焦",
+  "focusHint": "[ 旋轉對焦 ]",
+  "revealHint": "探測下一則歷史"
+}
