@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import ScannerDisplay from '../../../../components/ScannerDisplay';
 import { DEFAULT_CONFIG, STEPS } from '../../../../lib/defaults';
-import { updateScenario } from '../actions';
+import { supabase } from '@/lib/supabase';
+// import { updateScenario } from '../actions'; // No longer needed for saving
 
 // Reuse the props type for type safety if possible, or define locally
 // import { ScannerDisplayProps } from '../../../../components/ScannerDisplay'; 
@@ -28,12 +29,20 @@ export default function ScenarioBuilder() {
 
     const handleSave = async () => {
         setIsSaving(true);
-        const result = await updateScenario(config);
-        setIsSaving(false);
-        if (result.success) {
-            alert("已儲存變更！(Saved)");
-        } else {
+        try {
+            const { error } = await supabase
+                .from('scenario_config')
+                .update({ config: config, updated_at: new Date() })
+                .eq('id', 1);
+
+            if (error) throw error;
+
+            alert("已同步至雲端！(Synced to Cloud)");
+        } catch (error) {
+            console.error("Save failed:", error);
             alert("儲存失敗 (Failed)");
+        } finally {
+            setIsSaving(false);
         }
     };
 

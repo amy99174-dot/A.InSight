@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useCamera } from '../hooks/useCamera';
 import { useOrientation } from '../hooks/useOrientation';
 import ScannerDisplay from '../components/ScannerDisplay';
+import { supabase } from '../lib/supabase';
 
 // Note: analyzeArtifact etc are replaced by API calls
 
@@ -47,19 +48,63 @@ export default function Home() {
     const [step, setStep] = useState(STEPS.BOOT);
 
     // Fetch Config on Mount
+    // Fetch Config on Mount & Subscribe to Realtime Updates
     useEffect(() => {
         const fetchConfig = async () => {
+            // Priority: Try fetching from Supabase first
             try {
-                const res = await fetch('/api/config');
-                if (res.ok) {
-                    const data = await res.json();
-                    setConfig(data);
+                const { data, error } = await supabase
+                    .from('scenario_config')
+                    .select('config')
+                    .eq('id', 1)
+                    .single();
+
+                if (data?.config) {
+                    console.log("Loaded config from Supabase");
+                    setConfig(prev => ({ ...prev, ...data.config }));
+                } else {
+                    throw new Error("No config in Supabase");
                 }
             } catch (err) {
-                console.error("Failed to fetch scenario config:", err);
+                console.warn("Supabase load failed, falling back to local file:", err);
+                // Fallback: Local API
+                try {
+                    const res = await fetch('/api/config');
+                    if (res.ok) {
+                        const localData = await res.json();
+                        setConfig(localData);
+                    }
+                } catch (localErr) {
+                    console.error("Failed to fetch scenario config:", localErr);
+                }
             }
         };
+
         fetchConfig();
+
+        // Real-time Subscription
+        const channel = supabase
+            .channel('scenario_updates')
+            .on(
+                'postgres_changes',
+                {
+                    event: 'UPDATE',
+                    schema: 'public',
+                    table: 'scenario_config',
+                    filter: 'id=eq.1'
+                },
+                (payload) => {
+                    console.log("Realtime update received:", payload);
+                    if (payload.new && payload.new.config) {
+                        setConfig(prev => ({ ...prev, ...payload.new.config }));
+                    }
+                }
+            )
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(channel);
+        };
     }, []);
 
     const [capturedImage, setCapturedImage] = useState<string | null>(null);
