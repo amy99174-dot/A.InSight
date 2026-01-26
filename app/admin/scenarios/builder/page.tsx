@@ -47,19 +47,15 @@ export default function ScenarioBuilder() {
 
                     // Simple hack: Create a dummy stream
                     // const dummyStream = new MediaStream();
-                    // call = peer.call('ainsight-display', dummyStream);
-
-                    // Wait, usually the 'Viewer' calls the 'Broadcaster'.
-                    // Broadcaster answers(stream).
-                    // Viewer receives stream via call.on('stream').
                     // Does peer.call REQUIRE a stream? The types say yes usually.
                     // Let's try passing undefined/null, if it fails, I'll create a dummy canvas stream.
-                    call = peer.call('ainsight-display', {} as MediaStream); // Type cast cheat for now or check if it works without stream.
+                    call = peer.call('ainsight-display-secure', {} as MediaStream); // Type cast cheat for now or check if it works without stream.
                     // Actually PeerJS documentation says mediaStream is optional in some versions, but standard WebRTC often wants it.
                     // If it fails, I will add a dummy stream generator.
 
                     if (call) {
                         call.on('stream', (remoteStream: MediaStream) => {
+                            console.log("Stream received!");
                             if (videoRef.current) {
                                 videoRef.current.srcObject = remoteStream;
                             }

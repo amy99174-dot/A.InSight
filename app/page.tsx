@@ -187,25 +187,30 @@ export default function Home() {
                 // Dynamically import PeerJS (client-side only)
                 const { Peer } = await import('peerjs');
 
-                // Use a fixed ID for the display
-                peer = new Peer('ainsight-display', {
+                // Use a unique ID for the display
+                const peerId = 'ainsight-display-secure';
+                peer = new Peer(peerId, {
                     debug: 2
                 });
 
                 peer.on('open', (id: string) => {
                     console.log('My peer ID is: ' + id);
+                    // Optional: Show ID on screen for debug
+                    const debugEl = document.getElementById('peer-debug');
+                    if (debugEl) debugEl.innerText = `Stream Ready: ${id}`;
                 });
 
                 peer.on('call', (call: any) => {
                     console.log("Receiving call from Admin...", call.peer);
                     call.answer(stream); // Answer the call with the live stream
+                    const debugEl = document.getElementById('peer-debug');
+                    if (debugEl) debugEl.innerText = `Connected to: ${call.peer}`;
                 });
 
                 peer.on('error', (err: any) => {
                     console.error("PeerJS Error:", err);
-                    if (err.type === 'unavailable-id') {
-                        console.warn("ID taken. Maybe another tab is open? Ignoring.");
-                    }
+                    const debugEl = document.getElementById('peer-debug');
+                    if (debugEl) debugEl.innerText = `Error: ${err.type}`;
                 });
             } catch (e) {
                 console.error("Failed to init PeerJS", e);
@@ -507,6 +512,10 @@ export default function Home() {
                     {capturedImage && (
                         <img src={capturedImage} className="w-full h-full object-cover" />
                     )}
+                </div>
+                {/* Debug Overlay for PeerJS */}
+                <div id="peer-debug" className="absolute bottom-2 right-2 text-[8px] text-white/30 pointer-events-none z-50 font-mono">
+                    Initializing Stream...
                 </div>
             </ScannerDisplay>
         </main>
