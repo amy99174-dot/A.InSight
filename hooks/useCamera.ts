@@ -88,5 +88,5 @@ export function useCamera() {
     };
   }, []);
 
-  return { videoRef, startCamera, stopCamera, captureImage, error, isActive: !!stream };
+  return { videoRef, startCamera, stopCamera, captureImage, error, isActive: !!stream, stream };
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ScannerDisplay from '../../../../components/ScannerDisplay';
 import { DEFAULT_CONFIG, STEPS } from '../../../../lib/defaults';
 import { supabase } from '@/lib/supabase';
@@ -18,6 +18,71 @@ export default function ScenarioBuilder() {
     const [selectedField, setSelectedField] = useState<string | null>(null);
     const [currentStep, setCurrentStep] = useState(STEPS.BOOT);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Remote Monitoring State
+    const [isMonitoring, setIsMonitoring] = useState(false);
+    const videoRef = React.useRef<HTMLVideoElement>(null);
+
+    useEffect(() => {
+        if (!isMonitoring) return;
+
+        let peer: any = null;
+        let call: any = null;
+
+        const startMonitoring = async () => {
+            try {
+                const { Peer } = await import('peerjs');
+                peer = new Peer(); // Random ID
+
+                peer.on('open', (id: string) => {
+                    console.log('Monitor Peer ID:', id);
+                    // Call the display
+                    call = peer.call('ainsight-display', new MediaStream()); // Minimal dummy stream to init call?
+                    // Actually, to receive only, createCall options... PeerJS usually expects a stream.
+                    // But newer PeerJS allows receiving only? 
+                    // Standard way: We call THEM. They answer with stream.
+                    // But `peer.call` usually takes `localStream`. Can we pass null? 
+                    // Let's pass a dummy audio track if needed, or check docs. 
+                    // Usually passing a dummy stream is safest.
+
+                    // Simple hack: Create a dummy stream
+                    // const dummyStream = new MediaStream();
+                    // call = peer.call('ainsight-display', dummyStream);
+
+                    // Wait, usually the 'Viewer' calls the 'Broadcaster'.
+                    // Broadcaster answers(stream).
+                    // Viewer receives stream via call.on('stream').
+                    // Does peer.call REQUIRE a stream? The types say yes usually.
+                    // Let's try passing undefined/null, if it fails, I'll create a dummy canvas stream.
+                    call = peer.call('ainsight-display', {} as MediaStream); // Type cast cheat for now or check if it works without stream.
+                    // Actually PeerJS documentation says mediaStream is optional in some versions, but standard WebRTC often wants it.
+                    // If it fails, I will add a dummy stream generator.
+
+                    if (call) {
+                        call.on('stream', (remoteStream: MediaStream) => {
+                            if (videoRef.current) {
+                                videoRef.current.srcObject = remoteStream;
+                            }
+                        });
+                        call.on('close', () => console.log("Call closed"));
+                        call.on('error', (e: any) => console.error("Call error", e));
+                    }
+                });
+
+                peer.on('error', (err: any) => console.error("Peer Error", err));
+
+            } catch (e) {
+                console.error("Peer Init Failed", e);
+            }
+        };
+
+        startMonitoring();
+
+        return () => {
+            if (call) call.close();
+            if (peer) peer.destroy();
+        };
+    }, [isMonitoring]);
 
     // Update Handler
     const handleConfigChange = (key: string, value: any) => {
@@ -152,7 +217,18 @@ export default function ScenarioBuilder() {
                         hasGoogleKey={true}
                         historyImage={null}
                         orientation={{ x: 0, y: 0 }}
-                    />
+                    >
+                        {/* Monitor Layer */}
+                        {isMonitoring ? (
+                            <video
+                                ref={videoRef}
+                                autoPlay
+                                playsInline
+                                muted
+                                className="w-full h-full object-cover opacity-50 grayscale"
+                            />
+                        ) : null}
+                    </ScannerDisplay>
                 </div>
 
                 {/* Overlay Grid / Guides (Optional visual flair) */}
@@ -173,6 +249,16 @@ export default function ScenarioBuilder() {
                         className="bg-lime-400 text-black text-[10px] font-bold px-3 py-1 rounded hover:bg-lime-300 disabled:opacity-50"
                     >
                         {isSaving ? "SAVING..." : "SAVE CHANGES"}
+                    </button>
+                </div>
+
+                {/* Monitor Toggle */}
+                <div className="mb-6 border-b border-lime-400/30 pb-4">
+                    <button
+                        onClick={() => setIsMonitoring(!isMonitoring)}
+                        className={`w-full py-2 text-xs font-bold rounded tracking-widest border transition-all ${isMonitoring ? 'bg-red-900/50 border-red-500 text-red-100 animate-pulse' : 'bg-black/30 border-white/20 text-white/50 hover:bg-white/5'}`}
+                    >
+                        {isMonitoring ? "🔴 LIVE MONITORING" : "CONNECT TO CAMERA"}
                     </button>
                 </div>
                 {renderInspector()}

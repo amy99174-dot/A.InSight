@@ -172,9 +172,52 @@ export default function Home() {
         localStorage.setItem("GOOGLE_KEY", userGoogleKey);
     }, [userOpenAIKey, userGoogleKey]);
 
-    const { videoRef, startCamera, stopCamera, captureImage, error: cameraError } = useCamera();
+    const { videoRef, startCamera, stopCamera, captureImage, stream, error: cameraError } = useCamera();
     const { x, y, resetOrigin } = useOrientation();
     const scriptPages = splitTextIntoPages(fullScript);
+
+    // --- PeerJS Broadcaster Logic ---
+    useEffect(() => {
+        if (!stream) return; // Wait for camera stream
+
+        let peer: any = null;
+
+        const initPeer = async () => {
+            try {
+                // Dynamically import PeerJS (client-side only)
+                const { Peer } = await import('peerjs');
+
+                // Use a fixed ID for the display
+                peer = new Peer('ainsight-display', {
+                    debug: 2
+                });
+
+                peer.on('open', (id: string) => {
+                    console.log('My peer ID is: ' + id);
+                });
+
+                peer.on('call', (call: any) => {
+                    console.log("Receiving call from Admin...", call.peer);
+                    call.answer(stream); // Answer the call with the live stream
+                });
+
+                peer.on('error', (err: any) => {
+                    console.error("PeerJS Error:", err);
+                    if (err.type === 'unavailable-id') {
+                        console.warn("ID taken. Maybe another tab is open? Ignoring.");
+                    }
+                });
+            } catch (e) {
+                console.error("Failed to init PeerJS", e);
+            }
+        };
+
+        initPeer();
+
+        return () => {
+            if (peer) peer.destroy();
+        };
+    }, [stream]); // Re-init if stream changes (rare) or mounts
 
     useEffect(() => {
         if (step === STEPS.BOOT) startCamera();
