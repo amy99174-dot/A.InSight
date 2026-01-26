@@ -178,8 +178,6 @@ export default function Home() {
 
     // --- PeerJS Broadcaster Logic ---
     useEffect(() => {
-        if (!stream) return; // Wait for camera stream
-
         let peer: any = null;
 
         const initPeer = async () => {
@@ -195,16 +193,22 @@ export default function Home() {
 
                 peer.on('open', (id: string) => {
                     console.log('My peer ID is: ' + id);
-                    // Optional: Show ID on screen for debug
                     const debugEl = document.getElementById('peer-debug');
-                    if (debugEl) debugEl.innerText = `Stream Ready: ${id}`;
+                    if (debugEl) debugEl.innerText = `ID: ${id} | Cam: ${stream ? 'OK' : 'WAIT'}`;
                 });
 
                 peer.on('call', (call: any) => {
                     console.log("Receiving call from Admin...", call.peer);
-                    call.answer(stream); // Answer the call with the live stream
-                    const debugEl = document.getElementById('peer-debug');
-                    if (debugEl) debugEl.innerText = `Connected to: ${call.peer}`;
+
+                    if (stream) {
+                        call.answer(stream);
+                        const debugEl = document.getElementById('peer-debug');
+                        if (debugEl) debugEl.innerText = `Connected: ${call.peer}`;
+                    } else {
+                        console.warn("Call received but no stream ready");
+                        const debugEl = document.getElementById('peer-debug');
+                        if (debugEl) debugEl.innerText = `Call Failed: No Camera`;
+                    }
                 });
 
                 peer.on('error', (err: any) => {
@@ -222,7 +226,12 @@ export default function Home() {
         return () => {
             if (peer) peer.destroy();
         };
-    }, [stream]); // Re-init if stream changes (rare) or mounts
+    }, [stream]); // Re-run if stream becomes available to update status logic? 
+    // Actually, if I re-run, I destroy and recreate peer. That's fine but might be noisy.
+    // Better: Keep peer instance, just update the stream reference?
+    // PeerJS 'answer' takes the stream at that moment. 
+    // If stream changes, we might need to replace track. 
+    // For simplicity, re-init on stream change (which happens once usually) is acceptable for now.
 
     useEffect(() => {
         if (step === STEPS.BOOT) startCamera();
