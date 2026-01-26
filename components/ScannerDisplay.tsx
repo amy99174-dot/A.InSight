@@ -1,8 +1,13 @@
-import React from 'react';
-import { Sparkles, Settings, X, Volume2, VolumeX, AlertTriangle, ArrowRight, Sliders, Terminal, RotateCw } from 'lucide-react';
+import React, { useRef, useEffect, useState } from 'react';
+import { DEFAULT_CONFIG } from '../lib/defaults';
+import Link from 'next/link';
+import { Volume2, VolumeX, AlertTriangle, X, Settings, Terminal, Sparkles, Sliders, ArrowRight, RotateCw } from 'lucide-react';
 import { KeyholeViewer } from './KeyholeViewer';
 
 // --- Helper Components & Functions ---
+
+// Helper function to extract style from config (supports hex or tailwind class)
+// IF it starts with #, return style object. IF NOT, return as className.---
 
 const getDynamicStyle = (colorValue: string | undefined, defaultClass: string, property: 'color' | 'borderColor' | 'backgroundColor' | 'stroke' = 'color') => {
     const finalValue = colorValue || defaultClass;
@@ -115,11 +120,15 @@ export interface ScannerDisplayProps {
     // Edit Mode (Native Instrumentation)
     isEditable?: boolean;
     onEdit?: (fieldKey: string) => void;
+
+    // Error State
+    cameraError?: string | null;
 }
 
 export default function ScannerDisplay({
     step,
     config,
+    cameraError,
     artifactName,
     analysisText,
     scriptPages,
@@ -190,6 +199,27 @@ export default function ScannerDisplay({
                     <button onClick={() => setShowSettings(true)} className="bg-red-900/80 text-white border border-red-500 px-2 py-1 text-xs rounded animate-pulse">
                         KEY MISSING - SETTINGS
                     </button>
+                </div>
+            )}
+
+            {/* Camera Error Banner - CRITICAL FIX GUIDE */}
+            {cameraError && (
+                <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] text-center w-[90%] max-w-sm">
+                    <div className="bg-red-950/90 border border-red-500 text-white p-6 rounded-xl shadow-2xl backdrop-blur-xl">
+                        <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4 animate-bounce" />
+                        <h3 className="text-xl font-bold mb-2">相機無法啟動</h3>
+                        <p className="text-sm opacity-90 mb-4 font-mono">{cameraError}</p>
+                        <div className="text-[10px] text-left bg-black/50 p-3 rounded text-red-200">
+                            <strong>排解方法 (Raspberry Pi):</strong>
+                            <ol className="list-decimal pl-4 mt-1 space-y-1">
+                                <li>開啟 Pi 的瀏覽器</li>
+                                <li>網址列輸入: <code className="bg-red-900/50 px-1">chrome://flags</code></li>
+                                <li>搜尋 <code className="bg-red-900/50 px-1">unsafely-treat-insecure-origin-as-secure</code></li>
+                                <li>設為 <strong>Enabled</strong> 並輸入 Mac IP (含 Port)</li>
+                                <li>按 Relaunch 重啟</li>
+                            </ol>
+                        </div>
+                    </div>
                 </div>
             )}
 

@@ -77,7 +77,7 @@ export const DEFAULT_CONFIG = {
     // So if config.primaryColor is undefined, it uses 'border-white'.
     // That is PERFECT for "Default Config" - use the code defaults.
     // But I will add the keys for clarity.
-    primaryColor: undefined,
+    // primaryColor: undefined, // Duplicated key removed
     secondaryColor: undefined,
     alertColor: undefined
 };

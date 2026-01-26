@@ -172,7 +172,7 @@ export default function Home() {
         localStorage.setItem("GOOGLE_KEY", userGoogleKey);
     }, [userOpenAIKey, userGoogleKey]);
 
-    const { videoRef, startCamera, stopCamera, captureImage } = useCamera();
+    const { videoRef, startCamera, stopCamera, captureImage, error: cameraError } = useCamera();
     const { x, y, resetOrigin } = useOrientation();
     const scriptPages = splitTextIntoPages(fullScript);
 
@@ -417,6 +417,7 @@ export default function Home() {
             <ScannerDisplay
                 step={step}
                 config={config}
+                cameraError={cameraError}
                 artifactName={artifactName}
                 analysisText={analysisText}
                 scriptPages={scriptPages}
