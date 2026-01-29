@@ -7,8 +7,27 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { image, historyScale, timeScale, apiKey, sessionId } = body;
 
+        // Initialize Config
+        let aiConfig = undefined;
+
+        try {
+            const { supabase } = await import('../../../lib/supabase');
+            const { data } = await supabase
+                .from('scenario_config')
+                .select('config')
+                .eq('id', 1)
+                .single();
+
+            if (data?.config?.ai_brain) {
+                console.log("Injecting AI Brain Config:", data.config.ai_brain);
+                aiConfig = data.config.ai_brain;
+            }
+        } catch (configErr) {
+            console.warn("Failed to load AI config from Supabase, using defaults.", configErr);
+        }
+
         // Call the server-side logic
-        const result = await analyzeArtifactServer(image, apiKey, historyScale, timeScale);
+        const result = await analyzeArtifactServer(image, apiKey, historyScale, timeScale, aiConfig);
 
         // Log to Supabase (Fire and forget, or await?)
         // Recommended: Await to catch errors, but wrap in try-catch so it doesn't block response on fail

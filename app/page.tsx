@@ -505,7 +505,6 @@ export default function Home() {
                             (step === STEPS.TUNING || step === STEPS.FOCUSING) ? 0.2 :
                                 (step === STEPS.ANALYZING || step === STEPS.LISTEN) ? 0.1 :
                                     (step === STEPS.REVEAL) ? 0 : 0.3, // REVEAL: Hide background
-                        filter: 'grayscale(100%) contrast(120%)'
                     }}>
 
                     {/* Camera Video Stream */}
@@ -522,10 +521,7 @@ export default function Home() {
                         <img src={capturedImage} className="w-full h-full object-cover" />
                     )}
                 </div>
-                {/* Debug Overlay for PeerJS */}
-                <div id="peer-debug" className="absolute bottom-2 right-2 text-[8px] text-white/30 pointer-events-none z-50 font-mono">
-                    Initializing Stream...
-                </div>
+
             </ScannerDisplay>
         </main>
     );

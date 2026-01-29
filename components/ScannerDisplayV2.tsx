@@ -1,45 +1,16 @@
 import React from 'react';
 import { DEFAULT_CONFIG } from '../lib/defaults';
+import { AlertTriangle, X, Settings, Terminal } from 'lucide-react';
 import ClassicSkinV2 from './skins/ClassicSkinV2';
 import IndustrialSkinV2 from './skins/IndustrialSkinV2';
-import { AlertTriangle, X, Settings, Terminal } from 'lucide-react';
+import { ScannerSkinPropsV2 } from '../types/scanner_v2';
 
-export interface ScannerDisplayProps {
-    step: string;
-    config: typeof DEFAULT_CONFIG;
-    artifactName: string;
-    analysisText: string;
-    scriptPages: string[];
-    scriptPage: number;
-    debugLog: string;
-    isProcessing: boolean;
-    isPlayingAudio: boolean;
-    focusRotation: number;
-    historyScale: number;
-    timeScale: number;
-    onTrigger: () => void;
-    onWheel: (e: React.WheelEvent) => void;
-    toggleAudio: () => void;
-    showSettings: boolean;
-    setShowSettings: (v: boolean) => void;
-    userGoogleKey: string;
-    setUserGoogleKey: (v: string) => void;
-    userOpenAIKey: string;
-    setUserOpenAIKey: (v: string) => void;
-    hasGoogleKey: boolean;
-    historyImage: string | null;
-    orientation: { x: number, y: number };
-    children?: React.ReactNode;
-    isEditable?: boolean;
-    onEdit?: (fieldKey: string) => void;
-    cameraError?: string | null;
-}
+// Re-export props if needed, or use the one from types
+export type ScannerDisplayPropsV2 = ScannerSkinPropsV2;
 
-export default function ScannerDisplay(props: ScannerDisplayProps) {
+export default function ScannerDisplayV2(props: ScannerDisplayPropsV2) {
     const {
         config,
-        cameraError,
-        debugLog,
         showSettings,
         setShowSettings,
         userGoogleKey,
@@ -47,16 +18,22 @@ export default function ScannerDisplay(props: ScannerDisplayProps) {
         userOpenAIKey,
         setUserOpenAIKey,
         hasGoogleKey,
+        debugLog,
+        cameraError,
         children
     } = props;
 
+    // Destructure theme safely
     const ui = config.ui_theme || DEFAULT_CONFIG.ui_theme;
-    const isIndustrialByConfig = ui.layout_mode === 'industrial';
+
+    // Determine which skin to use
+    // Default to 'classic' if undefined
+    const layoutMode = (ui as any).layout_mode || 'classic';
 
     return (
         <div className="relative w-full h-full flex items-center justify-center font-mono text-white">
 
-            {/* Camera Filter Application */}
+            {/* Camera Filter Application (Global CSS Filter on container or overlay) */}
             {ui.camera_filter && ui.camera_filter !== 'none' && (
                 <style dangerouslySetInnerHTML={{
                     __html: `
@@ -77,7 +54,7 @@ export default function ScannerDisplay(props: ScannerDisplayProps) {
                 </div>
             )}
 
-            {/* Camera Error Banner */}
+            {/* Camera Error Banner  */}
             {cameraError && (
                 <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[60] text-center w-[90%] max-w-sm">
                     <div className="bg-red-950/90 border border-red-500 text-white p-6 rounded-xl shadow-2xl backdrop-blur-xl">
@@ -91,8 +68,8 @@ export default function ScannerDisplay(props: ScannerDisplayProps) {
                 </div>
             )}
 
-            {/* Render Selected Skin (V2) */}
-            {isIndustrialByConfig ? (
+            {/* --- SKIN RENDERER (V2) --- */}
+            {layoutMode === 'industrial' ? (
                 <IndustrialSkinV2 {...props}>
                     {children}
                 </IndustrialSkinV2>
@@ -108,7 +85,7 @@ export default function ScannerDisplay(props: ScannerDisplayProps) {
                     <div className="w-full max-w-md bg-[#1a1816] border-2 border-[#39ff14] rounded-xl p-6 shadow-2xl relative text-lime-400 font-mono overflow-y-auto max-h-[80vh]">
                         <button onClick={() => setShowSettings(false)} className="absolute top-4 right-4 text-lime-700 hover:text-lime-400"><X size={24} /></button>
                         <h2 className="text-xl font-bold mb-4 flex items-center gap-2 border-b border-lime-900/50 pb-2"><Settings className="w-5 h-5" />系統維護面板</h2>
-
+                        {/* Settings content same, omitted for brevity, keeping original fields */}
                         <div className="space-y-6">
                             <div className="p-3 bg-lime-900/10 rounded border border-lime-900/30">
                                 <label className="block text-xs uppercase tracking-widest text-lime-400 mb-1 font-bold">Google Gemini API Key (核心)</label>
