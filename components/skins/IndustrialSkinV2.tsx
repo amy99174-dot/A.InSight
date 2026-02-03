@@ -94,37 +94,58 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
 
                 {/* Crosshairs & HUD Elements - Gemini Star Shape (Transparent Block, No Blur for Performance) */}
                 {/* Hides during REVEAL step to clear the background for results */}
-                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] transition-opacity duration-300 ${step === STEPS.REVEAL ? 'opacity-0' : 'opacity-20'} ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
+                {/* Stepped Opacity Animation */}
+                <style dangerouslySetInnerHTML={{
+                    __html: `
+                        @keyframes stepped-opacity-industrial { 
+                            0% { opacity: 0.1; } 
+                            33% { opacity: 0.3; } 
+                            66% { opacity: 0.6; } 
+                            100% { opacity: 0.1; } 
+                        }
+                    `
+                }} />
+
+                {/* Central Gemini star - static opacity, no blinking */}
+                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] ${step === STEPS.REVEAL ? 'opacity-0' : 'opacity-20'} ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
                     <svg viewBox="0 0 100 100" className="w-full h-full fill-current stroke-none">
                         <path d="M50 0 C50 25, 25 50, 0 50 C25 50, 50 75, 50 100 C50 75, 75 50, 100 50 C75 50, 50 25, 50 0 Z" />
                     </svg>
                 </div>
 
-                {/* Corner Stars */}
-                <div className={`absolute top-12 left-12 w-4 h-4 opacity-60 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
+                {/* Corner Stars - All blinking with clockwise delays */}
+                {/* Top-left corner */}
+                <div className={`absolute top-12 left-12 w-4 h-4 ${colorStyle.className}`} style={{ color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 2.625s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
-                <div className={`absolute top-12 right-12 w-4 h-4 opacity-60 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
+                {/* Top-right corner */}
+                <div className={`absolute top-12 right-12 w-4 h-4 ${colorStyle.className}`} style={{ color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 0.375s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
-                <div className={`absolute bottom-12 left-12 w-4 h-4 opacity-60 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
+                {/* Bottom-left corner */}
+                <div className={`absolute bottom-12 left-12 w-4 h-4 ${colorStyle.className}`} style={{ color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 1.875s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
-                <div className={`absolute bottom-12 right-12 w-4 h-4 opacity-60 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
+                {/* Bottom-right corner */}
+                <div className={`absolute bottom-12 right-12 w-4 h-4 ${colorStyle.className}`} style={{ color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 1.125s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
 
-                {/* Cardinal Stars (Top/Bottom/Left/Right) - Aligned to Corner Radius (~189.5px) */}
-                <div className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 opacity-60 rotate-45 ${colorStyle.className}`} style={{ top: '-7.5px', color: colorStyle.style?.color }}>
+                {/* Cardinal Stars (Top/Bottom/Left/Right) - All blinking with clockwise delays */}
+                {/* Top */}
+                <div className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 ${colorStyle.className}`} style={{ top: '-7.5px', color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
-                <div className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 opacity-60 rotate-45 ${colorStyle.className}`} style={{ bottom: '-7.5px', color: colorStyle.style?.color }}>
+                {/* Bottom */}
+                <div className={`absolute left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 ${colorStyle.className}`} style={{ bottom: '-7.5px', color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 1.5s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
-                <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 opacity-60 rotate-45 ${colorStyle.className}`} style={{ left: '-7.5px', color: colorStyle.style?.color }}>
+                {/* Left */}
+                <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 rotate-45 ${colorStyle.className}`} style={{ left: '-7.5px', color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 2.25s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
-                <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 opacity-60 rotate-45 ${colorStyle.className}`} style={{ right: '-7.5px', color: colorStyle.style?.color }}>
+                {/* Right */}
+                <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-4 rotate-45 ${colorStyle.className}`} style={{ right: '-7.5px', color: colorStyle.style?.color, animation: 'stepped-opacity-industrial 3s steps(1) infinite 0.75s' }}>
                     <svg viewBox="0 0 24 24" className="w-full h-full fill-current"><path d="M12 0L14 10L24 12L14 14L12 24L10 14L0 12L10 10L12 0Z" /></svg>
                 </div>
 
@@ -141,7 +162,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
 
             {/* BOOT */}
             {/* BOOT */}
-            <div className={`absolute inset-0 transition-opacity duration-300 ${step === STEPS.BOOT ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 ${step === STEPS.BOOT ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 {/* Title: Perfectly Centered */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-end gap-1">
                     <span className={`text-2xl font-black tracking-tighter whitespace-nowrap ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>{txt.bootText || "正在探測歷史訊號"}</span>
@@ -153,28 +174,15 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             </div>
 
             {/* PROXIMITY */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${step === STEPS.PROXIMITY ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
+            {/* PROXIMITY */}
+            <div className={`absolute inset-0 flex flex-col items-center justify-center ${step === STEPS.PROXIMITY ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
 
-                {/* CSS Animation for Running Line */}
+                {/* CSS Animation for Running Line - Removed */}
                 <style dangerouslySetInnerHTML={{
                     __html: `
-                    @keyframes dash-run {
-                        to { stroke-dashoffset: -400; }
-                    }
+                    /* Animation removed for performance */
                  `}} />
 
-                {/* Running Line Star - Matches Background HUD Dimensions */}
-                <div className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
-                    {/* Pi Optimization: Removed drop-shadow, thinned stroke to 0.5 */}
-                    <svg viewBox="0 0 100 100" className="w-full h-full fill-none stroke-current stroke-[0.5]"
-                        style={{
-                            strokeDasharray: '40 360', // Short segment (total length approx 300-400)
-                            animation: 'dash-run 3s linear infinite'
-                        }}>
-                        {/* Same Path as Background Gemini Star */}
-                        <path d="M50 0 C50 25, 25 50, 0 50 C25 50, 50 75, 50 100 C50 75, 75 50, 100 50 C75 50, 50 25, 50 0 Z" />
-                    </svg>
-                </div>
 
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
                     {/* Match Classic: Title and Subtext */}
@@ -191,19 +199,20 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${step === STEPS.LOCKED ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 {/* Solid Star Removed as requested */}
                 {/* Solid Star Removed as requested */}
-                <div className="absolute top-[35%] w-full text-center">
-                    <div className={`text-[10px] px-2 inline-block rounded-sm font-bold border backdrop-blur-sm ${colorStyle.className}`}
+                {/* Centered and Enlarged Title */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
+                    <div className={`text-xl px-2 inline-block rounded-sm font-bold border bg-black/90 ${colorStyle.className}`}
                         style={{ color: colorStyle.style?.color, borderColor: colorStyle.style?.color }}>
                         {txt.lockedTitle || "鎖定目標"}
                     </div>
                 </div>
                 <div className="absolute bottom-[30%] w-full text-center text-white">
-                    <div {...getInteractionProps('text_content.lockedSubtext')} className="text-[10px] animate-bounce">{txt.lockedSubtext || "[ 按下快門捕捉 ]"}</div>
+                    <div {...getInteractionProps('text_content.lockedSubtext')} className="text-[10px]">{txt.lockedSubtext || "[ 按下快門捕捉 ]"}</div>
                 </div>
             </div>
 
             {/* TUNING - Vertical Sliders */}
-            <div className={`absolute inset-0 flex items-center justify-center gap-8 transition-opacity duration-300 bg-black/80 backdrop-blur-sm ${step === STEPS.TUNING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 flex items-center justify-center gap-8 bg-black/90 ${step === STEPS.TUNING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 {/* Time Scale Slider */}
                 <div className={`flex flex-col items-center gap-2 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
                     <span {...getInteractionProps('text_content.tuningRingOuter')} className="text-[8px] tracking-widest opacity-70">{txt.tuningRingOuter || "TIME"}</span>
@@ -236,7 +245,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
 
             {/* ANALYZING */}
             {/* ANALYZING */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${step === STEPS.ANALYZING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 flex flex-col items-center justify-center ${step === STEPS.ANALYZING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 <div className="center-xy flex flex-col text-center bg-black/80 p-4 rounded-full text-white">
                     <div {...getInteractionProps('text_content.analyzingTitle')} className="text-sm font-bold mb-1">{txt.analyzingTitle || "解析中"}</div>
                     <div className="text-[9px] opacity-60 text-stone-300">{analysisText}</div>
@@ -245,7 +254,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             </div>
 
             {/* LISTEN / RESULT */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center p-8 transition-opacity duration-300 bg-black/85 ${step === STEPS.LISTEN ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 flex flex-col items-center justify-center p-8 bg-black/85 ${step === STEPS.LISTEN ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 <div className={`w-full border-b py-2 mb-4 text-center ${colorStyle.className}`} style={{ borderColor: colorStyle.style?.color }}>
                     <h2 className="text-xl font-bold">{artifactName}</h2>
                 </div>
@@ -266,7 +275,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             </div>
 
             {/* FOCUSING */}
-            <div className={`absolute inset-0 flex flex-col items-center justify-center transition-opacity duration-300 ${step === STEPS.FOCUSING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
+            <div className={`absolute inset-0 flex flex-col items-center justify-center ${step === STEPS.FOCUSING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 <div className="absolute inset-0 flex items-center justify-center opacity-30">
                     {/* Rotating ticks */}
                     <div className="w-[300px] h-[300px] border border-dashed rounded-full" style={{ transform: `rotate(${focusRotation}deg)` }}></div>
