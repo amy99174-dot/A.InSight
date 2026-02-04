@@ -9,7 +9,7 @@ from PyQt5.QtCore import Qt, QTimer
 from core.state import StateMachine, AppState
 from camera.capture import CameraManager
 from ui.circle import CircularScanUI
-from ui.camera_wrapper import CameraWithUI
+from ui.opencv_renderer import OpenCVCameraRenderer
 
 
 class AInSightApp(QMainWindow):
@@ -49,8 +49,8 @@ class AInSightApp(QMainWindow):
             
             if camera_preview_widget:
                 # 创建摄像头包装器（直接在OpenGL上绘制UI）
-                self.camera_wrapper = CameraWithUI(camera_preview_widget)
-                self.stack.addWidget(self.camera_wrapper)
+                self.camera_renderer = OpenCVCameraRenderer(camera_preview_widget)
+                self.stack.addWidget(self.camera_renderer)
                 
                 # 启动摄像头
                 self.camera_manager.start()
@@ -62,21 +62,21 @@ class AInSightApp(QMainWindow):
                 print("✅ 摄像头系统初始化完成")
             else:
                 print("⚠️ 预览窗口创建失败")
-                self.camera_wrapper = None
+                self.camera_renderer = None
         else:
             print("⚠️ 摄像头初始化失败")
             self.camera_manager = None
-            self.camera_wrapper = None
+            self.camera_renderer = None
     
     def update_overlay_animation(self):
         """更新叠加层动画"""
-        if hasattr(self, 'camera_wrapper') and self.camera_wrapper:
+        if hasattr(self, 'camera_renderer') and self.camera_renderer:
             # 扫描线旋转
-            self.camera_wrapper.scan_angle = (self.camera_wrapper.scan_angle + 2) % 360
+            self.camera_renderer.scan_angle = (self.camera_renderer.scan_angle + 2) % 360
             
             # 脉冲效果
-            alpha = self.camera_wrapper.pulse_alpha
-            direction = self.camera_wrapper.pulse_direction if hasattr(self.camera_wrapper, 'pulse_direction') else -1
+            alpha = self.camera_renderer.pulse_alpha
+            direction = self.camera_renderer.pulse_direction if hasattr(self.camera_renderer, 'pulse_direction') else -1
             
             alpha += direction * 0.02
             if alpha <= 0.3:
@@ -84,9 +84,9 @@ class AInSightApp(QMainWindow):
             elif alpha >= 1.0:
                 direction = -1
             
-            self.camera_wrapper.pulse_alpha = alpha
-            if hasattr(self.camera_wrapper, 'pulse_direction'):
-                self.camera_wrapper.pulse_direction = direction
+            self.camera_renderer.pulse_alpha = alpha
+            if hasattr(self.camera_renderer, 'pulse_direction'):
+                self.camera_renderer.pulse_direction = direction
         
     def init_state_machine(self):
         """初始化状态机"""
@@ -132,8 +132,8 @@ class AInSightApp(QMainWindow):
     def handle_proximity(self):
         """PROXIMITY 状态"""
         # 切换到摄像头叠加层
-        if self.camera_manager and hasattr(self, 'camera_wrapper') and self.camera_wrapper:
-            self.stack.setCurrentWidget(self.camera_wrapper)
+        if self.camera_manager and hasattr(self, 'camera_renderer') and self.camera_renderer:
+            self.stack.setCurrentWidget(self.camera_renderer)
             self.overlay_timer.start(16)  # ~60 FPS 动画
             print("✅ 已切换到摄像头叠加预览")
         else:
@@ -145,7 +145,7 @@ class AInSightApp(QMainWindow):
     def handle_locked(self):
         """LOCKED 状态"""
         # 保持在摄像头预览，不切换回圆形UI
-        if self.camera_manager and hasattr(self, 'camera_wrapper') and self.camera_wrapper:
+        if self.camera_manager and hasattr(self, 'camera_renderer') and self.camera_renderer:
             # 已经在摄像头界面，不需要切换
             print("📷 保持摄像头预览 - LOCKED")
         else:
