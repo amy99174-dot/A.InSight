@@ -47,6 +47,13 @@ class CameraWithUI(QWidget):
     
     def paintEvent(self, event):
         """在摄像头上绘制UI"""
+        # 每60帧打印一次调试信息
+        if not hasattr(self, 'frame_count'):
+            self.frame_count = 0
+        self.frame_count += 1
+        if self.frame_count % 60 == 0:
+            print(f"🎨 paintEvent called (frame {self.frame_count})")
+        
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
