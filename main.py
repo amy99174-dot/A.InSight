@@ -132,8 +132,8 @@ class AInSightApp(QMainWindow):
     def handle_proximity(self):
         """PROXIMITY 状态"""
         # 切换到摄像头叠加层
-        if self.camera_manager and hasattr(self, 'camera_overlay') and self.camera_overlay:
-            self.stack.setCurrentWidget(self.camera_overlay)
+        if self.camera_manager and hasattr(self, 'camera_wrapper') and self.camera_wrapper:
+            self.stack.setCurrentWidget(self.camera_wrapper)
             self.overlay_timer.start(16)  # ~60 FPS 动画
             print("✅ 已切换到摄像头叠加预览")
         else:
@@ -145,7 +145,7 @@ class AInSightApp(QMainWindow):
     def handle_locked(self):
         """LOCKED 状态"""
         # 保持在摄像头预览，不切换回圆形UI
-        if self.camera_manager and hasattr(self, 'camera_overlay') and self.camera_overlay:
+        if self.camera_manager and hasattr(self, 'camera_wrapper') and self.camera_wrapper:
             # 已经在摄像头界面，不需要切换
             print("📷 保持摄像头预览 - LOCKED")
         else:
