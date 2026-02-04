@@ -102,7 +102,9 @@ class CameraOverlayUI(QWidget):
         
         # UI叠加层在顶层
         self.ui_overlay = UIOverlay(self)
-        self.ui_overlay.raise_()  # 确保在最上层
+        # 暂时隐藏UI叠加层来测试摄像头
+        self.ui_overlay.hide()
+        # self.ui_overlay.raise_()  # 确保在最上层
     
     def resizeEvent(self, event):
         """窗口大小变化时重新计算位置"""
