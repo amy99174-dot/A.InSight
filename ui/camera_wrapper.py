@@ -1,15 +1,14 @@
 """
-摄像头包装器 - 在摄像头预览上直接绘制UI
+摄像头包装器 - 使用悬浮窗口绘制UI
 """
 
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QPainter, QPen, QColor, QFont
-import math
+from ui.floating_overlay import FloatingUIOverlay
 
 
 class CameraWithUI(QWidget):
-    """摄像头包装器 - 在 OpenGL 摄像头上绘制 UI"""
+    """摄像头包装器 - 使用悬浮窗口绘制UI"""
     
     def __init__(self, camera_preview, parent=None):
         super().__init__(parent)
@@ -17,99 +16,55 @@ class CameraWithUI(QWidget):
         self.scan_angle = 0
         self.pulse_alpha = 1.0
         
-        # 设置允许绘制事件
-        self.setAttribute(Qt.WA_OpaquePaintEvent, False)
-        self.setAttribute(Qt.WA_NoSystemBackground, False)
-        
         # 摄像头作为子控件
         self.camera_preview.setParent(self)
-        
-        # 强制设置初始大小（填充800x600）
         self.camera_preview.setGeometry(0, 0, 800, 600)
         self.camera_preview.show()
-        self.camera_preview.lower()
         
-        # 定时器触发重绘 - 使用 repaint() 强制重绘
+        # 创建悬浮UI窗口
+        self.floating_ui = FloatingUIOverlay()
+        
+        # 动画定时器
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.force_repaint)
+        self.timer.timeout.connect(self.update_animation)
         self.timer.start(16)  # ~60 FPS
-        print("✅ CameraWithUI 初始化完成")
+        
+        print("✅ CameraWithUI 初始化完成（悬浮窗口模式）")
     
-    def force_repaint(self):
-        """强制重绘"""
-        self.repaint()  # 使用 repaint() 而不是 update()
+    def update_animation(self):
+        """更新动画"""
+        self.scan_angle = (self.scan_angle + 2) % 360
+        if self.floating_ui:
+            self.floating_ui.scan_angle = self.scan_angle
+            self.floating_ui.update()
     
     def showEvent(self, event):
-        """窗口显示时确保摄像头正确定位"""
+        """窗口显示时定位悬浮UI"""
         super().showEvent(event)
-        print(f"📐 CameraWithUI showEvent: {self.width()}x{self.height()}")
-        self.camera_preview.setGeometry(0, 0, self.width(), self.height())
-        self.camera_preview.lower()
+        if self.floating_ui:
+            # 悬浮窗口覆盖在主窗口上方
+            geom = self.geometry()
+            global_pos = self.mapToGlobal(geom.topLeft())
+            self.floating_ui.setGeometry(global_pos.x(), global_pos.y(), 
+                                        self.width(), self.height())
+            self.floating_ui.show()
+            self.floating_ui.raise_()
+            print(f"📐 FloatingUI positioned: {self.width()}x{self.height()}")
     
     def resizeEvent(self, event):
-        """调整摄像头大小"""
+        """调整大小时重新定位"""
         super().resizeEvent(event)
-        print(f"📐 CameraWithUI resizeEvent: {self.width()}x{self.height()}")
-        # 摄像头填充整个 widget
         self.camera_preview.setGeometry(0, 0, self.width(), self.height())
-        self.camera_preview.lower()
+        
+        if self.floating_ui and self.floating_ui.isVisible():
+            geom = self.geometry()
+            global_pos = self.mapToGlobal(geom.topLeft())
+            self.floating_ui.setGeometry(global_pos.x(), global_pos.y(),
+                                        self.width(), self.height())
+            print(f"📐 Resized: {self.width()}x{self.height()}")
     
-    def paintEvent(self, event):
-        """在摄像头上绘制UI"""
-        # 每60帧打印一次调试信息
-        if not hasattr(self, 'frame_count'):
-            self.frame_count = 0
-        self.frame_count += 1
-        if self.frame_count % 60 == 0:
-            print(f"🎨 paintEvent called (frame {self.frame_count})")
-        
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        width = self.width()
-        height = self.height()
-        center_x = width / 2
-        center_y = height / 2
-        radius = min(width, height) / 2
-        
-        # === 绘制圆圈边框 ===
-        pen = QPen(QColor(150, 100, 200, int(255 * self.pulse_alpha)))
-        pen.setWidth(4)
-        painter.setPen(pen)
-        painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(int(center_x - radius), int(center_y - radius), 
-                          int(radius * 2), int(radius * 2))
-        
-        # === 绘制刻度线 ===
-        pen.setColor(QColor(255, 255, 255, 150))
-        pen.setWidth(2)
-        painter.setPen(pen)
-        
-        for angle in range(0, 360, 30):
-            rad = math.radians(angle)
-            start_x = center_x + math.cos(rad) * (radius - 15)
-            start_y = center_y + math.sin(rad) * (radius - 15)
-            end_x = center_x + math.cos(rad) * radius
-            end_y = center_y + math.sin(rad) * radius
-            painter.drawLine(int(start_x), int(start_y), int(end_x), int(end_y))
-        
-        # === 绘制扫描线 ===
-        pen.setColor(QColor(255, 255, 255, 200))
-        pen.setWidth(3)
-        painter.setPen(pen)
-        
-        rad = math.radians(self.scan_angle)
-        scan_x = center_x + math.cos(rad) * radius
-        scan_y = center_y + math.sin(rad) * radius
-        painter.drawLine(int(center_x), int(center_y), int(scan_x), int(scan_y))
-        
-        # === 顶部品牌名 ===
-        painter.setPen(QColor(255, 255, 255))
-        font = QFont("Sans Serif", 16, QFont.Bold)
-        painter.setFont(font)
-        painter.drawText(20, 50, "A.InSight")
-        
-        # === 底部状态文字 ===
-        font.setPointSize(14)
-        painter.setFont(font)
-        painter.drawText(20, int(height - 20), "點擊鎖定目標")
+    def closeEvent(self, event):
+        """关闭时清理悬浮窗口"""
+        if self.floating_ui:
+            self.floating_ui.close()
+        super().closeEvent(event)
