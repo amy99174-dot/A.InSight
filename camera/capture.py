@@ -108,13 +108,13 @@ class CameraManager:
             return None
         
         try:
-            # 捕获当前帧为numpy数组 (RGB格式)
+            # 捕获当前帧为numpy数组
             array = self.camera.capture_array("main")
             
-            # 转换为RGB (如果是RGBA)
-            if array.shape[2] == 4:
-                import cv2
-                array = cv2.cvtColor(array, cv2.COLOR_RGBA2RGB)
+            # 检查通道数并转换为RGB
+            if len(array.shape) == 3 and array.shape[2] == 4:
+                # RGBA -> RGB (去掉alpha通道)
+                array = array[:, :, :3]
             
             return array
             
