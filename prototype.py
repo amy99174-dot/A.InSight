@@ -37,8 +37,9 @@ class PrototypeWindow(QMainWindow):
             self.camera = Picamera2()
             
             # 配置预览（640x480, 30fps）
+            # 使用 XRGB8888 格式（QGlPicamera2 支持）
             config = self.camera.create_preview_configuration(
-                main={"size": (640, 480), "format": "RGB888"}
+                main={"size": (640, 480), "format": "XRGB8888"}
             )
             self.camera.configure(config)
             
