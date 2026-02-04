@@ -3,7 +3,7 @@ A.InSight - 摄像头管理模块
 """
 
 from picamera2 import Picamera2
-from picamera2.previews.qt import QGlPicamera2
+# from picamera2.previews.qt import QGlPicamera2  # OpenCV模式不需要
 from PIL import Image
 import io
 
