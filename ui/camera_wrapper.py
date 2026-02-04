@@ -17,6 +17,10 @@ class CameraWithUI(QWidget):
         self.scan_angle = 0
         self.pulse_alpha = 1.0
         
+        # 设置允许绘制事件
+        self.setAttribute(Qt.WA_OpaquePaintEvent, False)
+        self.setAttribute(Qt.WA_NoSystemBackground, False)
+        
         # 摄像头作为子控件
         self.camera_preview.setParent(self)
         
@@ -25,10 +29,15 @@ class CameraWithUI(QWidget):
         self.camera_preview.show()
         self.camera_preview.lower()
         
-        # 定时器触发重绘
+        # 定时器触发重绘 - 使用 repaint() 强制重绘
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update)
+        self.timer.timeout.connect(self.force_repaint)
         self.timer.start(16)  # ~60 FPS
+        print("✅ CameraWithUI 初始化完成")
+    
+    def force_repaint(self):
+        """强制重绘"""
+        self.repaint()  # 使用 repaint() 而不是 update()
     
     def showEvent(self, event):
         """窗口显示时确保摄像头正确定位"""
