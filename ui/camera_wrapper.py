@@ -19,6 +19,8 @@ class CameraWithUI(QWidget):
         
         # 摄像头作为子控件
         self.camera_preview.setParent(self)
+        self.camera_preview.show()  # 确保摄像头可见
+        self.camera_preview.lower()  # 摄像头在底层
         
         # 定时器触发重绘
         self.timer = QTimer(self)
@@ -30,6 +32,7 @@ class CameraWithUI(QWidget):
         super().resizeEvent(event)
         # 摄像头填充整个 widget
         self.camera_preview.setGeometry(self.rect())
+        self.camera_preview.lower()  # 确保在底层
     
     def paintEvent(self, event):
         """在摄像头上绘制UI"""
