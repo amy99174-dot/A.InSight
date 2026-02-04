@@ -77,16 +77,16 @@ class AInSightApp(QMainWindow):
         current_state = self.state_machine.current_state
         
         if current_state == AppState.BOOT:
-            self.state_machine.transition_to(AppState.PROXIMITY)
+            self.state_machine.set_state(AppState.PROXIMITY)
         
         elif current_state == AppState.PROXIMITY:
-            self.state_machine.transition_to(AppState.FOCUSING)
+            self.state_machine.set_state(AppState.FOCUSING)
         
         elif current_state == AppState.FOCUSING:
-            self.state_machine.transition_to(AppState.LOCKED)
+            self.state_machine.set_state(AppState.LOCKED)
         
         elif current_state == AppState.LOCKED:
-            self.state_machine.transition_to(AppState.SCANNING)
+            self.state_machine.set_state(AppState.SCANNING)
         
         elif current_state == AppState.SCANNING:
             # 扫描完成后自动进入REVEAL
@@ -94,7 +94,7 @@ class AInSightApp(QMainWindow):
         
         elif current_state == AppState.REVEAL:
             # 点击后重置
-            self.state_machine.transition_to(AppState.BOOT)
+            self.state_machine.set_state(AppState.BOOT)
     
     def on_state_changed(self, old_state, new_state):
         """状态变化处理"""
@@ -153,7 +153,7 @@ class AInSightApp(QMainWindow):
         self.stack.setCurrentWidget(self.circle_ui)
         
         # 模拟扫描过程（3秒后自动转到 REVEAL）
-        QTimer.singleShot(3000, lambda: self.state_machine.transition_to(AppState.REVEAL))
+        QTimer.singleShot(3000, lambda: self.state_machine.set_state(AppState.REVEAL))
     
     def handle_reveal(self):
         """REVEAL 状态：显示结果"""
@@ -168,7 +168,7 @@ class AInSightApp(QMainWindow):
         elif event.key() == Qt.Key_Space:
             self.handle_click()
         elif event.key() == Qt.Key_R:
-            self.state_machine.transition_to(AppState.BOOT)
+            self.state_machine.set_state(AppState.BOOT)
     
     def mousePressEvent(self, event):
         """鼠标点击"""
