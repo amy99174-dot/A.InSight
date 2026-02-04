@@ -2,15 +2,14 @@
 A.InSight - 圆形扫描 UI
 """
 
-from PyQt5.QtWidgets import QOpenGLWidget
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import QTimer, Qt
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QBrush
-from OpenGL.GL import *
 import math
 import time
 
 
-class CircularScanUI(QOpenGLWidget):
+class CircularScanUI(QWidget):
     """圆形扫描界面"""
     
     def __init__(self, parent=None):
