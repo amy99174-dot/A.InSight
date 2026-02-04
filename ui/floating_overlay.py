@@ -25,11 +25,19 @@ class FloatingUIOverlay(QWidget):
         
         self.scan_angle = 0
         self.pulse_alpha = 1.0
+        self.paint_count = 0
         
         print("✅ FloatingUIOverlay 创建完成")
     
     def paintEvent(self, event):
         """绘制UI元素"""
+        # 调试输出
+        self.paint_count += 1
+        if self.paint_count == 1:
+            print("🎨 FloatingUIOverlay paintEvent 首次调用！")
+        if self.paint_count % 60 == 0:
+            print(f"🎨 FloatingUIOverlay paintEvent 第 {self.paint_count} 次")
+        
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
