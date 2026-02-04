@@ -72,8 +72,7 @@ class AInSightApp(QMainWindow):
         """更新叠加层动画"""
         if hasattr(self, 'camera_overlay') and self.camera_overlay:
             # 扫描线旋转
-            current_angle = self.camera_overlay.scan_angle
-            self.camera_overlay.set_scan_angle((current_angle + 2) % 360)
+            self.camera_overlay.set_scan_angle((self.camera_overlay.scan_angle + 2) % 360)
             
             # 脉冲效果
             alpha = self.camera_overlay.pulse_alpha
