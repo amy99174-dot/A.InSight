@@ -29,7 +29,7 @@ class AInSightApp(QMainWindow):
         
         # 圆形UI（BOOT等状态）
         self.circle_ui = CircularScanUI()
-        self.circle_ui.clicked.connect(self.handle_click)
+        # CircularScanUI 没有 clicked 信号，使用 mousePressEvent 代替
         self.stack.addWidget(self.circle_ui)
         
         # 初始化摄像头
