@@ -52,6 +52,12 @@ class CameraOverlayUI(QWidget):
             # 应用圆形遮罩到摄像头预览
             region = QRegion(0, 0, diameter, diameter, QRegion.Ellipse)
             self.camera_preview.setMask(region)
+            
+            # 确保摄像头在底层
+            self.camera_preview.lower()
+            
+            # 强制重绘UI元素
+            self.update()
     
     def paintEvent(self, event):
         """绘制UI元素和文字"""
@@ -111,6 +117,13 @@ class CameraOverlayUI(QWidget):
         text_rect = painter.boundingRect(0, 0, 0, 0, 0, status_text)
         painter.drawText(int(center_x - text_rect.width() / 2), 
                         int(height - 40), status_text)
+    
+    
+    def update(self):
+        """重绘时确保摄像头在底层"""
+        if self.camera_preview:
+            self.camera_preview.lower()
+        super().update()
     
     def set_scan_angle(self, angle):
         """设置扫描角度"""
