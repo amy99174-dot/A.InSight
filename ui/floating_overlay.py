@@ -14,22 +14,22 @@ class FloatingUIOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        # 关键：设置为无边框、始终在最上层
+        # 关键：设置为无边框、始终在最上层、透明背景
         self.setWindowFlags(
             Qt.FramelessWindowHint |  # 无边框
             Qt.WindowStaysOnTopHint |  # 始终在最上层
             Qt.Tool                     # 工具窗口（不出现在任务栏）
         )
         
-        # 测试：使用半透明黑色背景（而不是完全透明）
-        self.setStyleSheet("background-color: rgba(0, 0, 0, 30);")  # 30/255 透明度
+        # 现在有compositor了，使用完全透明背景！
+        self.setAttribute(Qt.WA_TranslucentBackground)  # 完全透明
         self.setAttribute(Qt.WA_TransparentForMouseEvents)  # 鼠标事件穿透
         
         self.scan_angle = 0
         self.pulse_alpha = 1.0
         self.paint_count = 0
         
-        print("✅ Floating UIOverlay 创建完成（半透明背景测试）")
+        print("✅ FloatingUIOverlay 创建完成（完全透明模式）")
     
     def paintEvent(self, event):
         """绘制UI元素"""
