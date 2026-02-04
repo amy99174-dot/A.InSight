@@ -36,6 +36,9 @@ class QtPreviewOverlay(QWidget):
             self.preview.resize(800, 600)
             self.preview.show()
             print("✅ QGlPicamera2 预览创建成功")
+            
+            # QGlPicamera2 创建后启动摄像头
+            camera_manager.start()
         else:
             self.preview = None
             print("⚠️ 无法创建预览，camera_manager 无效")

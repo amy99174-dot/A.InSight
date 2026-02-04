@@ -51,12 +51,9 @@ class AInSightApp(QMainWindow):
         """初始化摄像头"""
         self.camera_manager = CameraManager()
         
-        # 初始化摄像头
+        # 初始化摄像头（但不启动）
         if self.camera_manager.init_camera(resolution=(640, 480)):
-            # 启动摄像头
-            self.camera_manager.start()
-            
-            # 创建 QtPreview 叠加渲染器
+            # 创建 QtPreview 叠加渲染器（会自动启动预览）
             self.camera_renderer = QtPreviewOverlay(self.camera_manager)
             self.stack.addWidget(self.camera_renderer)
             
