@@ -81,9 +81,9 @@ class CameraOverlayUI(QWidget):
         if self.camera_preview:
             self.camera_preview.setParent(self)
         
-        # 创建透明叠加层
+        # 创建透明叠加层（在摄像头之后创建会自动在上层）
         self.overlay = TransparentOverlay(self)
-        self.overlay.raise_()  # 确保在最上层
+        # 不使用 raise_()，让 Qt 自动管理 z-order
     
     def resizeEvent(self, event):
         """窗口大小变化时重新计算摄像头位置"""
@@ -113,6 +113,8 @@ class CameraOverlayUI(QWidget):
         
         # 叠加层覆盖整个窗口
         self.overlay.setGeometry(0, 0, width, height)
+        self.overlay.show()
+        self.overlay.raise_()  # 在 resize 时确保在最上层
     
     def paintEvent(self, event):
         """绘制文字（在背景层）"""
