@@ -8,7 +8,7 @@ from PyQt5.QtCore import Qt, QTimer
 from core.state import StateMachine, AppState
 from camera.capture import CameraManager
 from ui.circle import CircularScanUI
-from ui.opencv_renderer import OpenCVCameraRenderer
+from ui.qtpreview_overlay import QtPreviewOverlay
 
 
 class AInSightApp(QMainWindow):
@@ -56,11 +56,11 @@ class AInSightApp(QMainWindow):
             # 启动摄像头
             self.camera_manager.start()
             
-            # 创建OpenCV渲染器（不需要preview widget，直接读取帧）
-            self.camera_renderer = OpenCVCameraRenderer(self.camera_manager)
+            # 创建 QtPreview 叠加渲染器
+            self.camera_renderer = QtPreviewOverlay(self.camera_manager)
             self.stack.addWidget(self.camera_renderer)
             
-            print("✅ 摄像头系统初始化完成（OpenCV稳定模式）")
+            print("✅ 摄像头系统初始化完成（QtPreview模式）")
         else:
             print("⚠️ 摄像头初始化失败")
             self.camera_manager = None
