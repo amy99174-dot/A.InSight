@@ -9,7 +9,7 @@ from PyQt5.QtCore import Qt, QTimer
 from core.state import StateMachine, AppState
 from camera.capture import CameraManager
 from ui.circle import CircularScanUI
-from ui.camera_overlay import CameraOverlayUI
+from ui.camera_wrapper import CameraWithUI
 
 
 class AInSightApp(QMainWindow):
@@ -48,9 +48,9 @@ class AInSightApp(QMainWindow):
             )
             
             if camera_preview_widget:
-                # 创建叠加界面（摄像头 + 圆形UI）
-                self.camera_overlay = CameraOverlayUI(camera_preview_widget)
-                self.stack.addWidget(self.camera_overlay)
+                # 创建摄像头包装器（直接在OpenGL上绘制UI）
+                self.camera_wrapper = CameraWithUI(camera_preview_widget)
+                self.stack.addWidget(self.camera_wrapper)
                 
                 # 启动摄像头
                 self.camera_manager.start()
@@ -62,21 +62,21 @@ class AInSightApp(QMainWindow):
                 print("✅ 摄像头系统初始化完成")
             else:
                 print("⚠️ 预览窗口创建失败")
-                self.camera_overlay = None
+                self.camera_wrapper = None
         else:
             print("⚠️ 摄像头初始化失败")
             self.camera_manager = None
-            self.camera_overlay = None
+            self.camera_wrapper = None
     
     def update_overlay_animation(self):
         """更新叠加层动画"""
-        if hasattr(self, 'camera_overlay') and self.camera_overlay:
+        if hasattr(self, 'camera_wrapper') and self.camera_wrapper:
             # 扫描线旋转
-            self.camera_overlay.set_scan_angle((self.camera_overlay.scan_angle + 2) % 360)
+            self.camera_wrapper.scan_angle = (self.camera_wrapper.scan_angle + 2) % 360
             
             # 脉冲效果
-            alpha = self.camera_overlay.pulse_alpha
-            direction = self.camera_overlay.pulse_direction
+            alpha = self.camera_wrapper.pulse_alpha
+            direction = self.camera_wrapper.pulse_direction if hasattr(self.camera_wrapper, 'pulse_direction') else -1
             
             alpha += direction * 0.02
             if alpha <= 0.3:
@@ -84,8 +84,9 @@ class AInSightApp(QMainWindow):
             elif alpha >= 1.0:
                 direction = -1
             
-            self.camera_overlay.pulse_alpha = alpha
-            self.camera_overlay.pulse_direction = direction
+            self.camera_wrapper.pulse_alpha = alpha
+            if hasattr(self.camera_wrapper, 'pulse_direction'):
+                self.camera_wrapper.pulse_direction = direction
         
     def init_state_machine(self):
         """初始化状态机"""
