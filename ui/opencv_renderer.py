@@ -26,6 +26,11 @@ class OpenCVCameraRenderer(QWidget):
         self.camera_label.setAlignment(Qt.AlignCenter)
         self.camera_label.setStyleSheet("background-color: black;")
         
+        # 调试计数器
+        self._frame_count = 0
+        self._warned_no_frame = False
+        self._error_logged = False
+        
         # 定时器：获取摄像头帧
         self.frame_timer = QTimer(self)
         self.frame_timer.timeout.connect(self.update_frame)
@@ -36,27 +41,48 @@ class OpenCVCameraRenderer(QWidget):
     def update_frame(self):
         """获取摄像头帧并更新"""
         if not self.camera_manager:
+            if self._frame_count == 0:
+                print("⚠️ camera_manager 不存在")
             return
         
         try:
-            # 从摄像头管理器获取最新帧（需要添加此方法）
+            # 从摄像头管理器获取最新帧
             frame = self.camera_manager.get_current_frame()
-            if frame is not None:
-                # 转换为QImage
-                height, width, channel = frame.shape
-                bytes_per_line = 3 * width
-                q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
-                
-                # 在图片上绘制UI
-                pixmap = QPixmap.fromImage(q_image)
-                painter = QPainter(pixmap)
-                self.draw_ui(painter, width, height)
-                painter.end()
-                
-                # 更新显示
-                self.camera_label.setPixmap(pixmap)
+            
+            if frame is None:
+                if not self._warned_no_frame:
+                    print("⚠️ 获取摄像头帧失败 (frame is None)")
+                    self._warned_no_frame = True
+                return
+            
+            # 首次成功获取帧
+            if self._frame_count == 0:
+                print(f"✅ 首次获取摄像头帧！尺寸: {frame.shape}, 类型: {frame.dtype}")
+            
+            self._frame_count += 1
+            if self._frame_count % 30 == 0:  # 每30帧打印一次
+                print(f"🎬 已渲染 {self._frame_count} 帧")
+            
+            # 转换为QImage
+            height, width, channel = frame.shape
+            bytes_per_line = 3 * width
+            q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            
+            # 在图片上绘制UI
+            pixmap = QPixmap.fromImage(q_image)
+            painter = QPainter(pixmap)
+            self.draw_ui(painter, width, height)
+            painter.end()
+            
+            # 更新显示
+            self.camera_label.setPixmap(pixmap)
+            
         except Exception as e:
-            print(f"⚠️ 渲染错误: {e}")
+            if not self._error_logged:
+                print(f"❌ 渲染错误: {e}")
+                import traceback
+                traceback.print_exc()
+                self._error_logged = True
     
     def draw_ui(self, painter, width, height):
         """在摄像头画面上绘制UI"""
