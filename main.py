@@ -143,7 +143,12 @@ class AInSightApp(QMainWindow):
     
     def handle_locked(self):
         """LOCKED 状态"""
-        self.circle_ui.set_text("目標鎖定", "點擊開始分析")
+        # 保持在摄像头预览，不切换回圆形UI
+        if self.camera_manager and hasattr(self, 'camera_overlay') and self.camera_overlay:
+            # 已经在摄像头界面，不需要切换
+            print("📷 保持摄像头预览 - LOCKED")
+        else:
+            self.circle_ui.set_text("目標鎖定", "點擊開始分析")
         # 等待用户点击
     
     def handle_tuning(self):

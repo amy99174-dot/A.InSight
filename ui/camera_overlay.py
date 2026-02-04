@@ -16,6 +16,8 @@ class TransparentOverlay(QWidget):
         super().__init__(parent)
         self.setAttribute(Qt.WA_TransparentForMouseEvents)
         self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAutoFillBackground(False)
         
         self.scan_angle = 0
         self.pulse_alpha = 1.0
@@ -24,6 +26,11 @@ class TransparentOverlay(QWidget):
         """绘制UI元素"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+        
+        # 先清除背景（确保透明）
+        painter.setCompositionMode(QPainter.CompositionMode_Clear)
+        painter.fillRect(self.rect(), Qt.transparent)
+        painter.setCompositionMode(QPainter.CompositionMode_SourceOver)
         
         width = self.width()
         height = self.height()
