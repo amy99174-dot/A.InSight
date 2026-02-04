@@ -19,20 +19,31 @@ class CameraWithUI(QWidget):
         
         # 摄像头作为子控件
         self.camera_preview.setParent(self)
-        self.camera_preview.show()  # 确保摄像头可见
-        self.camera_preview.lower()  # 摄像头在底层
+        
+        # 强制设置初始大小（填充800x600）
+        self.camera_preview.setGeometry(0, 0, 800, 600)
+        self.camera_preview.show()
+        self.camera_preview.lower()
         
         # 定时器触发重绘
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update)
         self.timer.start(16)  # ~60 FPS
     
+    def showEvent(self, event):
+        """窗口显示时确保摄像头正确定位"""
+        super().showEvent(event)
+        print(f"📐 CameraWithUI showEvent: {self.width()}x{self.height()}")
+        self.camera_preview.setGeometry(0, 0, self.width(), self.height())
+        self.camera_preview.lower()
+    
     def resizeEvent(self, event):
         """调整摄像头大小"""
         super().resizeEvent(event)
+        print(f"📐 CameraWithUI resizeEvent: {self.width()}x{self.height()}")
         # 摄像头填充整个 widget
-        self.camera_preview.setGeometry(self.rect())
-        self.camera_preview.lower()  # 确保在底层
+        self.camera_preview.setGeometry(0, 0, self.width(), self.height())
+        self.camera_preview.lower()
     
     def paintEvent(self, event):
         """在摄像头上绘制UI"""
