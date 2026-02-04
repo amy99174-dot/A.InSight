@@ -102,6 +102,26 @@ class CameraManager:
             print(f"❌ 拍照失败: {e}")
             return None
     
+    def get_current_frame(self):
+        """获取当前帧（用于软件渲染）"""
+        if not self.camera or not self.is_running:
+            return None
+        
+        try:
+            # 捕获当前帧为numpy数组 (RGB格式)
+            array = self.camera.capture_array("main")
+            
+            # 转换为RGB (如果是RGBA)
+            if array.shape[2] == 4:
+                import cv2
+                array = cv2.cvtColor(array, cv2.COLOR_RGBA2RGB)
+            
+            return array
+            
+        except Exception as e:
+            # 静默失败，避免日志噪音
+            return None
+    
     def cleanup(self):
         """清理资源"""
         self.stop()
