@@ -9,6 +9,7 @@ from PyQt5.QtCore import Qt, QTimer
 from core.state import StateMachine, AppState
 from camera.capture import CameraManager
 from ui.circle import CircularScanUI
+from ui.camera_overlay import CameraOverlayUI
 
 
 class AInSightApp(QMainWindow):
@@ -42,22 +43,50 @@ class AInSightApp(QMainWindow):
         # 初始化摄像头
         if self.camera_manager.init_camera(resolution=(640, 480)):
             # 创建预览窗口
-            self.camera_preview = self.camera_manager.create_preview_widget(
+            camera_preview_widget = self.camera_manager.create_preview_widget(
                 width=800, height=600
             )
             
-            if self.camera_preview:
-                # 添加到堆叠窗口但不显示
-                self.stack.addWidget(self.camera_preview)
+            if camera_preview_widget:
+                # 创建叠加界面（摄像头 + 圆形UI）
+                self.camera_overlay = CameraOverlayUI(camera_preview_widget)
+                self.stack.addWidget(self.camera_overlay)
                 
                 # 启动摄像头
                 self.camera_manager.start()
+                
+                # 动画定时器
+                self.overlay_timer = QTimer(self)
+                self.overlay_timer.timeout.connect(self.update_overlay_animation)
+                
                 print("✅ 摄像头系统初始化完成")
             else:
                 print("⚠️ 预览窗口创建失败")
+                self.camera_overlay = None
         else:
             print("⚠️ 摄像头初始化失败")
             self.camera_manager = None
+            self.camera_overlay = None
+    
+    def update_overlay_animation(self):
+        """更新叠加层动画"""
+        if hasattr(self, 'camera_overlay') and self.camera_overlay:
+            # 扫描线旋转
+            current_angle = self.camera_overlay.scan_angle
+            self.camera_overlay.set_scan_angle((current_angle + 2) % 360)
+            
+            # 脉冲效果
+            alpha = self.camera_overlay.pulse_alpha
+            direction = self.camera_overlay.pulse_direction
+            
+            alpha += direction * 0.02
+            if alpha <= 0.3:
+                direction = 1
+            elif alpha >= 1.0:
+                direction = -1
+            
+            self.camera_overlay.pulse_alpha = alpha
+            self.camera_overlay.pulse_direction = direction
         
     def init_state_machine(self):
         """初始化状态机"""
@@ -102,10 +131,11 @@ class AInSightApp(QMainWindow):
     
     def handle_proximity(self):
         """PROXIMITY 状态"""
-        # 切换到摄像头预览
-        if self.camera_manager and self.camera_preview:
-            self.stack.setCurrentWidget(self.camera_preview)
-            print("✅ 已切换到摄像头预览")
+        # 切换到摄像头叠加层
+        if self.camera_manager and hasattr(self, 'camera_overlay') and self.camera_overlay:
+            self.stack.setCurrentWidget(self.camera_overlay)
+            self.overlay_timer.start(16)  # ~60 FPS 动画
+            print("✅ 已切换到摄像头叠加预览")
         else:
             # 如果摄像头不可用，继续显示圆形UI
             self.circle_ui.set_text("發現目標", "請靠近...")
