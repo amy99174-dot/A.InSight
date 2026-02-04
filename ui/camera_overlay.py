@@ -1,66 +1,29 @@
 """
 A.InSight - 摄像头圆形界面
-使用几何布局 + 直接绘制UI
+摄像头在底层 + 独立UI叠加层在顶层
 """
 
 from PyQt5.QtWidgets import QWidget
 from PyQt5.QtCore import Qt, QRect
-from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QRegion
+from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QRegion, QPainterPath
 import math
 
 
-class CameraOverlayUI(QWidget):
-    """摄像头圆形界面 - 使用固定尺寸圆形摄像头 + 直接绘制UI"""
+class UIOverlay(QWidget):
+    """独立的UI叠加层 - 绘制所有UI元素"""
     
-    def __init__(self, camera_preview=None, parent=None):
+    def __init__(self, parent=None):
         super().__init__(parent)
         
-        self.camera_preview = camera_preview
+        # 关键：设置为透明背景，但接受鼠标事件
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setStyleSheet("background: transparent;")
+        
         self.scan_angle = 0
         self.pulse_alpha = 1.0
-        self.pulse_direction = -1
-        
-        # 黑色背景
-        self.setStyleSheet("background-color: black;")
-        
-        # 如果有摄像头预览
-        if self.camera_preview:
-            self.camera_preview.setParent(self)
-    
-    def resizeEvent(self, event):
-        """窗口大小变化时重新计算摄像头位置"""
-        super().resizeEvent(event)
-        
-        if self.camera_preview:
-            width = self.width()
-            height = self.height()
-            
-            # 圆形直径（屏幕较小边的 2/3）
-            diameter = min(width, height) * 2 // 3
-            
-            # 计算圆形中心位置
-            center_x = width // 2
-            center_y = height // 2
-            
-            # 摄像头预览位置和大小
-            camera_x = center_x - diameter // 2
-            camera_y = center_y - diameter // 2
-            
-            # 设置摄像头预览的几何位置
-            self.camera_preview.setGeometry(camera_x, camera_y, diameter, diameter)
-            
-            # 应用圆形遮罩到摄像头预览
-            region = QRegion(0, 0, diameter, diameter, QRegion.Ellipse)
-            self.camera_preview.setMask(region)
-            
-            # 确保摄像头在底层
-            self.camera_preview.lower()
-            
-            # 强制重绘UI元素
-            self.update()
     
     def paintEvent(self, event):
-        """绘制UI元素和文字"""
+        """绘制UI元素"""
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
         
@@ -68,8 +31,6 @@ class CameraOverlayUI(QWidget):
         height = self.height()
         center_x = width / 2
         center_y = height / 2
-        
-        # 圆形半径
         radius = min(width, height) / 3
         
         # === 1. 绘制圆圈边框 ===
@@ -117,20 +78,65 @@ class CameraOverlayUI(QWidget):
         text_rect = painter.boundingRect(0, 0, 0, 0, 0, status_text)
         painter.drawText(int(center_x - text_rect.width() / 2), 
                         int(height - 40), status_text)
+
+
+class CameraOverlayUI(QWidget):
+    """摄像头圆形界面 - 摄像头在底层 + UI叠加层在顶层"""
     
-    
-    def update(self):
-        """重绘时确保摄像头在底层"""
+    def __init__(self, camera_preview=None, parent=None):
+        super().__init__(parent)
+        
+        self.camera_preview = camera_preview
+        self.scan_angle = 0
+        self.pulse_alpha = 1.0
+        self.pulse_direction = -1
+        
+        # 黑色背景
+        self.setStyleSheet("background-color: black;")
+        
+        # 摄像头在底层
         if self.camera_preview:
+            self.camera_preview.setParent(self)
             self.camera_preview.lower()
-        super().update()
+        
+        # UI叠加层在顶层
+        self.ui_overlay = UIOverlay(self)
+        self.ui_overlay.raise_()  # 确保在最上层
+    
+    def resizeEvent(self, event):
+        """窗口大小变化时重新计算位置"""
+        super().resizeEvent(event)
+        
+        width = self.width()
+        height = self.height()
+        
+        # 圆形直径
+        diameter = min(width, height) * 2 // 3
+        center_x = width // 2
+        center_y = height // 2
+        
+        # 设置摄像头位置和遮罩
+        if self.camera_preview:
+            camera_x = center_x - diameter // 2
+            camera_y = center_y - diameter // 2
+            self.camera_preview.setGeometry(camera_x, camera_y, diameter, diameter)
+            
+            region = QRegion(0, 0, diameter, diameter, QRegion.Ellipse)
+            self.camera_preview.setMask(region)
+            self.camera_preview.lower()  # 确保在底层
+        
+        # UI叠加层覆盖整个窗口
+        self.ui_overlay.setGeometry(0, 0, width, height)
+        self.ui_overlay.raise_()  # 确保在最上层
     
     def set_scan_angle(self, angle):
         """设置扫描角度"""
         self.scan_angle = angle
-        self.update()
+        self.ui_overlay.scan_angle = angle
+        self.ui_overlay.update()
     
     def set_pulse_alpha(self, alpha):
         """设置脉冲透明度"""
         self.pulse_alpha = alpha
-        self.update()
+        self.ui_overlay.pulse_alpha = alpha
+        self.ui_overlay.update()
