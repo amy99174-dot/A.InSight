@@ -83,6 +83,12 @@ class OpenCVCameraRenderer(QWidget):
             # 更新显示
             self.camera_label.setPixmap(pixmap)
             
+            # 调试：检查pixmap是否设置成功
+            if self._frame_count == 1:
+                print(f"✅ Pixmap设置成功！尺寸: {pixmap.width()}x{pixmap.height()}")
+                print(f"   Label尺寸: {self.camera_label.width()}x{self.camera_label.height()}")
+                print(f"   Widget尺寸: {self.width()}x{self.height()}")
+            
         except Exception as e:
             if not self._error_logged:
                 print(f"❌ 渲染错误: {e}")

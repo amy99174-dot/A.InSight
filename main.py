@@ -74,7 +74,7 @@ class AInSightApp(QMainWindow):
     
     def handle_click(self):
         """处理点击事件"""
-        current_state = self.state_machine.get_current_state()
+        current_state = self.state_machine.current_state
         
         if current_state == AppState.BOOT:
             self.state_machine.transition_to(AppState.PROXIMITY)
