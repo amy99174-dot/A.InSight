@@ -15,9 +15,10 @@ class UIOverlay(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         
-        # 关键：设置为透明背景，但接受鼠标事件
+        # 关键：设置为完全透明背景
         self.setAttribute(Qt.WA_TranslucentBackground)
-        self.setStyleSheet("background: transparent;")
+        self.setAttribute(Qt.WA_NoSystemBackground)
+        self.setAutoFillBackground(False)
         
         self.scan_angle = 0
         self.pulse_alpha = 1.0
