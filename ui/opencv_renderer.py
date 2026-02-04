@@ -66,7 +66,13 @@ class OpenCVCameraRenderer(QWidget):
             # 转换为QImage
             height, width, channel = frame.shape
             bytes_per_line = 3 * width
-            q_image = QImage(frame.data, width, height, bytes_per_line, QImage.Format_RGB888)
+            
+            # 确保数组是连续的
+            if not frame.flags['C_CONTIGUOUS']:
+                frame = np.ascontiguousarray(frame)
+            
+            # 创建QImage（使用tobytes()）
+            q_image = QImage(frame.tobytes(), width, height, bytes_per_line, QImage.Format_RGB888)
             
             # 在图片上绘制UI
             pixmap = QPixmap.fromImage(q_image)
