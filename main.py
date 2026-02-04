@@ -7,6 +7,7 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QStackedWidget
 from PyQt5.QtCore import Qt, QTimer
 from core.state import StateMachine, AppState
+from camera.capture import CameraManager
 from ui.circle import CircularScanUI
 
 
@@ -16,6 +17,7 @@ class AInSightApp(QMainWindow):
     def __init__(self):
         super().__init__()
         self.init_ui()
+        self.init_camera()
         self.init_state_machine()
         self.setup_state_handlers()
         
@@ -32,6 +34,30 @@ class AInSightApp(QMainWindow):
         # 圆形扫描界面
         self.circle_ui = CircularScanUI()
         self.stack.addWidget(self.circle_ui)
+    
+    def init_camera(self):
+        """初始化摄像头"""
+        self.camera_manager = CameraManager()
+        
+        # 初始化摄像头
+        if self.camera_manager.init_camera(resolution=(640, 480)):
+            # 创建预览窗口
+            self.camera_preview = self.camera_manager.create_preview_widget(
+                width=800, height=600
+            )
+            
+            if self.camera_preview:
+                # 添加到堆叠窗口但不显示
+                self.stack.addWidget(self.camera_preview)
+                
+                # 启动摄像头
+                self.camera_manager.start()
+                print("✅ 摄像头系统初始化完成")
+            else:
+                print("⚠️ 预览窗口创建失败")
+        else:
+            print("⚠️ 摄像头初始化失败")
+            self.camera_manager = None
         
     def init_state_machine(self):
         """初始化状态机"""
@@ -66,6 +92,8 @@ class AInSightApp(QMainWindow):
     
     def handle_boot(self):
         """BOOT 状态"""
+        # 显示圆形UI
+        self.stack.setCurrentWidget(self.circle_ui)
         self.circle_ui.set_text("正在探測歷史訊號", "尋找中...")
         self.circle_ui.start_animation()
         
@@ -74,7 +102,14 @@ class AInSightApp(QMainWindow):
     
     def handle_proximity(self):
         """PROXIMITY 状态"""
-        self.circle_ui.set_text("發現目標", "請靠近...")
+        # 切换到摄像头预览
+        if self.camera_manager and self.camera_preview:
+            self.stack.setCurrentWidget(self.camera_preview)
+            print("✅ 已切换到摄像头预览")
+        else:
+            # 如果摄像头不可用，继续显示圆形UI
+            self.circle_ui.set_text("發現目標", "請靠近...")
+            print("⚠️ 摄像头不可用，使用圆形UI")
         # 等待用户点击
     
     def handle_locked(self):
@@ -122,6 +157,13 @@ class AInSightApp(QMainWindow):
         if current_state in [AppState.PROXIMITY, AppState.LOCKED, 
                             AppState.TUNING, AppState.FOCUSING, AppState.REVEAL]:
             self.state_machine.next()
+    
+    def closeEvent(self, event):
+        """关闭事件 - 清理资源"""
+        print("🧹 清理资源...")
+        if hasattr(self, 'camera_manager') and self.camera_manager:
+            self.camera_manager.cleanup()
+        event.accept()
     
     def keyPressEvent(self, event):
         """键盘事件"""
