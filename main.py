@@ -8,8 +8,77 @@ from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QPainterPath, QBrush
 from picamera2 import Picamera2
-import numpy as np
-import sys
+import requests
+import json
+import base64
+import threading
+from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
+
+# 简单的 API Key 读取
+def get_api_key():
+    try:
+        with open(".env.local", "r") as f:
+            for line in f:
+                if line.startswith("GEMINI_API_KEY="):
+                    return line.strip().split("=")[1]
+    except:
+        pass
+    return "YOUR_API_KEY_HERE"
+
+API_KEY = get_api_key()
+
+class GeminiWorker(QThread):
+    """后台调用 API 的线程，避免卡死 UI"""
+    finished = pyqtSignal(dict)
+    
+    def __init__(self, image_data):
+        super().__init__()
+        self.image_data = image_data
+        
+    def run(self):
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+            headers = {"Content-Type": "application/json"}
+            
+            # 使用简化的 Prompt 提取主要信息
+            prompt = """
+            Identify the main object in this image and return a JSON with:
+            {
+                "name": "Object Name (Traditional Chinese)",
+                "era": "Period/Dynasty (Traditional Chinese)",
+                "description": "Short description (Traditional Chinese)"
+            }
+            Output JSON ONLY.
+            """
+            
+            data = {
+                "contents": [{
+                    "parts": [
+                        {"text": prompt},
+                        {"inline_data": {
+                            "mime_type": "image/jpeg",
+                            "data": self.image_data
+                        }}
+                    ]
+                }]
+            }
+            
+            response = requests.post(url, headers=headers, json=data)
+            if response.status_code == 200:
+                result = response.json()
+                try:
+                    text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '{}')
+                    # 清理 markdown code block
+                    if "```json" in text:
+                        text = text.replace("```json", "").replace("```", "")
+                    self.finished.emit(json.loads(text))
+                except:
+                    self.finished.emit({"name": "Analysis Error", "era": "Parse Fail"})
+            else:
+                self.finished.emit({"name": "API Error", "era": str(response.status_code)})
+                
+        except Exception as e:
+            self.finished.emit({"name": "Network Error", "era": str(e)})
 
 
 class SoftwareRenderCamera(QWidget):
