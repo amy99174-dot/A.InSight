@@ -210,9 +210,6 @@ class GeminiWorker(QThread):
             print(f"Filter error: {e}")
             return b64_data
 
-        except Exception as e:
-            print(f"❌ Worker Error: {e}")
-            self.finished.emit({"name": "System Error", "era": str(e)})
 
 
 class SoftwareRenderCamera(QWidget):
