@@ -26,6 +26,9 @@ class SoftwareRenderCamera(QWidget):
         # 圆形直径
         self.circle_diameter = 380
         
+        # 状态变量 (P1 - P5)
+        self.current_state = 1
+        
         # 初始化摄像头
         print("📷 初始化摄像头（软件渲染）...")
         self.camera = Picamera2()
@@ -41,6 +44,13 @@ class SoftwareRenderCamera(QWidget):
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(33)  # ~30 FPS
     
+    def mousePressEvent(self, event):
+        """鼠标点击切换状态 P1 -> P5 -> P1"""
+        self.current_state += 1
+        if self.current_state > 5:
+            self.current_state = 1
+        print(f"🖱️ 状态切换: P{self.current_state}")
+    
     def update_frame(self):
         """捕获帧并绘制遮罩+文字"""
         try:
@@ -55,8 +65,7 @@ class SoftwareRenderCamera(QWidget):
                 frame = np.ascontiguousarray(frame)
             
             bytes_per_line = channels * width
-            # 修复颜色问题：相机数据可能是 BGR 格式，或者 QImage 需要适配
-            # 尝试使用 Format_BGR888 来交换红蓝通道
+            # 修复颜色问题：使用 Format_BGR888
             q_image = QImage(frame.tobytes(), width, height, bytes_per_line, QImage.Format_BGR888)
             
             # 3. 转换为 QPixmap
@@ -85,10 +94,11 @@ class SoftwareRenderCamera(QWidget):
             # 填充黑色
             painter.fillPath(mask, QBrush(Qt.black))
             
-            # 5. 绘制中心文字
+            # 5. 绘制状态文字 P1-P5
             painter.setPen(QColor(255, 255, 255))  # 白色
             painter.setFont(QFont("Sans", 30, QFont.Bold))
-            painter.drawText(int(cx - 40), int(cy), "测试")
+            text = f"P{self.current_state}"
+            painter.drawText(int(cx - 30), int(cy + 10), text)
             
             painter.end()
             
