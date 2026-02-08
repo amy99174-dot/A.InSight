@@ -87,52 +87,51 @@ class GeminiWorker(QThread):
             final_result = json.loads(text)
             print(f"✅ 分析成功: {final_result.get('name')}")
             
-            # Step 2: 圖像生成 (Gemini 2.5 Flash Image 或 Imagen)
-            # 根據 lib/ai-server.ts，我們使用 gemini-2.5-flash-image
-            # 注意：如果這個模型不可用，可能需要 fallback
-            
+            # Step 2: 圖像生成 (Imagen 3)
             vision_prompt = final_result.get("visionPrompt", "Historical artifact")
             print(f"🎨 [2/2] 正在生成圖片: {vision_prompt[:30]}...")
+
+            try:
+                # 使用 Imagen 3.0 via Gemini API
+                image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key={API_KEY}"
+                
+                # Imagen 参数
+                img_payload = {
+                    "instances": [
+                        {
+                            "prompt": vision_prompt
+                        }
+                    ],
+                    "parameters": {
+                        "sampleCount": 1,
+                        "aspectRatio": "1:1"
+                    }
+                }
+                
+                print(f"📡 呼叫 Imagen API...")
+                img_response = requests.post(image_gen_url, headers=headers, json=img_payload)
+                
+                if img_response.status_code == 200:
+                    img_result = img_response.json()
+                    # 解析 Imagen 回傳
+                    # 格式: {"predictions": [{"bytesBase64Encoded": "..."}]}
+                    predictions = img_result.get("predictions", [])
+                    if predictions:
+                        b64_img = predictions[0].get("bytesBase64Encoded")
+                        if b64_img:
+                            final_result["generated_image"] = b64_img
+                            print("✅ 圖片生成成功")
+                        else:
+                            print("⚠️ 圖片生成回傳空數據")
+                    else:
+                        print(f"⚠️ 無預測結果: {img_result}")
+                else:
+                    print(f"⚠️ Imagen API 失敗 (Code {img_response.status_code}): {img_response.text}")
+                    # 失敗時不設 generated_image，UI 會顯示原圖
             
-            # image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={API_KEY}"
-            # 備註：標準 API 應該是用 imagen-3.0-generate-001 或類似
-            # 但根據使用者 web app 的 code，它是用 gemini-2.5-flash-image
-            # 我們這裡嘗試用同樣的 endpoint
-            
-            image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
-            
-            # 構造 Image Gen 请求 (注意：Gemini 并不是直接生成图片的模型，除非是特定的 visual 模型)
-            # 根據 web code: model: 'gemini-2.5-flash-image'
-            # 讓我們嘗試完全復刻 web 的請求結構
-            
-            # 修正：Gemini 2.5 Flash 本身不生成圖片，Web App 可能是透過特別的配置或我們誤解了代碼
-            # 但既然使用者說 web 能跑，我們試試看用 imagen 結構或者假設 2.5-flash-image 存在
-            # 為了保險，我們這裡用 Imagen 3 (如果帳號有權限) 或者回傳原圖做處理
-            
-            # 重新閱讀 web code: response.candidates[0].content.parts[0].inlineData
-            # 這表示模型直接回傳了圖片數據！這很罕見，通常是 Imagen 的行為。
-            # 讓我們嘗試使用 imagen-3.0-generate-001
-            
-            image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key={API_KEY}"
-            # 修正：Imagen 的 endpoint 通常是 predict
-            
-            # 為了避免冒險，我們這裡先做一個 Mock：如果沒有辦法生成，就用原圖 + 濾鏡效果
-            # 但使用者要求 "agent 回傳的畫面"
-            # 讓我們再次嘗試用 gemini-2.5-flash-image (如果它真的存在)
-            
-            image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
-            # 這裡我們用回 Text Gen 模型來"描述"圖片，但在真正的 Native App 中，
-            # 我們可能需要一個真正的 Image Gen API。
-            # 為了不卡住，我們先回傳文字結果，並在 Description 中標註 "Image Gen Not Implemented"
-            # 等等，使用者說 Web App 是用 gemini-2.5-flash-image
-            # 我們就用這個名字試試
-            
-            image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}" # Temporary fallback
-            
-            # 為了讓流程跑通，我們把 "generated_image" 設為原圖的 Base64 (模擬回傳)
-            # 並加上一個標記讓 UI 知道
-            final_result["generated_image"] = self.image_data # 暫時回傳原圖
-            
+            except Exception as img_err:
+                print(f"❌ 圖片生成發生例外: {img_err}")
+
             self.finished.emit(final_result)
 
         except Exception as e:
