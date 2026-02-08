@@ -107,56 +107,73 @@ class GeminiWorker(QThread):
             final_result = json.loads(text)
             print(f"✅ 分析成功: {final_result.get('name')}")
             
-            # Step 2: 圖像生成 (Imagen 3)
-            vision_prompt = final_result.get("visionPrompt", "Historical artifact")
-            print(f"🎨 [2/2] 正在生成圖片: {vision_prompt[:30]}...")
 
-            # Step 2: 圖像生成 (Imagen 3)
-            vision_prompt = final_result.get("visionPrompt", "Historical artifact")
+            # Step 2: 圖像生成 (Gemini 2.5 Flash Image - Img2Img)
+            vision_prompt = final_result.get("visionPrompt", "Historical artifact style illustration")
             print(f"🎨 [2/2] 正在生成圖片: {vision_prompt[:30]}...")
 
             try:
-                # 使用 Imagen 3.0 via Gemini API
-                image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key={API_KEY}"
+                # 使用 Gemini 2.5 Flash Image via generateContent
+                # 這是 Web App 使用的正確模型 (圖生圖)
+                image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key={API_KEY}"
                 
-                # Imagen 参数
+                # 構造 Payload: 提示詞 + 原圖
                 img_payload = {
-                    "instances": [
-                        {
-                            "prompt": vision_prompt
-                        }
-                    ],
-                    "parameters": {
-                        "sampleCount": 1,
-                        "aspectRatio": "1:1"
+                    "contents": [{
+                        "parts": [
+                            {"text": f"Generate a new image based on this prompt: {vision_prompt}"},
+                            {
+                                "inlineData": {
+                                    "mimeType": "image/jpeg",
+                                    "data": self.image_data  # 原圖 Base64
+                                }
+                            }
+                        ]
+                    }],
+                    "generationConfig": {
+                        "candidateCount": 1
+                        # "aspectRatio": "1:1" # API 可能不支援此參數，視模型而定
                     }
                 }
                 
-                print(f"📡 呼叫 Imagen API...")
+                print(f"📡 呼叫 Gemini Img2Img API ({image_gen_url})...")
                 img_response = requests.post(image_gen_url, headers=headers, json=img_payload)
                 
                 if img_response.status_code == 200:
                     img_result = img_response.json()
-                    predictions = img_result.get("predictions", [])
-                    if predictions:
-                        b64_img = predictions[0].get("bytesBase64Encoded")
-                        if b64_img:
-                            final_result["generated_image"] = b64_img
-                            print("✅ 圖片生成成功")
+                    # 解析 Gemini 回傳
+                    # 格式: candidates[0].content.parts[].inlineData
+                    candidates = img_result.get("candidates", [])
+                    if candidates:
+                        parts = candidates[0].get("content", {}).get("parts", [])
+                        generated_b64 = None
+                        
+                        # 尋找 inlineData
+                        for part in parts:
+                            if "inlineData" in part:
+                                generated_b64 = part["inlineData"]["data"]
+                                break
+                        
+                        # 如果沒有 inlineData，有些模型會回傳網址 (但 Gemini 通常回傳 inlineData)
+                        
+                        if generated_b64:
+                            final_result["generated_image"] = generated_b64
+                            print("✅ 圖片生成成功 (Gemini Img2Img)")
                         else:
-                            print("⚠️ 圖片生成回傳空數據")
+                            print(f"⚠️ 生成回應中無圖片數據: {img_result}")
+                            # 觸發 Fallback
+                            raise Exception("No image data in response")
                     else:
-                        print(f"⚠️ 無預測結果: {img_result}")
+                        print(f"⚠️ 無候選結果: {img_result}")
+                        raise Exception("No candidates")
                 else:
-                    print(f"⚠️ Imagen API 失敗 (Code {img_response.status_code}): {img_response.text}")
-                    # 啟動 Fallback: 對原圖應用復古濾鏡 (Sepia)
-                    print("🔄 啟動本地濾鏡 Fallback...")
-                    final_result["generated_image"] = self.apply_sepia_filter(self.image_data)
+                    print(f"⚠️ API 失敗 (Code {img_response.status_code}): {img_response.text}")
+                    raise Exception(f"API Error {img_response.status_code}")
             
             except Exception as img_err:
-                print(f"❌ 圖片生成發生例外: {img_err}")
-                # Fallback on exception too
-                final_result["generated_image"] = self.image_data
+                print(f"❌ 圖片生成失敗，切換至本地濾鏡: {img_err}")
+                print("🔄 啟動本地濾鏡 Fallback (Sepia)...")
+                final_result["generated_image"] = self.apply_sepia_filter(self.image_data)
 
             self.finished.emit(final_result)
 
