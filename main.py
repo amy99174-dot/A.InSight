@@ -12,6 +12,7 @@ import requests
 import json
 import base64
 import threading
+import sys
 from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
 
 # 简单的 API Key 读取
