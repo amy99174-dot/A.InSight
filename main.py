@@ -13,6 +13,7 @@ import json
 import base64
 import threading
 import sys
+import traceback
 from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
 
 # 简单的 API Key 读取
@@ -362,146 +363,151 @@ class SoftwareRenderCamera(QWidget):
         """
         [Phase 1] 繪圖核心
         """
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
 
-        # 1. 繪製背景 (全黑)
-        painter.fillRect(self.rect(), Qt.black)
+            # 1. 繪製背景 (全黑)
+            painter.fillRect(self.rect(), Qt.black)
 
-        w = self.width()
-        h = self.height()
-        center_x = w // 2
-        center_y = h // 2
-        
-        # 定義圓形遮罩路徑 (視窗)
-        path_window = QPainterPath()
-        path_window.addEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
-                               self.circle_radius * 2, self.circle_radius * 2)
-
-        # -------------------------------------------------------------------------
-        # A. 繪製內容層 (Content Layer) - 限制在圓形視窗內
-        # -------------------------------------------------------------------------
-        painter.save()
-        painter.setClipPath(path_window)
-
-        # [狀態分流]
-        # (1) 結果展示 (STATE_RESULT)
-        if self.current_state == self.STATE_RESULT and self.generated_pixmap:
-            # 目前先簡單置中繪製 (Phase 2 會改為放大與平移)
-            # 保持原始比例縮放至蓋滿視窗
-            scaled = self.generated_pixmap.scaled(
-                self.circle_radius * 2, self.circle_radius * 2,
-                Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
-            )
-            sx = center_x - (scaled.width() / 2)
-            sy = center_y - (scaled.height() / 2)
-            painter.drawPixmap(int(sx), int(sy), scaled)
-
-        # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL)
-        elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL]:
-            scaled = self.captured_pixmap.scaled(
-                self.circle_radius * 2, self.circle_radius * 2,
-                Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
-            )
-            sx = center_x - (scaled.width() / 2)
-            sy = center_y - (scaled.height() / 2)
-            painter.drawPixmap(int(sx), int(sy), scaled)
-
-            # 分析中疊加黃色濾鏡
-            if self.current_state == self.STATE_ANALYZING:
-                painter.fillRect(self.rect(), QColor(255, 255, 0, 50))
-
-        # (3) 實時相機 (Live Camera)
-        else:
-            try:
-                if hasattr(self, 'camera') and self.camera: # 確保相機存在
-                    # 注意：self.camera.capture_array 仍可能阻塞，
-                    # 但在 Phase 1我們先維持原樣，只驗證繪圖架構。
-                    # 如果覺得卡頓，後續可移至 Thread。
-                    image = self.camera.capture_array("main")
-                    if image is not None:
-                        # Picamera2 回傳的是 BGR (RGB888 setting) 或其他，需注意
-                        # 這裡假設配置為 RGB888
-                        # 如果是 RGB888 (h, w, 3)
-                        h_img, w_img, ch = image.shape
-                        bytes_per_line = ch * w_img
-                        qimg = QImage(image.data, w_img, h_img, bytes_per_line, QImage.Format_RGB888)
-                        
-                        scaled_qimg = qimg.scaled(
-                            int(self.circle_radius * 2), int(self.circle_radius * 2),
-                            Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
-                        )
-                        sx = center_x - (scaled_qimg.width() / 2)
-                        sy = center_y - (scaled_qimg.height() / 2)
-                        painter.drawImage(int(sx), int(sy), scaled_qimg)
-
-            except Exception as e:
-                # 錯誤時保持黑色，但印出 Log 以便除錯
-                # print(f"Camera Paint Error: {e}") 
-                pass
-
-        painter.restore() # 解除 Clip
-
-        # -------------------------------------------------------------------------
-        # B. 繪製 UI 層 (Overlay Layer) - 覆蓋在上面
-        # -------------------------------------------------------------------------
-        
-        # 1. 圓形邊框
-        border_color = QColor("white")
-        if self.current_state == self.STATE_ANALYZING:
-            border_color = QColor("yellow")
-        elif self.current_state == self.STATE_RESULT:
-            border_color = QColor("#39ff14") # Neon Green
+            w = self.width()
+            h = self.height()
+            center_x = w // 2
+            center_y = h // 2
             
-        painter.setPen(QPen(border_color, 4))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
-                            self.circle_radius * 2, self.circle_radius * 2)
+            # 定義圓形遮罩路徑 (視窗)
+            path_window = QPainterPath()
+            path_window.addEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
+                                   self.circle_radius * 2, self.circle_radius * 2)
 
-        # 2. 掃描線動畫 (非結果頁)
-        if self.current_state not in [self.STATE_RESULT]:
-            self.scan_line_y += 5 * self.scan_direction
-            # 邊界檢查
-            if self.scan_line_y > self.circle_radius * 2:
-                self.scan_direction = -1
-            elif self.scan_line_y < 0:
-                self.scan_direction = 1
-            
-            scan_y_abs = (center_y - self.circle_radius) + self.scan_line_y
-            
-            # 使用 Clip 確保線只在圓內
+            # -------------------------------------------------------------------------
+            # A. 繪製內容層 (Content Layer) - 限制在圓形視窗內
+            # -------------------------------------------------------------------------
             painter.save()
             painter.setClipPath(path_window)
-            painter.setPen(QPen(QColor(0, 255, 0, 150), 2))
-            painter.drawLine(int(center_x - self.circle_radius), int(scan_y_abs), 
-                             int(center_x + self.circle_radius), int(scan_y_abs))
-            painter.restore()
 
-        # 3. 文字資訊
-        if self.current_state == self.STATE_RESULT and self.analysis_result:
-            name = self.analysis_result.get("name", "")
-            era = self.analysis_result.get("era", "")
-            painter.setPen(QColor("#39ff14"))
-            painter.setFont(QFont("Arial", 16, QFont.Bold))
-            painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
-            
-        elif self.current_state == self.STATE_ANALYZING:
-            painter.setPen(QColor("yellow"))
-            painter.setFont(QFont("Arial", 16, QFont.Bold))
-            painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "AI 分析中...")
-            
-        elif self.current_state == self.STATE_SUCCESS:
-            painter.setPen(QColor("green"))
-            painter.setFont(QFont("Arial", 16, QFont.Bold))
-            painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
+            # [狀態分流]
+            # (1) 結果展示 (STATE_RESULT)
+            if self.current_state == self.STATE_RESULT and self.generated_pixmap:
+                # 目前先簡單置中繪製 (Phase 2 會改為放大與平移)
+                # 保持原始比例縮放至蓋滿視窗
+                scaled = self.generated_pixmap.scaled(
+                    self.circle_radius * 2, self.circle_radius * 2,
+                    Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                )
+                sx = center_x - (scaled.width() / 2)
+                sy = center_y - (scaled.height() / 2)
+                painter.drawPixmap(int(sx), int(sy), scaled)
 
-        # -------------------------------------------------------------------------
-        # [Phase 1 驗證標記]
-        # -------------------------------------------------------------------------
-        painter.setPen(QColor("#00FF00"))
-        painter.setFont(QFont("Courier New", 12, QFont.Bold))
-        painter.drawText(10, 20, "[Phase 1: GPU 渲染模式啟動]")
-        painter.drawText(10, 40, f"FPS: 約 {1000/33:.1f}")
+            # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL)
+            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL]:
+                scaled = self.captured_pixmap.scaled(
+                    self.circle_radius * 2, self.circle_radius * 2,
+                    Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                )
+                sx = center_x - (scaled.width() / 2)
+                sy = center_y - (scaled.height() / 2)
+                painter.drawPixmap(int(sx), int(sy), scaled)
+
+                # 分析中疊加黃色濾鏡
+                if self.current_state == self.STATE_ANALYZING:
+                    painter.fillRect(self.rect(), QColor(255, 255, 0, 50))
+
+            # (3) 實時相機 (Live Camera)
+            else:
+                try:
+                    if hasattr(self, 'camera') and self.camera: # 確保相機存在
+                        # 注意：self.camera.capture_array 仍可能阻塞，
+                        # 但在 Phase 1我們先維持原樣，只驗證繪圖架構。
+                        # 如果覺得卡頓，後續可移至 Thread。
+                        image = self.camera.capture_array("main")
+                        if image is not None:
+                            # Picamera2 回傳的是 BGR (RGB888 setting) 或其他，需注意
+                            # 這裡假設配置為 RGB888
+                            # 如果是 RGB888 (h, w, 3)
+                            h_img, w_img, ch = image.shape
+                            bytes_per_line = ch * w_img
+                            qimg = QImage(image.data, w_img, h_img, bytes_per_line, QImage.Format_RGB888)
+                            
+                            scaled_qimg = qimg.scaled(
+                                int(self.circle_radius * 2), int(self.circle_radius * 2),
+                                Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                            )
+                            sx = center_x - (scaled_qimg.width() / 2)
+                            sy = center_y - (scaled_qimg.height() / 2)
+                            painter.drawImage(int(sx), int(sy), scaled_qimg)
+
+                except Exception as e:
+                    # 錯誤時保持黑色，但印出 Log 以便除錯
+                    print(f"❌ 相機渲染錯誤: {e}") 
+                    pass
+
+            painter.restore() # 解除 Clip
+
+            # -------------------------------------------------------------------------
+            # B. 繪製 UI 層 (Overlay Layer) - 覆蓋在上面
+            # -------------------------------------------------------------------------
+            
+            # 1. 圓形邊框
+            border_color = QColor("white")
+            if self.current_state == self.STATE_ANALYZING:
+                border_color = QColor("yellow")
+            elif self.current_state == self.STATE_RESULT:
+                border_color = QColor("#39ff14") # Neon Green
+                
+            painter.setPen(QPen(border_color, 4))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
+                                self.circle_radius * 2, self.circle_radius * 2)
+
+            # 2. 掃描線動畫 (非結果頁)
+            if self.current_state not in [self.STATE_RESULT]:
+                self.scan_line_y += 5 * self.scan_direction
+                # 邊界檢查
+                if self.scan_line_y > self.circle_radius * 2:
+                    self.scan_direction = -1
+                elif self.scan_line_y < 0:
+                    self.scan_direction = 1
+                
+                scan_y_abs = (center_y - self.circle_radius) + self.scan_line_y
+                
+                # 使用 Clip 確保線只在圓內
+                painter.save()
+                painter.setClipPath(path_window)
+                painter.setPen(QPen(QColor(0, 255, 0, 150), 2))
+                painter.drawLine(int(center_x - self.circle_radius), int(scan_y_abs), 
+                                 int(center_x + self.circle_radius), int(scan_y_abs))
+                painter.restore()
+
+            # 3. 文字資訊
+            if self.current_state == self.STATE_RESULT and self.analysis_result:
+                name = self.analysis_result.get("name", "")
+                era = self.analysis_result.get("era", "")
+                painter.setPen(QColor("#39ff14"))
+                painter.setFont(QFont("Arial", 16, QFont.Bold))
+                painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
+                
+            elif self.current_state == self.STATE_ANALYZING:
+                painter.setPen(QColor("yellow"))
+                painter.setFont(QFont("Arial", 16, QFont.Bold))
+                painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "AI 分析中...")
+                
+            elif self.current_state == self.STATE_SUCCESS:
+                painter.setPen(QColor("green"))
+                painter.setFont(QFont("Arial", 16, QFont.Bold))
+                painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
+
+            # -------------------------------------------------------------------------
+            # [Phase 1 驗證標記]
+            # -------------------------------------------------------------------------
+            painter.setPen(QColor("#00FF00"))
+            painter.setFont(QFont("Courier New", 12, QFont.Bold))
+            painter.drawText(10, 20, "[Phase 1: GPU 渲染模式啟動]")
+            painter.drawText(10, 40, f"FPS: 約 {1000/33:.1f}")
+            
+        except Exception as e:
+            print("❌ paintEvent 發生嚴重錯誤:")
+            traceback.print_exc()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
