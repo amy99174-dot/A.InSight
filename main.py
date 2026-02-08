@@ -29,6 +29,26 @@ def get_api_key():
 API_KEY = get_api_key()
 print(f"🔑 API Key Loaded: {API_KEY[:5]}...{API_KEY[-3:] if len(API_KEY)>10 else ''}")
 
+# 列出可用模型 (Debug)
+def list_models():
+    try:
+        url = f"https://generativelanguage.googleapis.com/v1beta/models?key={API_KEY}"
+        resp = requests.get(url)
+        if resp.status_code == 200:
+            models = resp.json().get('models', [])
+            print("\n📋 Available Models for this Key:")
+            for m in models:
+                if 'generateContent' in m.get('supportedGenerationMethods', []) or 'predict' in m.get('supportedGenerationMethods', []):
+                    print(f" - {m['name']}")
+            print("--------------------------------\n")
+        else:
+            print(f"❌ Failed to list models: {resp.status_code}")
+    except Exception as e:
+        print(f"❌ List models error: {e}")
+
+# 啟動時列出一次
+threading.Thread(target=list_models).start()
+
 class GeminiWorker(QThread):
     """后台调用 API 的线程：文字分析 + 图像生成"""
     finished = pyqtSignal(dict)
@@ -91,6 +111,10 @@ class GeminiWorker(QThread):
             vision_prompt = final_result.get("visionPrompt", "Historical artifact")
             print(f"🎨 [2/2] 正在生成圖片: {vision_prompt[:30]}...")
 
+            # Step 2: 圖像生成 (Imagen 3)
+            vision_prompt = final_result.get("visionPrompt", "Historical artifact")
+            print(f"🎨 [2/2] 正在生成圖片: {vision_prompt[:30]}...")
+
             try:
                 # 使用 Imagen 3.0 via Gemini API
                 image_gen_url = f"https://generativelanguage.googleapis.com/v1beta/models/imagen-3.0-generate-001:predict?key={API_KEY}"
@@ -113,8 +137,6 @@ class GeminiWorker(QThread):
                 
                 if img_response.status_code == 200:
                     img_result = img_response.json()
-                    # 解析 Imagen 回傳
-                    # 格式: {"predictions": [{"bytesBase64Encoded": "..."}]}
                     predictions = img_result.get("predictions", [])
                     if predictions:
                         b64_img = predictions[0].get("bytesBase64Encoded")
@@ -127,12 +149,49 @@ class GeminiWorker(QThread):
                         print(f"⚠️ 無預測結果: {img_result}")
                 else:
                     print(f"⚠️ Imagen API 失敗 (Code {img_response.status_code}): {img_response.text}")
-                    # 失敗時不設 generated_image，UI 會顯示原圖
+                    # 啟動 Fallback: 對原圖應用復古濾鏡 (Sepia)
+                    print("🔄 啟動本地濾鏡 Fallback...")
+                    final_result["generated_image"] = self.apply_sepia_filter(self.image_data)
             
             except Exception as img_err:
                 print(f"❌ 圖片生成發生例外: {img_err}")
+                # Fallback on exception too
+                final_result["generated_image"] = self.image_data
 
             self.finished.emit(final_result)
+
+    def apply_sepia_filter(self, b64_data):
+        """簡單的軟體濾鏡效果 (模擬生成變化)"""
+        try:
+            img_data = base64.b64decode(b64_data)
+            qimg = QImage.fromData(img_data)
+            width = qimg.width()
+            height = qimg.height()
+            
+            # 遍歷像素修改顏色 (效率較低但無需 numpy/cv2)
+            # 為了效率，我們用 QImage 的方法或簡單處理
+            # 這裡簡單轉換為灰階 + 著色
+            
+            # 轉換為灰階
+            gray_img = qimg.convertToFormat(QImage.Format_Grayscale8)
+            # 轉換回 RGB 以便著色
+            colored_img = gray_img.convertToFormat(QImage.Format_RGB888)
+            
+            # 使用 QPainter 疊加黃色層
+            painter = QPainter(colored_img)
+            painter.setCompositionMode(QPainter.CompositionMode_Overlay)
+            painter.fillRect(0, 0, width, height, QColor(112, 66, 20, 100)) # 深褐色半透明
+            painter.end()
+            
+            # 保存回 base64
+            buffer = QBuffer()
+            buffer.open(QBuffer.ReadWrite)
+            colored_img.save(buffer, "JPG")
+            return base64.b64encode(buffer.data()).decode()
+            
+        except Exception as e:
+            print(f"Filter error: {e}")
+            return b64_data
 
         except Exception as e:
             print(f"❌ Worker Error: {e}")
