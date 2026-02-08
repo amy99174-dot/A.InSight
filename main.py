@@ -392,11 +392,141 @@ class SoftwareRenderCamera(QWidget):
         self.current_state = self.STATE_RESULT
 
     def update_frame(self):
-            # 开始绘制
-            painter = QPainter(display_pixmap)
-            painter.setRenderHint(QPainter.Antialiasing)
+        # 僅需通知重繪
+        self.update()
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        # 黑色底色
+        painter.fillRect(self.rect(), Qt.black)
+
+        w = self.width()
+        h = self.height()
+        center_x = w // 2
+        center_y = h // 2
+        
+        # 定義圓形遮罩路徑
+        path = QPainterPath()
+        path.addEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
+                        self.circle_radius * 2, self.circle_radius * 2)
+        
+        # --- 繪製相機/預覽內容 (Clip to Circle) ---
+        painter.save()
+        painter.setClipPath(path)
+        
+        # 1. 結果模式 (互動)
+        if self.current_state == self.STATE_RESULT and self.generated_pixmap:
+            # 計算繪製目標區域
+            img_w = self.circle_radius * 2 * self.IMAGE_SCALE
+            img_h = self.circle_radius * 2 * self.IMAGE_SCALE
             
-            # 遮罩
+            # 中心點 + 偏移量 - 半寬度
+            draw_x = center_x + self.pan_offset[0] - (img_w / 2)
+            draw_y = center_y + self.pan_offset[1] - (img_h / 2)
+            
+            target_rect = QRectF(draw_x, draw_y, img_w, img_h)
+            
+            painter.drawPixmap(target_rect.toRect(), self.generated_pixmap)
+            
+            # 鏡頭反光 Overlay
+            grad = QRadialGradient(center_x, center_y, self.circle_radius)
+            grad.setColorAt(0, QColor(0, 0, 0, 0))
+            grad.setColorAt(0.8, QColor(0, 0, 0, 0))
+            grad.setColorAt(1, QColor(0, 0, 0, 200)) # 邊緣暗角
+            painter.setBrush(QBrush(grad))
+            painter.setPen(Qt.NoPen)
+            painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius,
+                                self.circle_radius * 2, self.circle_radius * 2)
+
+        # 2. 分析中/拍照預覽
+        elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL]:
+             scaled = self.captured_pixmap.scaled(
+                self.circle_radius * 2, self.circle_radius * 2,
+                Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+            )
+             sx = center_x - (scaled.width() / 2)
+             sy = center_y - (scaled.height() / 2)
+             painter.drawPixmap(int(sx), int(sy), scaled)
+             
+             if self.current_state == self.STATE_ANALYZING:
+                 painter.fillRect(self.rect(), QColor(255, 255, 0, 50)) # 黃色半透明
+
+        # 3. 實時預覽 (相機)
+        else:
+            try:
+                if self.picam2: # Ensure camera exists
+                    image = self.picam2.capture_array()
+                    # Convert RGB to QImage
+                    h_img, w_img, ch = image.shape
+                    # QImage expects bytes
+                    qimg = QImage(image.data, w_img, h_img, w_img * ch, QImage.Format_RGB888)
+                    
+                    # Scale to cover circle
+                    scaled_qimg = qimg.scaled(
+                        int(self.circle_radius * 2), int(self.circle_radius * 2),
+                        Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                    )
+                    
+                    sx = center_x - (scaled_qimg.width() / 2)
+                    sy = center_y - (scaled_qimg.height() / 2)
+                    
+                    painter.drawImage(int(sx), int(sy), scaled_qimg)
+            except Exception as e:
+                pass
+
+        painter.restore() # 解除 Clip
+        
+        # --- 繪製 UI 覆蓋層 (SVG, 文字, 掃描線) ---
+        
+        # 1. 圓環邊框
+        pen_color = QColor("white")
+        if self.current_state == self.STATE_ANALYZING:
+            pen_color = QColor("yellow")
+        elif self.current_state == self.STATE_RESULT:
+            pen_color = QColor("#39ff14") # Result Green
+            
+        pen = QPen(pen_color, 4)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
+                            self.circle_radius * 2, self.circle_radius * 2)
+
+        # 2. 掃描線動畫 (非結果頁)
+        if self.current_state not in [self.STATE_RESULT]:
+            self.scan_line_y += 5 * self.scan_direction
+            if self.scan_line_y > self.circle_radius * 2:
+                self.scan_direction = -1
+            elif self.scan_line_y < 0:
+                self.scan_direction = 1
+                
+            scan_y_abs = (center_y - self.circle_radius) + self.scan_line_y
+            
+            painter.save()
+            painter.setClipPath(path)
+            painter.setPen(QPen(QColor(0, 255, 0, 150), 2))
+            painter.drawLine(center_x - self.circle_radius, int(scan_y_abs), 
+                             center_x + self.circle_radius, int(scan_y_abs))
+            painter.restore()
+
+        # 3. 文字資訊
+        if self.current_state == self.STATE_RESULT and self.analysis_result:
+            name = self.analysis_result.get("name", "")
+            era = self.analysis_result.get("era", "")
+            painter.setPen(QColor("#39ff14"))
+            painter.setFont(QFont("Arial", 16, QFont.Bold))
+            painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
+            
+        elif self.current_state == self.STATE_ANALYZING:
+            painter.setPen(QColor("yellow"))
+            painter.setFont(QFont("Arial", 16, QFont.Bold))
+            painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "AI 分析中...")
+            
+        elif self.current_state == self.STATE_SUCCESS:
+            painter.setPen(QColor("green"))
+            painter.setFont(QFont("Arial", 16, QFont.Bold))
+            painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
