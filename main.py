@@ -177,6 +177,10 @@ class GeminiWorker(QThread):
 
             self.finished.emit(final_result)
 
+        except Exception as e:
+            print(f"❌ Worker Error: {e}")
+            self.finished.emit({"name": "System Error", "era": str(e)})
+
     def apply_sepia_filter(self, b64_data):
         """簡單的軟體濾鏡效果 (模擬生成變化)"""
         try:
