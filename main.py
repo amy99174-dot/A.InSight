@@ -55,7 +55,9 @@ class SoftwareRenderCamera(QWidget):
                 frame = np.ascontiguousarray(frame)
             
             bytes_per_line = channels * width
-            q_image = QImage(frame.tobytes(), width, height, bytes_per_line, QImage.Format_RGB888)
+            # 修复颜色问题：相机数据可能是 BGR 格式，或者 QImage 需要适配
+            # 尝试使用 Format_BGR888 来交换红蓝通道
+            q_image = QImage(frame.tobytes(), width, height, bytes_per_line, QImage.Format_BGR888)
             
             # 3. 转换为 QPixmap
             pixmap = QPixmap.fromImage(q_image)
