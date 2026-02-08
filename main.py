@@ -39,8 +39,8 @@ class GeminiWorker(QThread):
         
     def run(self):
         try:
-            # 改用 1.5 flash，更加稳定
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
+            # 用户确认使用 2.5
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
             headers = {"Content-Type": "application/json"}
             
             # 使用简化的 Prompt 提取主要信息
@@ -78,7 +78,10 @@ class GeminiWorker(QThread):
                 except:
                     self.finished.emit({"name": "Analysis Error", "era": "Parse Fail"})
             else:
-                self.finished.emit({"name": "API Error", "era": str(response.status_code)})
+                # 打印详细错误信息以便调试
+                error_msg = response.text
+                print(f"❌ API Error Details: {error_msg}")
+                self.finished.emit({"name": "API Error", "era": f"{response.status_code}"})
                 
         except Exception as e:
             self.finished.emit({"name": "Network Error", "era": str(e)})
