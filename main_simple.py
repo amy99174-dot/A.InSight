@@ -1,101 +1,177 @@
 """
-A.InSight - 极简版本（带事件处理）
-只显示摄像头，没有任何UI叠加
+A.InSight - 原生重写版 (单上下文混合渲染)
+核心方案：继承 QGlPicamera2，在同一 OpenGL 上下文中绘制 UI
 """
 
-from PyQt5.QtWidgets import QApplication, QWidget
-from PyQt5.QtCore import Qt
+import sys
+import time
+from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QBrush, QPainterPath
 from picamera2 import Picamera2
 from picamera2.previews.qt import QGlPicamera2
-import sys
+
+class IntegratedCameraUI(QGlPicamera2):
+    """
+    集成式 UI 组件
+    直接在 GL 预览控件上绘制，避免窗口层级冲突
+    """
+    def __init__(self, picamera, **kwargs):
+        super().__init__(picamera, **kwargs)
+        
+        # 动画状态
+        self.scan_angle = 0
+        self.pulse_alpha = 1.0
+        self.pulse_dir = -0.05
+        
+        # 定时器：驱动 UI 刷新 (30 FPS)
+        self.anim_timer = QTimer(self)
+        self.anim_timer.timeout.connect(self.update_animation)
+        self.anim_timer.start(33)
+        
+        print("✅ IntegratedCameraUI 初始化完成")
+
+    def update_animation(self):
+        """更新动画状态并请求重绘"""
+        # 旋转扫描线
+        self.scan_angle = (self.scan_angle + 2) % 360
+        
+        # 呼吸灯效果
+        self.pulse_alpha += self.pulse_dir
+        if self.pulse_alpha <= 0.3:
+            self.pulse_alpha = 0.3
+            self.pulse_dir = 0.05
+        elif self.pulse_alpha >= 1.0:
+            self.pulse_alpha = 1.0
+            self.pulse_dir = -0.05
+            
+        # 触发 paintEvent
+        self.update()
+
+    def paintEvent(self, event):
+        """
+        关键渲染逻辑：
+        1. 父类 paintEvent 负责渲染摄像头画面 (OpenGL)
+        2. QPainter 负责在之上绘制 UI (Qt)
+        """
+        # 1. 绘制摄像头底层
+        super().paintEvent(event)
+        
+        # 2. 绘制 UI 顶层
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # 绘制内容
+        self.draw_mask(painter)
+        self.draw_ui(painter)
+        
+        painter.end()
+
+    def draw_mask(self, painter):
+        """绘制黑色遮罩（圆形视野）"""
+        w, h = self.width(), self.height()
+        cx, cy = w / 2, h / 2
+        # 半径设为短边的 1/3
+        radius = min(w, h) / 3
+        
+        # 路径运算：全屏 - 圆形
+        path_bg = QPainterPath()
+        path_bg.addRect(0, 0, w, h)
+        
+        path_circle = QPainterPath()
+        path_circle.addEllipse(cx - radius, cy - radius, radius * 2, radius * 2)
+        
+        path_mask = path_bg.subtracted(path_circle)
+        
+        # 填充黑色
+        painter.fillPath(path_mask, QBrush(Qt.black))
+        
+        # 保存半径供 UI 使用
+        self.ui_radius = radius
+        self.center_x = cx
+        self.center_y = cy
+
+    def draw_ui(self, painter):
+        """绘制动态 UI"""
+        if not hasattr(self, 'ui_radius'):
+            return
+            
+        cx, cy = self.center_x, self.center_y
+        r = self.ui_radius
+        
+        # 1. 绿色圆环 (带呼吸效果)
+        alpha = int(255 * self.pulse_alpha)
+        pen = QPen(QColor(0, 255, 0, alpha))
+        pen.setWidth(3)
+        painter.setPen(pen)
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(int(cx - r), int(cy - r), int(r * 2), int(r * 2))
+        
+        # 2. 扫描线
+        import math
+        rad = math.radians(self.scan_angle)
+        ex = cx + math.cos(rad) * r
+        ey = cy + math.sin(rad) * r
+        
+        pen_scan = QPen(QColor(0, 255, 0, 200))
+        pen_scan.setWidth(2)
+        painter.setPen(pen_scan)
+        painter.drawLine(int(cx), int(cy), int(ex), int(ey))
+        
+        # 3. 文字信息 (HUD)
+        painter.setPen(QPen(QColor(255, 255, 255)))
+        font = QFont("Monospace", 14, QFont.Bold)
+        painter.setFont(font)
+        painter.drawText(20, 40, "A.INSIGHT SYSTEM")
+        painter.drawText(20, 70, "TARGET: SEARCHING...")
 
 
-class SimpleCameraWindow(QWidget):
-    """简单的摄像头窗口"""
-    
-    def __init__(self, camera):
+class AInSightNativeApp(QMainWindow):
+    def __init__(self):
         super().__init__()
-        self.camera = camera
+        self.setWindowTitle("A.InSight Native (Integrated Rendering)")
+        self.setStyleSheet("background-color: black;")
         
-        # 窗口设置
-        self.setWindowTitle("A.InSight Camera")
-        self.setGeometry(0, 0, 1280, 720)
+        # 初始化 Picamera2
+        print("📷 初始化 Picamera2...")
+        self.picam2 = Picamera2()
         
-        # 创建预览
-        self.preview = QGlPicamera2(camera, width=1280, height=720, keep_ar=False)
-        self.preview.setParent(self)
-        self.preview.move(0, 0)
-        self.preview.resize(1280, 720)
-        self.preview.show()
+        # 配置相机：使用 640x480 以确保性能
+        config = self.picam2.create_preview_configuration(
+            main={"size": (640, 480), "format": "XRGB8888"}
+        )
+        self.picam2.configure(config)
         
-        print("✅ 窗口创建成功")
-    
-    def mousePressEvent(self, event):
-        """处理鼠标点击"""
-        print(f"🖱️ 鼠标点击: {event.pos()}")
-        # 不做任何处理，只记录
-    
-    def keyPressEvent(self, event):
-        """处理键盘事件"""
-        if event.key() == Qt.Key_Escape:
-            print("👋 ESC键按下，退出...")
-            self.close()
-        elif event.key() == Qt.Key_Q:
-            print("👋 Q键按下，退出...")
-            self.close()
-    
+        # 创建集成式 View
+        # keep_ar=False 让画面填满屏幕
+        self.view = IntegratedCameraUI(self.picam2, width=640, height=480, keep_ar=False)
+        self.setCentralWidget(self.view)
+        
+        # 启动相机
+        self.picam2.start()
+        print("✅ 相机已启动")
+
     def closeEvent(self, event):
-        """关闭窗口"""
-        print("🛑 关闭摄像头...")
-        try:
-            self.camera.stop()
-            self.camera.close()
-        except:
-            pass
+        print("🛑 正在关闭...")
+        self.picam2.stop()
+        self.picam2.close()
         event.accept()
-    
-    def resizeEvent(self, event):
-        """窗口大小改变"""
-        super().resizeEvent(event)
-        if hasattr(self, 'preview'):
-            self.preview.resize(self.width(), self.height())
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
 
 
 def main():
-    print("🌟 A.InSight - 极简摄像头预览")
+    app = QApplication(sys.argv)
     
-    try:
-        # 1. 初始化摄像头
-        print("📷 初始化摄像头 (软件渲染模式 - 640x480)...")
-        camera = Picamera2()
-        # 使用 640x480 分辨率以提高稳定性
-        config = camera.create_video_configuration(main={"size": (640, 480), "format": "RGB888"})
-        camera.configure(config)
-        
-        # 2. 创建Qt应用
-        app = QApplication(sys.argv)
-        
-        # 3. 创建窗口
-        print("📺 创建窗口...")
-        window = SimpleCameraWindow(camera)
-        window.show()
-        
-        # 4. 启动摄像头
-        print("✅ 启动摄像头...")
-        camera.start()
-        
-        print("✅ 成功！")
-        print("   - 点击鼠标：查看坐标")
-        print("   - ESC 或 Q：退出")
-        
-        # 5. 运行
-        sys.exit(app.exec_())
-        
-    except Exception as e:
-        print(f"❌ 错误: {e}")
-        import traceback
-        traceback.print_exc()
-
+    # 隐藏鼠标光标 (可选)
+    # app.setOverrideCursor(Qt.BlankCursor)
+    
+    window = AInSightNativeApp()
+    window.showFullScreen()
+    
+    sys.exit(app.exec_())
 
 if __name__ == "__main__":
     main()
