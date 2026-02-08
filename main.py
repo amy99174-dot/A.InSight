@@ -109,9 +109,27 @@ class SoftwareRenderCamera(QWidget):
                     # 在照片上绘制"拍照成功"
                     display_pixmap = self.captured_pixmap.copy()
                     painter = QPainter(display_pixmap)
+                    painter.setRenderHint(QPainter.Antialiasing)
+                    
+                    # 重新绘制遮罩，确保照片也被圆形切割
+                    width = display_pixmap.width()
+                    height = display_pixmap.height()
+                    cx = width / 2
+                    cy = height / 2
+                    radius = self.circle_diameter / 2
+                    
+                    path_full = QPainterPath()
+                    path_full.addRect(0, 0, width, height)
+                    path_circle = QPainterPath()
+                    path_circle.addEllipse(cx - radius, cy - radius, 
+                                          self.circle_diameter, self.circle_diameter)
+                    mask = path_full.subtracted(path_circle)
+                    painter.fillPath(mask, QBrush(Qt.black))
+                    
+                    # 绘制文字
                     painter.setPen(QColor(0, 255, 0)) # 绿色
                     painter.setFont(QFont("Sans", 40, QFont.Bold))
-                    painter.drawText(200, 240, "拍照成功")
+                    painter.drawText(int(cx - 80), int(cy) + 10, "拍照成功")
                     painter.end()
                     self.label.setPixmap(display_pixmap)
                 return
