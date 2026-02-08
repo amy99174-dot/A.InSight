@@ -46,6 +46,7 @@ class IntegratedCameraUI(QGlPicamera2):
             self.pulse_dir = -0.05
             
         # 触发 paintEvent
+        # update() 会安排一次重绘，Qt 会调用 paintEvent
         self.update()
 
     def paintEvent(self, event):
@@ -54,18 +55,21 @@ class IntegratedCameraUI(QGlPicamera2):
         1. 父类 paintEvent 负责渲染摄像头画面 (OpenGL)
         2. QPainter 负责在之上绘制 UI (Qt)
         """
-        # 1. 绘制摄像头底层
+        # 1. 绘制摄像头底层 (这是 Picamera2 的 OpenGL 渲染)
         super().paintEvent(event)
         
-        # 2. 绘制 UI 顶层
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        # 绘制内容
-        self.draw_mask(painter)
-        self.draw_ui(painter)
-        
-        painter.end()
+        # 2. 绘制 UI 顶层 (這是 QPainter 的软件/混合绘制)
+        try:
+            painter = QPainter(self)
+            painter.setRenderHint(QPainter.Antialiasing)
+            
+            # 绘制内容
+            self.draw_mask(painter)
+            self.draw_ui(painter)
+            
+            painter.end()
+        except Exception as e:
+            print(f"❌ 绘图错误: {e}")
 
     def draw_mask(self, painter):
         """绘制黑色遮罩（圆形视野）"""
@@ -165,7 +169,7 @@ class AInSightNativeApp(QMainWindow):
 def main():
     app = QApplication(sys.argv)
     
-    # 隐藏鼠标光标 (可选)
+    # Kiosk 模式通常隐藏光标
     # app.setOverrideCursor(Qt.BlankCursor)
     
     window = AInSightNativeApp()
