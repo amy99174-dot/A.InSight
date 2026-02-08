@@ -1,84 +1,67 @@
 """
-A.InSight - 原生重写版 (单上下文混合渲染)
-核心方案：继承 QGlPicamera2，在同一 OpenGL 上下文中绘制 UI
+A.InSight - 完全重写版
+使用 Gemini 提供的 QtGLWidget + start_preview 方案
 """
 
 import sys
-import time
-from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget
+from PyQt5.QtWidgets import QApplication, QMainWindow
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QPainter, QPen, QColor, QFont, QBrush, QPainterPath
 from picamera2 import Picamera2
 from picamera2.previews.qt import QGlPicamera2
 
-class IntegratedCameraUI(QGlPicamera2):
-    """
-    集成式 UI 组件
-    直接在 GL 预览控件上绘制，避免窗口层级冲突
-    """
-    def __init__(self, picamera, **kwargs):
-        super().__init__(picamera, **kwargs)
-        
-        # 动画状态
-        self.scan_angle = 0
-        self.pulse_alpha = 1.0
-        self.pulse_dir = -0.05
-        
-        # 定时器：驱动 UI 刷新 (30 FPS)
-        self.anim_timer = QTimer(self)
-        self.anim_timer.timeout.connect(self.update_animation)
-        self.anim_timer.start(33)
-        
-        print("✅ IntegratedCameraUI 初始化完成")
 
-    def update_animation(self):
-        """更新动画状态并请求重绘"""
-        # 旋转扫描线
-        self.scan_angle = (self.scan_angle + 2) % 360
+class IntegratedUIWidget(QGlPicamera2):
+    """
+    這是一個集成的 OpenGL Widget。
+    它同時負責顯示相機畫面，並在同一畫布上繪製 UI。
+    """
+    def __init__(self, picam2, width, height, keep_ar=True):
+        super().__init__(picam2, width=width, height=height, keep_ar=keep_ar)
         
-        # 呼吸灯效果
-        self.pulse_alpha += self.pulse_dir
-        if self.pulse_alpha <= 0.3:
-            self.pulse_alpha = 0.3
-            self.pulse_dir = 0.05
-        elif self.pulse_alpha >= 1.0:
-            self.pulse_alpha = 1.0
-            self.pulse_dir = -0.05
-            
-        # 触发 paintEvent
-        # update() 会安排一次重绘，Qt 会调用 paintEvent
+        # 動畫狀態
+        self.scan_angle = 0
+        
+        # 建立定時器強制刷新 UI (例如掃描線動畫)
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self.on_timer)
+        self.update_timer.start(33)  # 保持約 30 FPS 的 UI 更新
+        
+        print("✅ IntegratedUIWidget 初始化完成")
+
+    def on_timer(self):
+        """定時器回調：更新動畫狀態"""
+        self.scan_angle = (self.scan_angle + 3) % 360
         self.update()
 
     def paintEvent(self, event):
         """
-        关键渲染逻辑：
-        1. 父类 paintEvent 负责渲染摄像头画面 (OpenGL)
-        2. QPainter 负责在之上绘制 UI (Qt)
-        """
-        # 1. 绘制摄像头底层 (这是 Picamera2 的 OpenGL 渲染)
-        super().paintEvent(event)
+        關鍵渲染邏輯：
+        步驟 1: 呼叫父類別的 paintEvent
+        這會驅動 Picamera2 內部的 OpenGL 邏輯，將相機幀繪製到 Widget 背景
         
-        # 2. 绘制 UI 顶层 (這是 QPainter 的软件/混合绘制)
-        try:
-            painter = QPainter(self)
-            painter.setRenderHint(QPainter.Antialiasing)
-            
-            # 绘制内容
-            self.draw_mask(painter)
-            self.draw_ui(painter)
-            
-            painter.end()
-        except Exception as e:
-            print(f"❌ 绘图错误: {e}")
+        步驟 2: 立即開啟 QPainter 在同一個 Widget 上繪圖
+        由於這是在同一個 OpenGL Context 下，UI 會被繪製在相機畫面「之上」
+        """
+        # 1. 繪製相機畫面
+        super().paintEvent(event)
+
+        # 2. 繪製 UI 覆蓋層
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        self.draw_mask(painter)
+        self.draw_overlay(painter)
+        
+        painter.end()
 
     def draw_mask(self, painter):
-        """绘制黑色遮罩（圆形视野）"""
+        """繪製黑色遮罩（圓形視野）"""
         w, h = self.width(), self.height()
         cx, cy = w / 2, h / 2
-        # 半径设为短边的 1/3
         radius = min(w, h) / 3
         
-        # 路径运算：全屏 - 圆形
+        # 路徑運算：全屏 - 圓形
         path_bg = QPainterPath()
         path_bg.addRect(0, 0, w, h)
         
@@ -90,92 +73,95 @@ class IntegratedCameraUI(QGlPicamera2):
         # 填充黑色
         painter.fillPath(path_mask, QBrush(Qt.black))
         
-        # 保存半径供 UI 使用
+        # 保存參數
+        self.ui_cx = cx
+        self.ui_cy = cy
         self.ui_radius = radius
-        self.center_x = cx
-        self.center_y = cy
 
-    def draw_ui(self, painter):
-        """绘制动态 UI"""
+    def draw_overlay(self, painter):
+        """繪製動態 UI 元素"""
         if not hasattr(self, 'ui_radius'):
             return
             
-        cx, cy = self.center_x, self.center_y
-        r = self.ui_radius
-        
-        # 1. 绿色圆环 (带呼吸效果)
-        alpha = int(255 * self.pulse_alpha)
-        pen = QPen(QColor(0, 255, 0, alpha))
+        w, h = self.width(), self.height()
+        cx, cy = self.ui_cx, self.ui_cy
+        radius = self.ui_radius
+
+        # --- 繪製半透明 UI 元素 ---
+        # 綠色掃描圈
+        pen = QPen(QColor(50, 255, 50, 180))
         pen.setWidth(3)
         painter.setPen(pen)
         painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(int(cx - r), int(cy - r), int(r * 2), int(r * 2))
-        
-        # 2. 扫描线
+        painter.drawEllipse(int(cx - radius), int(cy - radius), int(radius * 2), int(radius * 2))
+
+        # 掃描線
         import math
         rad = math.radians(self.scan_angle)
-        ex = cx + math.cos(rad) * r
-        ey = cy + math.sin(rad) * r
-        
-        pen_scan = QPen(QColor(0, 255, 0, 200))
-        pen_scan.setWidth(2)
-        painter.setPen(pen_scan)
+        ex = cx + math.cos(rad) * radius
+        ey = cy + math.sin(rad) * radius
         painter.drawLine(int(cx), int(cy), int(ex), int(ey))
-        
-        # 3. 文字信息 (HUD)
-        painter.setPen(QPen(QColor(255, 255, 255)))
-        font = QFont("Monospace", 14, QFont.Bold)
-        painter.setFont(font)
-        painter.drawText(20, 40, "A.INSIGHT SYSTEM")
-        painter.drawText(20, 70, "TARGET: SEARCHING...")
+
+        # 轉角裝飾 (HUD 風格)
+        margin = 50
+        length = 40
+        # 左上角
+        painter.drawLine(margin, margin, margin + length, margin)
+        painter.drawLine(margin, margin, margin, margin + length)
+        # 右上角
+        painter.drawLine(w - margin, margin, w - margin - length, margin)
+        painter.drawLine(w - margin, margin, w - margin, margin + length)
+        # 左下角
+        painter.drawLine(margin, h - margin, margin + length, h - margin)
+        painter.drawLine(margin, h - margin, margin, h - margin - length)
+        # 右下角
+        painter.drawLine(w - margin, h - margin, w - margin - length, h - margin)
+        painter.drawLine(w - margin, h - margin, w - margin, h - margin - length)
+
+        # 狀態文字
+        painter.setFont(QFont("Monospace", 12, QFont.Bold))
+        painter.setPen(QColor(0, 255, 0))
+        painter.drawText(margin, h - margin + 20, "A.INSIGHT | TARGET: SEARCHING...")
 
 
-class AInSightNativeApp(QMainWindow):
+class CameraApp(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("A.InSight Native (Integrated Rendering)")
+        self.setWindowTitle("A.InSight Native - Integrated Rendering")
         self.setStyleSheet("background-color: black;")
         
         # 初始化 Picamera2
         print("📷 初始化 Picamera2...")
-        self.picam2 = Picamera2()
+        self.picamera2 = Picamera2()
         
-        # 配置相机：使用 640x480 以确保性能
-        config = self.picam2.create_preview_configuration(
-            main={"size": (640, 480), "format": "XRGB8888"}
+        # 配置相機 (針對 Zero 2 W，建議不要跑太高解析度以維持流暢)
+        config = self.picamera2.create_preview_configuration(
+            main={"format": "XRGB8888", "size": (640, 480)}
         )
-        self.picam2.configure(config)
+        self.picamera2.configure(config)
         
-        # 创建集成式 View
-        # keep_ar=False 让画面填满屏幕
-        self.view = IntegratedCameraUI(self.picam2, width=640, height=480, keep_ar=False)
-        self.setCentralWidget(self.view)
+        # 設置為主視窗的中心元件
+        self.camera_view = IntegratedUIWidget(self.picamera2, width=640, height=480, keep_ar=False)
+        self.setCentralWidget(self.camera_view)
         
-        # 启动相机
-        self.picam2.start()
-        print("✅ 相机已启动")
-
-    def closeEvent(self, event):
-        print("🛑 正在关闭...")
-        self.picam2.stop()
-        self.picam2.close()
-        event.accept()
+        # 啟動相機
+        self.picamera2.start()
+        print("✅ 相機已啟動")
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
 
+    def closeEvent(self, event):
+        print("🛑 正在關閉...")
+        self.picamera2.stop()
+        self.picamera2.close()
+        event.accept()
 
-def main():
-    app = QApplication(sys.argv)
-    
-    # Kiosk 模式通常隐藏光标
-    # app.setOverrideCursor(Qt.BlankCursor)
-    
-    window = AInSightNativeApp()
-    window.showFullScreen()
-    
-    sys.exit(app.exec_())
 
 if __name__ == "__main__":
-    main()
+    app = QApplication(sys.argv)
+    window = CameraApp()
+    # 在樹莓派原生螢幕上，全螢幕模式效能最好
+    window.showFullScreen()
+    sys.exit(app.exec_())
