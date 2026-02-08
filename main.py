@@ -222,44 +222,52 @@ class SoftwareRenderCamera(QWidget):
     def __init__(self):
         super().__init__()
         self.setStyleSheet("background-color: black;")
+        self.setMouseTracking(True)  # 開啟滑鼠追蹤
         
-        # 显示标签
+        # 顯示標籤
         self.label = QLabel(self)
         self.label.setAlignment(Qt.AlignCenter)
+        self.label.setStyleSheet("color: #39ff14; font-size: 24px; font-weight: bold;")
         
-        # 圆形直径
-        self.circle_diameter = 380
+        # 狀態變數
+        self.circle_radius = 190  # 380px / 2
+        self.scan_line_y = 0
+        self.scan_direction = 1
         
-        # 状态常量
+        # 狀態常量
         self.STATE_P1 = 1
         self.STATE_P2 = 2
         self.STATE_P3_CAPTURE = 3
         self.STATE_P4 = 4
         self.STATE_P5 = 5
-        self.STATE_SUCCESS = 99     # 拍照成功 (点击 -> API)
-        self.STATE_FAIL = -1        # 拍照失败
+        self.STATE_SUCCESS = 99     # 拍照成功 (點擊 -> API)
+        self.STATE_FAIL = -1        # 拍照失敗
         self.STATE_ANALYZING = 100  # AI 分析中
-        self.STATE_RESULT = 101     # 显示结果
+        self.STATE_RESULT = 101     # 顯示結果 (互動模式)
         
         self.current_state = self.STATE_P1
         self.captured_pixmap = None
         self.analysis_result = None
-        self.generated_pixmap = None # 存儲 Agent 回傳的圖片
+        self.generated_pixmap = None  # 儲存 AI 生成圖 (QPixmap)
         
-        # 初始化摄像头
-        print("📷 初始化摄像头（软件渲染）...")
-        self.camera = Picamera2()
-        config = self.camera.create_video_configuration(
-            main={"size": (640, 480), "format": "RGB888"}
-        )
-        self.camera.configure(config)
-        self.camera.start()
-        print("✅ 摄像头已启动")
-        
-        # 定时器
+        # 互動參數 (Pan Effect)
+        self.mouse_pos = (0, 0)       # (x, y)
+        self.pan_offset = (0, 0)      # (dx, dy)
+        self.IMAGE_SCALE = 2.5        # 圖片放大倍率 (類似 web 3.5x，這裡稍微保守一點)
+
+        # 啟動相機
+        self.picam2 = Picamera2()
+        config = self.picam2.create_preview_configuration(main={"size": (640, 480), "format": "RGB888"})
+        self.picam2.configure(config)
+        self.picam2.start()
+
+        # 刷新計時器 (30 FPS)
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(33)
+
+        # API Worker
+        self.api_worker = None
     
     def mousePressEvent(self, event):
         """处理点击事件"""
@@ -293,9 +301,47 @@ class SoftwareRenderCamera(QWidget):
             self.current_state = 1
         print(f"🖱️ 状态切换: P{self.current_state}")
 
+    def mouseMoveEvent(self, event):
+        """捕捉滑鼠移動，計算 Pan 偏移量"""
+        self.mouse_pos = (event.x(), event.y())
+        
+        # 計算相對於視窗中心的比例 (-0.5 ~ 0.5)
+        w, h = self.width(), self.height()
+        center_x, center_y = w / 2, h / 2
+        
+        # 歸一化滑鼠位置 (-1.0 ~ 1.0)
+        norm_x = (event.x() - center_x) / (w / 2)
+        norm_y = (event.y() - center_y) / (h / 2)
+        
+        # 限制範圍
+        norm_x = max(-1.0, min(1.0, norm_x))
+        norm_y = max(-1.0, min(1.0, norm_y))
+        
+        # 計算最大偏移量 (圖片放大後多出的邊緣 / 2)
+        # 視窗半徑 = self.circle_radius
+        # 圖片半徑 = self.circle_radius * self.IMAGE_SCALE
+        # 可移動範圍 = 圖片半徑 - 視窗半徑
+        max_pan = (self.circle_radius * self.IMAGE_SCALE) - self.circle_radius
+        
+        # 根據 Web App 邏輯：滑鼠往右，圖片往左 (Window Effect / Inverse)
+        # 但 Web App 註解說 "Direct Mapping (No -1)"
+        # 我們先試試同向移動 (Mouse follows content? No, Parallax usually implies opposite)
+        # Web Code: transform: translate(calc(-50% + xOffset)...)
+        # xOffset = pos.x * SPEED.
+        # pos.x = Gamma (Tilt Right = Positive). 
+        # 所以向右傾斜 -> xOffset 正 -> Translate 正 -> 圖片向右移 -> 視窗看到左邊邊緣
+        # 滑鼠：xDeg = ((x / width) - 0.5) * 90. 向右移 -> xDeg 正 -> xOffset 正 -> 圖片向右移。
+        # 這樣會看到圖片左邊。
+        
+        self.pan_offset = (norm_x * max_pan, norm_y * max_pan)
+        
+        # 觸發重繪 (如果不是相機模式，需要手動 update)
+        if self.current_state == self.STATE_RESULT:
+            self.update()
+
     def capture_photo(self):
         try:
-            frame = self.camera.capture_array("main")
+            frame = self.picam2.capture_array("main")
             if frame is not None:
                 height, width, channels = frame.shape
                 if not frame.flags['C_CONTIGUOUS']:
@@ -346,82 +392,11 @@ class SoftwareRenderCamera(QWidget):
         self.current_state = self.STATE_RESULT
 
     def update_frame(self):
-        try:
-            # 決定底圖：優先顯示生成的圖片，其次是原始照片，最後是相機預覽
-            display_pixmap = None
-            
-            if self.current_state == self.STATE_RESULT and self.generated_pixmap:
-                 display_pixmap = self.generated_pixmap.copy()
-            elif self.captured_pixmap and self.current_state in [self.STATE_SUCCESS, self.STATE_ANALYZING, self.STATE_RESULT]:
-                display_pixmap = self.captured_pixmap.copy()
-            
-            # 如果沒有圖片，抓取相機
-            if display_pixmap is None and self.current_state <= 5:
-                frame = self.camera.capture_array("main")
-                if frame is not None:
-                    height, width, channels = frame.shape
-                    if not frame.flags['C_CONTIGUOUS']:
-                        frame = np.ascontiguousarray(frame)
-                    q_image = QImage(frame.tobytes(), width, height, channels * width, QImage.Format_BGR888)
-                    display_pixmap = QPixmap.fromImage(q_image)
-            
-            if display_pixmap is None:
-                return # 还没准备好
-
             # 开始绘制
             painter = QPainter(display_pixmap)
             painter.setRenderHint(QPainter.Antialiasing)
             
             # 遮罩
-            width = display_pixmap.width()
-            height = display_pixmap.height()
-            cx = width / 2
-            cy = height / 2
-            radius = self.circle_diameter / 2
-            
-            path_full = QPainterPath()
-            path_full.addRect(0, 0, width, height)
-            path_circle = QPainterPath()
-            path_circle.addEllipse(cx - radius, cy - radius, self.circle_diameter, self.circle_diameter)
-            mask = path_full.subtracted(path_circle)
-            painter.fillPath(mask, QBrush(Qt.black))
-            
-            # 文字设置
-            painter.setPen(QColor(255, 255, 255))
-            painter.setFont(QFont("Sans", 30, QFont.Bold))
-            
-            # 根据状态绘制内容
-            if self.current_state == self.STATE_SUCCESS:
-                painter.setPen(QColor(0, 255, 0))
-                painter.drawText(int(cx - 80), int(cy + 10), "拍照成功")
-                painter.setFont(QFont("Sans", 15))
-                painter.drawText(int(cx - 60), int(cy + 50), "点击开始分析")
-                
-            elif self.current_state == self.STATE_ANALYZING:
-                painter.setPen(QColor(255, 255, 0)) # 黄色
-                painter.drawText(int(cx - 80), int(cy + 10), "AI 分析中...")
-                
-            elif self.current_state == self.STATE_RESULT:
-                if self.analysis_result:
-                    name = self.analysis_result.get("name", "未知")
-                    era = self.analysis_result.get("era", "未知")
-                    painter.setPen(QColor(0, 255, 255)) # 青色
-                    painter.setFont(QFont("Sans", 20, QFont.Bold))
-                    # 調整文字位置到上方，不遮擋圖片
-                    painter.drawText(int(cx - 80), int(cy - 100), name)
-                    painter.setFont(QFont("Sans", 16))
-                    painter.drawText(int(cx - 80), int(cy - 60), era)
-                    
-            elif self.current_state == self.STATE_P3_CAPTURE:
-                painter.drawText(int(cx - 80), int(cy + 10), "拍照测试")
-            elif self.current_state <= 5:
-                painter.drawText(int(cx - 30), int(cy + 10), f"P{self.current_state}")
-            
-            painter.end()
-            self.label.setPixmap(display_pixmap)
-            
-        except Exception as e:
-            print(f"❌ 渲染错误: {e}")
     
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
