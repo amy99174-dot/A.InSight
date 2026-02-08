@@ -27,6 +27,7 @@ def get_api_key():
     return "YOUR_API_KEY_HERE"
 
 API_KEY = get_api_key()
+print(f"🔑 API Key Loaded: {API_KEY[:5]}...{API_KEY[-3:] if len(API_KEY)>10 else ''}")
 
 class GeminiWorker(QThread):
     """后台调用 API 的线程，避免卡死 UI"""
@@ -38,7 +39,8 @@ class GeminiWorker(QThread):
         
     def run(self):
         try:
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
+            # 改用 1.5 flash，更加稳定
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={API_KEY}"
             headers = {"Content-Type": "application/json"}
             
             # 使用简化的 Prompt 提取主要信息
