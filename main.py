@@ -229,6 +229,7 @@ class SoftwareRenderCamera(QWidget):
         
         # 圆形直径
         self.circle_diameter = 380
+        self.circle_radius = 190  # 380px / 2
         
         # 状态常量
         self.STATE_P1 = 1
