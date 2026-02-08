@@ -5,15 +5,14 @@ A.InSight - 软件渲染 + 圆形遮罩
 """
 
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QPainterPath, QBrush
+from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QBuffer, QRectF, QRect
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QPainterPath, QBrush, QPen, QRadialGradient
 from picamera2 import Picamera2
 import requests
 import json
 import base64
 import threading
 import sys
-from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
 
 # 简单的 API Key 读取
 def get_api_key():
