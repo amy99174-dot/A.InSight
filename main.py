@@ -231,11 +231,7 @@ class SoftwareRenderCamera(QWidget):
         self.circle_diameter = 380
         self.circle_radius = 190  # 380px / 2
         
-        # 掃描線動畫變數
-        self.scan_line_y = 0
-        self.scan_direction = 1
-        
-        # 掃描線動畫變數
+        # 掃描線動畫變數 (Phase 1)
         self.scan_line_y = 0
         self.scan_direction = 1
         
