@@ -11,7 +11,7 @@ from picamera2 import Picamera2
 import requests
 import json
 import base64
-import base64
+
 import threading
 import sys
 import math
@@ -699,6 +699,17 @@ class SoftwareRenderCamera(QWidget):
             # B. 繪製 UI 層 (Global HUD & Overlay) - 覆蓋在上面
             # -------------------------------------------------------------------------
             
+            # [Phase 4.3 Refinement] Scan Line Texture (Transparent BG)
+            # Web: background-size: 100% 4px; linear-gradient...
+            # Native: Use a pattern brush
+            painter.save()
+            painter.setOpacity(0.1) # Web is opacity-10
+            # Create a pattern for scanlines
+            # Simple approach: draw lines every 4 pixels
+            for y in range(0, h, 4):
+                painter.fillRect(0, y, w, 2, QColor(0, 0, 0, 128)) # Semi-transparent black lines
+            painter.restore()
+            
             # [Phase 4.3] Global HUD (Rings & Ticks) - Always visible
             self.draw_global_hud(painter, center_x, center_y)
 
@@ -716,22 +727,22 @@ class SoftwareRenderCamera(QWidget):
 
             # [Phase 4.2] STATE_BOOT UI (Visual Parity)
             if self.current_state == self.STATE_BOOT:
-                # 1. Main Text: "正在探測歷史訊號" (24pt Black)
+                # 1. Main Text: "正在探測歷史訊號" (25pt Bold)
                 painter.setPen(Qt.white)
-                painter.setFont(QFont("Arial", 28, QFont.Bold)) # Extra Bold
+                painter.setFont(QFont("Arial", 25, QFont.Bold)) # Adjusted to 25pt
                 text_rect_1 = QRect(0, center_y - 60, w, 50)
                 painter.drawText(text_rect_1, Qt.AlignCenter, "正在探測歷史訊號")
 
-                # 2. Sub Text: "尋找中..." (14pt Bold tracking-widest)
-                painter.setFont(QFont("Arial", 14, QFont.Bold))
+                # 2. Sub Text: "尋找中..." (11pt Bold)
+                painter.setFont(QFont("Arial", 11, QFont.Bold)) # Adjusted to 11pt
                 # Qt drawText doesn't support letter-spacing easily, we simulate by appending spaces or just accept default
                 text_rect_2 = QRect(0, center_y, w, 30)
                 painter.drawText(text_rect_2, Qt.AlignCenter, "尋找中...")
 
-                # 3. Hint Text: "請在展區中隨意走動" (9pt opacity 0.6)
+                # 3. Hint Text: "請在展區中隨意走動" (8pt opacity 0.6)
                 painter.save()
                 painter.setOpacity(0.6)
-                painter.setFont(QFont("Arial", 10))
+                painter.setFont(QFont("Arial", 8)) # Adjusted to 8pt
                 text_rect_3 = QRect(0, center_y + 40, w, 20)
                 painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
                 painter.restore()
@@ -863,11 +874,14 @@ class SoftwareRenderCamera(QWidget):
         
         # 1. External Decoration Ring (370px)
         # Web: border-white/10 (unless REVEAL)
-        # Native: using White with 10% opacity (25 alpha)
-        ring_color = QColor(255, 255, 255, 25) 
+        # Native Refinement: 80% Opacity (204/255) as requested by User
+        ring_color = QColor(255, 255, 255, 204) 
         if self.current_state == self.STATE_REVEAL:
             ring_color = QColor(255, 255, 255, 255) # Full white in REVEAL
             
+        # Native Refinement: 80% Opacity (204/255) as requested by User
+        ring_color = QColor(255, 255, 255, 204) 
+        
         painter.setPen(QPen(ring_color, 1))
         painter.setBrush(Qt.NoBrush)
         # 370px diameter = 185px radius
@@ -878,7 +892,7 @@ class SoftwareRenderCamera(QWidget):
         # Radius = 175px (half of 350)
         # Ticks: Longer at 0, 90, 180, 270.
         
-        tick_color = QColor(255, 255, 255, 50) # White/20% approx
+        tick_color = QColor(255, 255, 255, 204) # White/80% (255 * 0.8 = 204)
         
         radius = 175
         for i in range(12):
@@ -907,6 +921,13 @@ class SoftwareRenderCamera(QWidget):
             painter.setPen(QPen(tick_color, tick_width))
             painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
             
+        # 3. Top Label "A.InSight" (6pt)
+        # Position: Cy - 190 (Top of container) + 24
+        painter.setPen(QColor(255, 255, 255, 200)) # 80% opacity white text
+        painter.setFont(QFont("Arial", 6))
+        text_y = int(cy - 190 + 24)
+        painter.drawText(QRect(0, text_y, self.width(), 20), Qt.AlignCenter, "A.InSight")
+
         painter.restore()
 
     def keyPressEvent(self, event):
