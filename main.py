@@ -730,20 +730,22 @@ class SoftwareRenderCamera(QWidget):
                 # 1. Main Text: "正在探測歷史訊號" (25pt Bold)
                 painter.setPen(Qt.white)
                 painter.setFont(QFont("Arial", 25, QFont.Bold)) # Adjusted to 25pt
-                text_rect_1 = QRect(0, center_y - 60, w, 50)
+                # User requested move down by 3px: -60 -> -57. Now another 4px: -53
+                text_rect_1 = QRect(0, center_y - 53, w, 50)
                 painter.drawText(text_rect_1, Qt.AlignCenter, "正在探測歷史訊號")
 
                 # 2. Sub Text: "尋找中..." (11pt Bold)
                 painter.setFont(QFont("Arial", 11, QFont.Bold)) # Adjusted to 11pt
-                # Qt drawText doesn't support letter-spacing easily, we simulate by appending spaces or just accept default
-                text_rect_2 = QRect(0, center_y, w, 30)
+                # User requested move down by 3px: 0 -> +3. Now another 4px: +7
+                text_rect_2 = QRect(0, center_y + 7, w, 30)
                 painter.drawText(text_rect_2, Qt.AlignCenter, "尋找中...")
 
                 # 3. Hint Text: "請在展區中隨意走動" (8pt opacity 0.6)
                 painter.save()
                 painter.setOpacity(0.6)
                 painter.setFont(QFont("Arial", 8)) # Adjusted to 8pt
-                text_rect_3 = QRect(0, center_y + 40, w, 20)
+                # User requested move down by 3px: +40 -> +43. Now another 4px: +47
+                text_rect_3 = QRect(0, center_y + 47, w, 20)
                 painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
                 painter.restore()
             
@@ -921,10 +923,10 @@ class SoftwareRenderCamera(QWidget):
             painter.setPen(QPen(tick_color, tick_width))
             painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
             
-        # 3. Top Label "A.InSight" (6pt)
+        # 3. Top Label "A.InSight" (9pt)
         # Position: Cy - 190 (Top of container) + 24
         painter.setPen(QColor(255, 255, 255, 200)) # 80% opacity white text
-        painter.setFont(QFont("Arial", 6))
+        painter.setFont(QFont("Arial", 9)) # Modified to 9pt
         text_y = int(cy - 190 + 24)
         painter.drawText(QRect(0, text_y, self.width(), 20), Qt.AlignCenter, "A.InSight")
 
