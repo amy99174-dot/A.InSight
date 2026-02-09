@@ -377,8 +377,8 @@ class SoftwareRenderCamera(QWidget):
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
 
-            # 1. 繪製背景 (全黑)
-            painter.fillRect(self.rect(), Qt.black)
+            # 1. 繪製背景 (藍色測試 - 用於確認 paintEvent 是否生效)
+            painter.fillRect(self.rect(), Qt.blue)
 
             w = self.width()
             h = self.height()
@@ -389,6 +389,18 @@ class SoftwareRenderCamera(QWidget):
             path_window = QPainterPath()
             path_window.addEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
                                    self.circle_radius * 2, self.circle_radius * 2)
+
+            # -------------------------------------------------------------------------
+            # A. 繪製內容層 (Content Layer) - 限制在圓形視窗內
+            # -------------------------------------------------------------------------
+            # ... (中略) ...
+
+            # -------------------------------------------------------------------------
+            # [Phase 1 驗證標記] - 放大置中顯示
+            # -------------------------------------------------------------------------
+            painter.setPen(QColor("#FFFFFF"))
+            painter.setFont(QFont("Arial", 40, QFont.Bold))
+            painter.drawText(QRect(0, 0, w, h), Qt.AlignCenter, "[DEBUG: BLUE SCREEN TEST]")
 
             # -------------------------------------------------------------------------
             # A. 繪製內容層 (Content Layer) - 限制在圓形視窗內
