@@ -364,6 +364,16 @@ class SoftwareRenderCamera(QWidget):
         [Phase 1] 繪圖核心
         """
         try:
+            # [DEBUG LOG] 每 30 幀印一次，避免洗版
+            if not hasattr(self, '_debug_frame_count'):
+                self._debug_frame_count = 0
+            self._debug_frame_count += 1
+            
+            should_log = (self._debug_frame_count % 30 == 0)
+
+            if should_log:
+                print(f"[DEBUG] paintEvent: Size={self.width()}x{self.height()}, Radius={self.circle_radius}, State={self.current_state}")
+
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
 
@@ -389,6 +399,8 @@ class SoftwareRenderCamera(QWidget):
             # [狀態分流]
             # (1) 結果展示 (STATE_RESULT)
             if self.current_state == self.STATE_RESULT and self.generated_pixmap:
+                if should_log:
+                    print(f"[DEBUG] Generated Pixmap: {self.generated_pixmap.width()}x{self.generated_pixmap.height()}")
                 # 目前先簡單置中繪製 (Phase 2 會改為放大與平移)
                 # 保持原始比例縮放至蓋滿視窗
                 scaled = self.generated_pixmap.scaled(
@@ -422,6 +434,8 @@ class SoftwareRenderCamera(QWidget):
                         # 如果覺得卡頓，後續可移至 Thread。
                         image = self.camera.capture_array("main")
                         if image is not None:
+                            if should_log:
+                                print(f"[DEBUG] Camera Image Shape: {image.shape}")
                             # Picamera2 回傳的是 BGR (RGB888 setting) 或其他，需注意
                             # 這裡假設配置為 RGB888
                             # 如果是 RGB888 (h, w, 3)
