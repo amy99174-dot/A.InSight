@@ -694,7 +694,14 @@ class SoftwareRenderCamera(QWidget):
             painter.restore() # 解除 Clip
 
             # -------------------------------------------------------------------------
-            # B. 繪製 UI 層 (Overlay Layer) - 覆蓋在上面
+            # B. 繪製 UI 層 (Global HUD & Overlay) - 覆蓋在上面
+            # -------------------------------------------------------------------------
+            
+            # [Phase 4.3] Global HUD (Rings & Ticks) - Always visible
+            self.draw_global_hud(painter, center_x, center_y)
+
+            # -------------------------------------------------------------------------
+            # C. 狀態特定 UI Overlays
             # -------------------------------------------------------------------------
             
             # 1. 圓形邊框
@@ -704,6 +711,28 @@ class SoftwareRenderCamera(QWidget):
             elif self.current_state == self.STATE_REVEAL:
                 border_color = QColor("#39ff14") # Neon Green
             # [Phase 3 Fix] UI 參數頁面也需要特殊邊框嗎？其實不需要，因為有全螢幕遮罩
+
+            # [Phase 4.2] STATE_BOOT UI (Visual Parity)
+            if self.current_state == self.STATE_BOOT:
+                # 1. Main Text: "正在探測歷史訊號" (24pt Black)
+                painter.setPen(Qt.white)
+                painter.setFont(QFont("Arial", 28, QFont.Bold)) # Extra Bold
+                text_rect_1 = QRect(0, center_y - 60, w, 50)
+                painter.drawText(text_rect_1, Qt.AlignCenter, "正在探測歷史訊號")
+
+                # 2. Sub Text: "尋找中..." (14pt Bold tracking-widest)
+                painter.setFont(QFont("Arial", 14, QFont.Bold))
+                # Qt drawText doesn't support letter-spacing easily, we simulate by appending spaces or just accept default
+                text_rect_2 = QRect(0, center_y, w, 30)
+                painter.drawText(text_rect_2, Qt.AlignCenter, "尋找中...")
+
+                # 3. Hint Text: "請在展區中隨意走動" (9pt opacity 0.6)
+                painter.save()
+                painter.setOpacity(0.6)
+                painter.setFont(QFont("Arial", 10))
+                text_rect_3 = QRect(0, center_y + 40, w, 20)
+                painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
+                painter.restore()
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             if self.current_state == self.STATE_TUNING:
@@ -821,6 +850,62 @@ class SoftwareRenderCamera(QWidget):
         except Exception as e:
             print("❌ paintEvent 發生嚴重錯誤:")
             traceback.print_exc()
+
+    def draw_global_hud(self, painter, cx, cy):
+        """
+        [Phase 4.3] 繪製全域 HUD 裝飾 (外圈圓環 + 刻度)
+        對應 ClassicSkinV2 的 Layer 1
+        """
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # 1. External Decoration Ring (370px)
+        # Web: border-white/10 (unless REVEAL)
+        # Native: using White with 10% opacity (25 alpha)
+        ring_color = QColor(255, 255, 255, 25) 
+        if self.current_state == self.STATE_REVEAL:
+            ring_color = QColor(255, 255, 255, 255) # Full white in REVEAL
+            
+        painter.setPen(QPen(ring_color, 1))
+        painter.setBrush(Qt.NoBrush)
+        # 370px diameter = 185px radius
+        painter.drawEllipse(cx - 185, cy - 185, 370, 370)
+        
+        # 2. Scale Ring Ticks (350px)
+        # Web: 12 ticks, 30 degrees each.
+        # Radius = 175px (half of 350)
+        # Ticks: Longer at 0, 90, 180, 270.
+        
+        tick_color = QColor(255, 255, 255, 50) # White/20% approx
+        
+        radius = 175
+        for i in range(12):
+            angle_deg = (i * 30) - 90 # Start from top
+            angle_rad = math.radians(angle_deg)
+            
+            # Tick length
+            is_cardinal = (i % 3 == 0) # 0, 3, 6, 9
+            tick_len = 12 if is_cardinal else 8
+            tick_width = 2 if is_cardinal else 1
+            
+            # Calculate start and end points
+            # Start logic from Web: transform: translateY(-radius)
+            # This means the tick is at the circle edge pointing inwards? 
+            # Web: height: tickLength. 
+            # visual: The tick is ON the circle circumference.
+            
+            # Line start (at circle edge)
+            p1_x = cx + radius * math.cos(angle_rad)
+            p1_y = cy + radius * math.sin(angle_rad)
+            
+            # Line end (inwards)
+            p2_x = cx + (radius - tick_len) * math.cos(angle_rad)
+            p2_y = cy + (radius - tick_len) * math.sin(angle_rad)
+            
+            painter.setPen(QPen(tick_color, tick_width))
+            painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
+            
+        painter.restore()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
