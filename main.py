@@ -380,8 +380,8 @@ class SoftwareRenderCamera(QWidget):
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
 
-            # 1. 繪製背景 (藍色測試 - 用於確認 paintEvent 是否生效)
-            painter.fillRect(self.rect(), Qt.blue)
+            # 1. 繪製背景 (全黑)
+            painter.fillRect(self.rect(), Qt.black)
 
             w = self.width()
             h = self.height()
@@ -392,18 +392,6 @@ class SoftwareRenderCamera(QWidget):
             path_window = QPainterPath()
             path_window.addEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
                                    self.circle_radius * 2, self.circle_radius * 2)
-
-            # -------------------------------------------------------------------------
-            # A. 繪製內容層 (Content Layer) - 限制在圓形視窗內
-            # -------------------------------------------------------------------------
-            # ... (中略) ...
-
-            # -------------------------------------------------------------------------
-            # [Phase 1 驗證標記] - 放大置中顯示
-            # -------------------------------------------------------------------------
-            painter.setPen(QColor("#FFFFFF"))
-            painter.setFont(QFont("Arial", 40, QFont.Bold))
-            painter.drawText(QRect(0, 0, w, h), Qt.AlignCenter, "[DEBUG: BLUE SCREEN TEST]")
 
             # -------------------------------------------------------------------------
             # A. 繪製內容層 (Content Layer) - 限制在圓形視窗內
@@ -483,30 +471,20 @@ class SoftwareRenderCamera(QWidget):
                 border_color = QColor("yellow")
             elif self.current_state == self.STATE_RESULT:
                 border_color = QColor("#39ff14") # Neon Green
-                
+            
+            # 恢復舊的 P1, P2, P3 狀態文字邏輯 (對應 current_state)
+            state_text = f"P{self.current_state}"
+            if self.current_state == self.STATE_RESULT:
+                state_text = "RESULT"
+            elif self.current_state == self.STATE_ANALYZING:
+                state_text = "ANALYZING"
+            elif self.current_state == self.STATE_SUCCESS:
+                state_text = "SUCCESS"
+
             painter.setPen(QPen(border_color, 4))
             painter.setBrush(Qt.NoBrush)
             painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
                                 self.circle_radius * 2, self.circle_radius * 2)
-
-            # 2. 掃描線動畫 (非結果頁)
-            if self.current_state not in [self.STATE_RESULT]:
-                self.scan_line_y += 5 * self.scan_direction
-                # 邊界檢查
-                if self.scan_line_y > self.circle_radius * 2:
-                    self.scan_direction = -1
-                elif self.scan_line_y < 0:
-                    self.scan_direction = 1
-                
-                scan_y_abs = (center_y - self.circle_radius) + self.scan_line_y
-                
-                # 使用 Clip 確保線只在圓內
-                painter.save()
-                painter.setClipPath(path_window)
-                painter.setPen(QPen(QColor(0, 255, 0, 150), 2))
-                painter.drawLine(int(center_x - self.circle_radius), int(scan_y_abs), 
-                                 int(center_x + self.circle_radius), int(scan_y_abs))
-                painter.restore()
 
             # 3. 文字資訊
             if self.current_state == self.STATE_RESULT and self.analysis_result:
@@ -515,7 +493,7 @@ class SoftwareRenderCamera(QWidget):
                 painter.setPen(QColor("#39ff14"))
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
-                
+            
             elif self.current_state == self.STATE_ANALYZING:
                 painter.setPen(QColor("yellow"))
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
@@ -525,14 +503,20 @@ class SoftwareRenderCamera(QWidget):
                 painter.setPen(QColor("green"))
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
+            
+            # [狀態顯示 - 恢復原始邏輯]
+            elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_RESULT]:
+                 painter.setPen(QColor("white"))
+                 painter.setFont(QFont("Arial", 14, QFont.Bold))
+                 # 簡單顯示狀態碼，取代掉之前的 label
+                 painter.drawText(10, h - 20, f"State: P{self.current_state}")
 
             # -------------------------------------------------------------------------
             # [Phase 1 驗證標記]
             # -------------------------------------------------------------------------
             painter.setPen(QColor("#00FF00"))
             painter.setFont(QFont("Courier New", 12, QFont.Bold))
-            painter.drawText(10, 20, "[Phase 1: GPU 渲染模式啟動]")
-            painter.drawText(10, 40, f"FPS: 約 {1000/33:.1f}")
+            painter.drawText(10, 20, "[Phase 1 Verified]")
             
         except Exception as e:
             print("❌ paintEvent 發生嚴重錯誤:")
