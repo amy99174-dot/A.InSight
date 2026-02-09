@@ -580,9 +580,9 @@ class SoftwareRenderCamera(QWidget):
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
                 )
                 
-                # 計算置中座標 (大圖中心點對齊視窗中心點)
-                sx = center_x - (scaled.width() / 2)
-                sy = center_y - (scaled.height() / 2)
+                # 計算置中座標 (大圖中心點對齊視窗中心點) + [Phase 2] Pan Offset
+                sx = center_x - (scaled.width() / 2) + self.pan_offset_x
+                sy = center_y - (scaled.height() / 2) + self.pan_offset_y
                 painter.drawPixmap(int(sx), int(sy), scaled)
 
             # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL, PARAMETER)
