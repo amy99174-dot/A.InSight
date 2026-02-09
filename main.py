@@ -474,6 +474,33 @@ class SoftwareRenderCamera(QWidget):
             self.current_state = 1
         print(f"🖱️ 状态切换: P{self.current_state}")
 
+    def mouseMoveEvent(self, event):
+        """
+        [Phase 2] 滑鼠平移邏輯 (Pan Effect)
+        當滑鼠在圓形視窗內移動時，計算相對位移並更新圖片位置。
+        邏輯：Mouse Right -> Image Right -> See Left (Reveal)
+        """
+        if self.current_state == self.STATE_RESULT:
+            w = self.width()
+            h = self.height()
+            center_x = w // 2
+            center_y = h // 2
+            
+            # 計算滑鼠相對於中心的偏移量
+            mx = event.x()
+            my = event.y()
+            dx = mx - center_x
+            dy = my - center_y
+            
+            # [Pan Factor] 調整靈敏度
+            # 這裡簡單設定為 1.5 倍的滑鼠移動量，讓效果更明顯
+            factor = 1.5
+            self.pan_offset_x = dx * factor
+            self.pan_offset_y = dy * factor
+            
+            # 強制重繪以即時更新
+            self.update()
+
     def capture_photo(self):
         try:
             frame = self.camera.capture_array("main")
