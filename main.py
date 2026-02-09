@@ -222,11 +222,14 @@ class SoftwareRenderCamera(QWidget):
     
     def __init__(self):
         super().__init__()
-        self.setStyleSheet("background-color: black;")
         
-        # 显示标签
-        self.label = QLabel(self)
-        self.label.setAlignment(Qt.AlignCenter)
+        # 移除舊式 Style 與 Label，改用 paintEvent 完全接管
+        self.setAttribute(Qt.WA_OpaquePaintEvent, True)
+
+        # --------------------------------------------------------
+        # [DEBUG] 確保全螢幕 (強制覆蓋)
+        # --------------------------------------------------------
+        pass
         
         # 圆形直径
         self.circle_diameter = 380
