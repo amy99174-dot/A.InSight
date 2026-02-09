@@ -598,72 +598,8 @@ class SoftwareRenderCamera(QWidget):
                 # 分析中疊加黃色濾鏡
                 if self.current_state == self.STATE_ANALYZING:
                     painter.fillRect(self.rect(), QColor(255, 255, 0, 50))
-                
-                # [Phase 3] 參數調整頁面 UI
-                elif self.current_state == self.STATE_PARAMETER:
-                    # 半透明黑色遮罩，讓文字更清楚
-                    painter.fillRect(self.rect(), QColor(0, 0, 0, 150))
-                    
-                    font_title = QFont("Arial", 16, QFont.Bold)
-                    font_label = QFont("Arial", 12)
-                    painter.setPen(Qt.white)
-                    
-                    # Title
-                    painter.setFont(font_title)
-                    painter.drawText(QRect(0, 20, w, 40), Qt.AlignCenter, "調整參數 (Adjust Parameters)")
-                    
-                    # 1. Time Scale (1-5)
-                    painter.setFont(font_label)
-                    painter.drawText(QRect(20, 70, w, 30), Qt.AlignLeft, "Time Scale (起源 -> 未來):")
-                    
-                    # Draw 5 boxes
-                    step_w = w // 5
-                    for i in range(1, 6):
-                        x_rect = (i-1) * step_w + 10
-                        y_rect = 110
-                        w_rect = step_w - 20
-                        h_rect = 60
-                        
-                        # Selected Highlight
-                        if i == self.time_scale:
-                            painter.setBrush(QColor("#39ff14")) # Neon Green
-                            painter.setPen(Qt.black)
-                        else:
-                            painter.setBrush(Qt.NoBrush)
-                            painter.setPen(Qt.white)
-                        
-                        painter.drawRect(x_rect, y_rect, w_rect, h_rect)
-                        painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
-                        
-                    # 2. History Scale (1-3)
-                    painter.setPen(Qt.white)
-                    painter.drawText(QRect(20, 210, w, 30), Qt.AlignLeft, "History Scale (軼聞 -> 正史):")
-                    
-                    # Draw 3 boxes
-                    step_w = w // 3
-                    for i in range(1, 4):
-                        x_rect = (i-1) * step_w + 10
-                        y_rect = 250
-                        w_rect = step_w - 20
-                        h_rect = 60
-                        
-                        # Selected Highlight
-                        if i == self.history_scale:
-                            painter.setBrush(QColor("#00ffff")) # Cyan
-                            painter.setPen(Qt.black)
-                        else:
-                            painter.setBrush(Qt.NoBrush)
-                            painter.setPen(Qt.white)
-                            
-                        painter.drawRect(x_rect, y_rect, w_rect, h_rect)
-                        painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
 
-                    # 3. Confirm Button
-                    btn_rect = QRect(w//4, h - 80, w//2, 50)
-                    painter.setBrush(QColor("white"))
-                    painter.setPen(Qt.black)
-                    painter.drawRoundedRect(btn_rect, 10, 10)
-                    painter.drawText(btn_rect, Qt.AlignCenter, "開始分析 (Start Analysis)")
+                    
 
             # (3) 實時相機 (Live Camera)
             else:
@@ -708,6 +644,73 @@ class SoftwareRenderCamera(QWidget):
                 border_color = QColor("yellow")
             elif self.current_state == self.STATE_RESULT:
                 border_color = QColor("#39ff14") # Neon Green
+            # [Phase 3 Fix] UI 參數頁面也需要特殊邊框嗎？其實不需要，因為有全螢幕遮罩
+            
+            # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
+            if self.current_state == self.STATE_PARAMETER:
+                # 半透明黑色遮罩，讓文字更清楚 (全螢幕)
+                painter.fillRect(self.rect(), QColor(0, 0, 0, 200)) # 加深一點
+                
+                font_title = QFont("Arial", 16, QFont.Bold)
+                font_label = QFont("Arial", 12)
+                painter.setPen(Qt.white)
+                
+                # Title
+                painter.setFont(font_title)
+                painter.drawText(QRect(0, 40, w, 40), Qt.AlignCenter, "調整參數 (Adjust Parameters)")
+                
+                # 1. Time Scale (1-5)
+                painter.setFont(font_label)
+                painter.drawText(QRect(20, 100, w, 30), Qt.AlignLeft, "Time Scale (起源 -> 未來):")
+                
+                # Draw 5 boxes
+                step_w = w // 5
+                for i in range(1, 6):
+                    x_rect = (i-1) * step_w + 10
+                    y_rect = 140
+                    w_rect = step_w - 20
+                    h_rect = 60
+                    
+                    # Selected Highlight
+                    if i == self.time_scale:
+                        painter.setBrush(QColor("#39ff14")) # Neon Green
+                        painter.setPen(Qt.black)
+                    else:
+                        painter.setBrush(Qt.NoBrush)
+                        painter.setPen(Qt.white)
+                    
+                    painter.drawRect(x_rect, y_rect, w_rect, h_rect)
+                    painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
+                    
+                # 2. History Scale (1-3)
+                painter.setPen(Qt.white)
+                painter.drawText(QRect(20, 240, w, 30), Qt.AlignLeft, "History Scale (軼聞 -> 正史):")
+                
+                # Draw 3 boxes
+                step_w = w // 3
+                for i in range(1, 4):
+                    x_rect = (i-1) * step_w + 10
+                    y_rect = 280
+                    w_rect = step_w - 20
+                    h_rect = 60
+                    
+                    # Selected Highlight
+                    if i == self.history_scale:
+                        painter.setBrush(QColor("#00ffff")) # Cyan
+                        painter.setPen(Qt.black)
+                    else:
+                        painter.setBrush(Qt.NoBrush)
+                        painter.setPen(Qt.white)
+                        
+                    painter.drawRect(x_rect, y_rect, w_rect, h_rect)
+                    painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
+
+                # 3. Confirm Button
+                btn_rect = QRect(w//4, h - 80, w//2, 50)
+                painter.setBrush(QColor("white"))
+                painter.setPen(Qt.black)
+                painter.drawRoundedRect(btn_rect, 10, 10)
+                painter.drawText(btn_rect, Qt.AlignCenter, "開始分析 (Start Analysis)")
             
             # 恢復舊的 P1, P2, P3 狀態文字邏輯 (對應 current_state)
             state_text = f"P{self.current_state}"
