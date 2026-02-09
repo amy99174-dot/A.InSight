@@ -235,6 +235,11 @@ class SoftwareRenderCamera(QWidget):
         self.circle_diameter = 380
         self.circle_radius = 190  # 380px / 2
         
+        # [Phase 2] 滑鼠互動
+        self.setMouseTracking(True)
+        self.pan_offset_x = 0
+        self.pan_offset_y = 0
+        
         # 掃描線動畫變數 (Phase 1)
         self.scan_line_y = 0
         self.scan_direction = 1
@@ -362,6 +367,33 @@ class SoftwareRenderCamera(QWidget):
         """
         self.update()
 
+    def mouseMoveEvent(self, event):
+        """
+        [Phase 2] 滑鼠平移邏輯 (Pan Effect)
+        當滑鼠在圓形視窗內移動時，計算相對位移並更新圖片位置。
+        邏輯：Mouse Right -> Image Right -> See Left (Reveal)
+        """
+        if self.current_state == self.STATE_RESULT:
+            w = self.width()
+            h = self.height()
+            center_x = w // 2
+            center_y = h // 2
+            
+            # 計算滑鼠相對於中心的偏移量
+            mx = event.x()
+            my = event.y()
+            dx = mx - center_x
+            dy = my - center_y
+            
+            # [Pan Factor] 調整靈敏度
+            # 這裡簡單設定為 1.5 倍的滑鼠移動量，讓效果更明顯
+            factor = 1.5
+            self.pan_offset_x = dx * factor
+            self.pan_offset_y = dy * factor
+            
+            # 強制重繪以即時更新
+            self.update()
+
     def paintEvent(self, event):
         """
         [Phase 1] 繪圖核心
@@ -413,9 +445,11 @@ class SoftwareRenderCamera(QWidget):
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
                 )
                 
-                # 計算置中座標 (大圖中心點對齊視窗中心點)
-                sx = center_x - (scaled.width() / 2)
-                sy = center_y - (scaled.height() / 2)
+                # [Phase 2] 動態平移計算
+                # 基本置中座標 + 滑鼠偏移量
+                sx = center_x - (scaled.width() / 2) + self.pan_offset_x
+                sy = center_y - (scaled.height() / 2) + self.pan_offset_y
+                
                 painter.drawPixmap(int(sx), int(sy), scaled)
 
             # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL)
@@ -497,6 +531,11 @@ class SoftwareRenderCamera(QWidget):
                 painter.setPen(QColor("#39ff14"))
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
+                
+                # [Phase 2] Debug Overlay (Temporary)
+                painter.setPen(QColor("cyan"))
+                painter.setFont(QFont("Courier New", 12))
+                painter.drawText(10, h - 50, f"Pan Offset: ({self.pan_offset_x:.1f}, {self.pan_offset_y:.1f})")
             
             elif self.current_state == self.STATE_ANALYZING:
                 painter.setPen(QColor("yellow"))
