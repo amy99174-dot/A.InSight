@@ -753,6 +753,10 @@ class SoftwareRenderCamera(QWidget):
             # [Phase 4.4] STATE_PROXIMITY UI (Pulsing Ring + Text)
             if self.current_state == self.STATE_PROXIMITY:
                 self.draw_proximity_state(painter, center_x, center_y)
+                
+            # [Phase 4.4] STATE_LOCKED UI (Brackets + Text)
+            if self.current_state == self.STATE_LOCKED:
+                self.draw_locked_state(painter, center_x, center_y)
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             if self.current_state == self.STATE_TUNING:
@@ -953,6 +957,112 @@ class SoftwareRenderCamera(QWidget):
         painter.setFont(QFont("Arial", 8))
         painter.drawText(QRect(self.width() // 2 + 5, bottom_y - 25, 50, 25), Qt.AlignLeft | Qt.AlignBottom, "M")
 
+        painter.restore()
+
+    def draw_locked_state(self, painter, cx, cy):
+        """
+        [Phase 4.4] 繪製 LOCKED 狀態 UI
+        包含：四個角落括號 (Arc Segments)、中心點、上下文字
+        """
+        painter.save()
+        
+        # 動畫與樣式參數
+        # Cycle: 3000ms. Stepped logic 0.1 -> 0.5 -> 1.0 -> 0.1
+        # Re-use logic from Proximity but maybe stricter steps as per Web
+        import time
+        t = (time.time() * 1000) % 3000
+        opacity = 0.1
+        
+        # Web CSS: 0% -> 0.1, 33% -> 0.5, 66% -> 1.0, 100% -> 0.1
+        # Steps(1) means it jumps. Proximity was linear. 
+        # Web locked code also uses 'stepped-opacity'. Let's try smoothed steps.
+        if t < 1000:
+            opacity = 0.1 + (t / 1000.0) * 0.4 # 0.1 -> 0.5
+        elif t < 2000:
+            opacity = 0.5 + ((t - 1000) / 1000.0) * 0.5 # 0.5 -> 1.0
+        else:
+            opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9 # 1.0 -> 0.1
+            
+        ring_color = QColor(255, 255, 255)
+        ring_color.setAlphaF(opacity)
+        
+        # 1. 括號/Arc Segments (200px square -> 100px radius)
+        # Web uses 4 divs with borders and clip-paths.
+        # Implies a ring where segments are visible. 
+        # Let's draw 4 arcs of 90 degrees? Or 4 corner brackets 'L' shapes?
+        # Web clip-paths suggest segments of a circle (rounded-full divs).
+        # Top div: clipPath inset(0 20% 80% 20%) -> Top part of ring.
+        # Let's draw 4 arcs, each maybe 60 degrees, leaving gaps?
+        # Or just 4 corners. 
+        # Let's simple draw a circle with dashed line? Or 4 drawArc calls.
+        
+        # Radius 100px (200px diameter)
+        r = 100
+        
+        painter.setPen(QPen(ring_color, 2))
+        painter.setBrush(Qt.NoBrush)
+        
+        # Top Arc (Top-Center approx)
+        # Web: clip-path inset(0 20% 80% 20%) -> Keeps top 20% of box. 
+        # This yields an arc at the very top.
+        # Let's draw 4 arcs at cardinal directions (Top, Bottom, Left, Right) based on Web div structure.
+        # Div 1: border-t-2 (Top)
+        # Div 2: border-b-2 (Bottom)
+        # Div 3: border-l-2 (Left)
+        # Div 4: border-r-2 (Right)
+        
+        span_angle = 60 * 16 # 60 degrees in 1/16th degrees
+        # Top (90 deg) -> Start at 60, span 60?
+        # Qt angles: 0 is 3 o'clock. 90 is 12 o'clock.
+        # Top arc: 90 +/- 30 -> 60 to 120. Start angle 60? 
+        # drawArc(rect, startAngle, spanAngle)
+        # startAngle 60*16, span 60*16.
+        
+        # Top
+        painter.drawArc(cx - r, cy - r, 200, 200, 60 * 16, 60 * 16)
+        # Bottom (270 deg)
+        painter.drawArc(cx - r, cy - r, 200, 200, 240 * 16, 60 * 16)
+        # Left (180 deg)
+        painter.drawArc(cx - r, cy - r, 200, 200, 150 * 16, 60 * 16)
+        # Right (0 deg)
+        painter.drawArc(cx - r, cy - r, 200, 200, -30 * 16, 60 * 16)
+        
+        # 2. Center Dot (2x2)
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(Qt.white)
+        painter.drawEllipse(cx - 2, cy - 2, 4, 4)
+        
+        # 3. Top Text "鎖定目標" (25pt Bold)
+        # Web: top-[35%]. 35% of h? Container is full screen? 
+        # In Native, let's look at BOOT logic. 
+        # Let's center it roughly above the ring.
+        # Ring top is cy - 100.
+        # Text at cy - 140?
+        painter.setPen(Qt.white)
+        painter.setFont(QFont("Arial", 25, QFont.Bold))
+        text_rect_1 = QRect(0, cy - 150, self.width(), 40)
+        # Draw background pill? Web code: bg-black/90 px-2 rounded-sm
+        # Let's draw text with simple background rect
+        fm = painter.fontMetrics()
+        txt1 = "鎖定目標"
+        tw = fm.width(txt1)
+        th = fm.height()
+        
+        # Draw Pill BG
+        bg_rect = QRect(cx - tw//2 - 10, cy - 150, tw + 20, th)
+        painter.setBrush(QColor(0, 0, 0, 230)) # Black 90%
+        painter.setPen(QPen(Qt.white, 1)) # Border white
+        painter.drawRoundedRect(bg_rect, 4, 4)
+        
+        painter.setPen(Qt.white)
+        painter.drawText(bg_rect, Qt.AlignCenter, txt1)
+        
+        # 4. Bottom Text "[ 按下快門捕捉 ]" (11pt Bold)
+        # Web: bottom-[30%].
+        painter.setFont(QFont("Arial", 11, QFont.Bold))
+        text_rect_2 = QRect(0, cy + 120, self.width(), 30)
+        painter.drawText(text_rect_2, Qt.AlignCenter, "[ 按下快門捕捉 ]")
+        
         painter.restore()
 
     def draw_global_hud(self, painter, cx, cy):
