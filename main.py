@@ -747,7 +747,12 @@ class SoftwareRenderCamera(QWidget):
                 # User requested move down by 3px: +40 -> +43. Now another 4px: +47
                 text_rect_3 = QRect(0, center_y + 47, w, 20)
                 painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
+                painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
                 painter.restore()
+
+            # [Phase 4.4] STATE_PROXIMITY UI (Pulsing Ring + Text)
+            if self.current_state == self.STATE_PROXIMITY:
+                self.draw_proximity_state(painter, center_x, center_y)
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             if self.current_state == self.STATE_TUNING:
@@ -865,6 +870,90 @@ class SoftwareRenderCamera(QWidget):
         except Exception as e:
             print("❌ paintEvent 發生嚴重錯誤:")
             traceback.print_exc()
+
+    def draw_proximity_state(self, painter, cx, cy):
+        """
+        [Phase 4.4] 繪製 PROXIMITY 狀態 UI
+        包含：脈衝圓環、中心文字、底部距離數值
+        """
+        painter.save()
+        
+        # 動畫與樣式參數
+        # Cycle: 3000ms. 0.1 -> 0.5 -> 1.0 -> 0.1
+        # Simplified breathing curve: sin wave moved to 0.1-1.0 range
+        import time
+        t = (time.time() * 1000) % 3000
+        # Manual stepped logic from CSS:
+        # 0% (0ms) -> 0.1
+        # 33% (1000ms) -> 0.5
+        # 66% (2000ms) -> 1.0
+        # 100% (3000ms) -> 0.1
+        # Linear interpolation between opacity points
+        opacity = 0.1
+        if t < 1000:
+            # 0.1 -> 0.5
+            opacity = 0.1 + (t / 1000.0) * 0.4
+        elif t < 2000:
+            # 0.5 -> 1.0
+            opacity = 0.5 + ((t - 1000) / 1000.0) * 0.5
+        else:
+            # 1.0 -> 0.1
+            opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9
+            
+        # 1. Pulsing Ring (180px)
+        ring_color = QColor(255, 255, 255)
+        ring_color.setAlphaF(opacity)
+        painter.setPen(QPen(ring_color, 1))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(cx - 90, cy - 90, 180, 180)
+        
+        # 2. Center Content (Circle BG + Text)
+        # Web: bg-black/80, border-white/10, p-6
+        # Size? Content driven or fixed? Web says p-6 around content.
+        # Let's assume a roughly 140px-150px circle or just draw background for text area.
+        # Actually Web Structure: top div 180px ring. inner div (sibling?) center-xy ...
+        # Inner div looks like a contained circle. Let's make it 140px fixed.
+        bg_radius = 70
+        painter.setPen(QPen(QColor(255, 255, 255, 25), 1)) # Border white/10
+        painter.setBrush(QColor(0, 0, 0, 204)) # Black 80%
+        painter.drawEllipse(cx - bg_radius, cy - bg_radius, bg_radius * 2, bg_radius * 2)
+        
+        # Text 1: "訊號偵測" (25pt Bold)
+        painter.setPen(Qt.white)
+        painter.setFont(QFont("Arial", 25, QFont.Bold))
+        text_rect_1 = QRect(0, cy - 40, self.width(), 40)
+        painter.drawText(text_rect_1, Qt.AlignCenter, "訊號偵測")
+        
+        # Separator Line
+        painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
+        painter.drawLine(cx - 50, cy + 5, cx + 50, cy + 5)
+        
+        # Text 2: "接近目標中" (11pt Bold)
+        painter.setPen(Qt.white)
+        painter.setFont(QFont("Arial", 11, QFont.Bold))
+        text_rect_2 = QRect(0, cy + 10, self.width(), 20)
+        painter.drawText(text_rect_2, Qt.AlignCenter, "接近目標中")
+        
+        # 3. Bottom Distance Indicator
+        # Position: Bottom 64px.
+        # "0.8" (25pt), "M" (8pt)
+        # Draw them together centered?
+        # Let's draw "0.8" then "M" next to it.
+        # Total width approx 60px?
+        # Let's draw "0.8" at center-left offset, "M" at center-right.
+        
+        bottom_y = self.height() - 64
+        
+        # "0.8"
+        painter.setFont(QFont("Arial", 25, QFont.Bold)) # Mono? Web says font-mono. Let's stick to Arial for consistency or Courier. User asked for 25pt.
+        # Let's use Arial 25pt.
+        painter.drawText(QRect(0, bottom_y - 40, self.width() - 30, 40), Qt.AlignRight | Qt.AlignVCenter, "0.8")
+        
+        # "M"
+        painter.setFont(QFont("Arial", 8))
+        painter.drawText(QRect(self.width() // 2 + 5, bottom_y - 25, 50, 25), Qt.AlignLeft | Qt.AlignBottom, "M")
+
+        painter.restore()
 
     def draw_global_hud(self, painter, cx, cy):
         """
