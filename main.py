@@ -363,17 +363,19 @@ class SoftwareRenderCamera(QWidget):
         self.scan_line_y = 0
         self.scan_direction = 1
         
-        # 状态常量
-        self.STATE_P1 = 1
-        self.STATE_P2 = 2
-        self.STATE_P3_CAPTURE = 3
-        self.STATE_P4 = 4
-        self.STATE_P5 = 5
-        self.STATE_SUCCESS = 99     # 拍照成功 (点击 -> API)
-        self.STATE_PARAMETER = 98   # [Phase 3] 參數調整頁面
-        self.STATE_FAIL = -1        # 拍照失败
-        self.STATE_ANALYZING = 100  # AI 分析中
-        self.STATE_RESULT = 101     # 显示结果
+        # 状態常量 (Align with Web App STEPS)
+        self.STATE_BOOT = 1
+        self.STATE_PROXIMITY = 2
+        self.STATE_LOCKED = 3        # 原 P3_CAPTURE
+        self.STATE_TUNING = 4        # 原 PARAMETER
+        self.STATE_ANALYZING = 5
+        self.STATE_LISTEN = 6        # [New]
+        self.STATE_FOCUSING = 7      # [New]
+        self.STATE_REVEAL = 8        # 原 RESULT
+        
+        # 輔助狀態
+        self.STATE_SUCCESS = 99      # 拍照完到 TUNING 的過渡 (可選)
+        self.STATE_FAIL = -1
         
         # [Phase 3] AI 參數
         self.time_scale = 3     # 1-5
@@ -385,7 +387,7 @@ class SoftwareRenderCamera(QWidget):
         self.pan_offset_y = 0
         
         
-        self.current_state = self.STATE_P1
+        self.current_state = self.STATE_BOOT
         self.captured_pixmap = None
         self.analysis_result = None
         self.generated_pixmap = None # 存儲 Agent 回傳的圖片
@@ -406,73 +408,97 @@ class SoftwareRenderCamera(QWidget):
         self.timer.start(33)
     
     def mousePressEvent(self, event):
-        """处理点击事件"""
+        """处理点击事件 (Aligned with Web App Flow)"""
         
-        # 拍照成功 -> 進入參數調整頁面 [Phase 3]
-        if self.current_state == self.STATE_SUCCESS:
-            self.current_state = self.STATE_PARAMETER
-            print("⚙️ 進入參數調整模式 (Time/History Scale)")
+        # 1. BOOT -> PROXIMITY -> LOCKED
+        if self.current_state in [self.STATE_BOOT, self.STATE_PROXIMITY]:
+            self.current_state += 1
+            print(f"🖱️ 狀態切換: {self.get_state_name()}")
             return
 
-        # [Phase 3] 參數調整頁面互動
-        if self.current_state == self.STATE_PARAMETER:
+        # 2. LOCKED (拍照)
+        if self.current_state == self.STATE_LOCKED:
+            self.capture_photo()
+            # capture_photo 會跳到 STATE_SUCCESS
+            return
+
+        # 3. SUCCESS (拍照完) -> 跳轉到 TUNING
+        if self.current_state == self.STATE_SUCCESS:
+            self.current_state = self.STATE_TUNING
+            print("⚙️ 進入 TUNING 模式 (參數調整)")
+            return
+
+        # 4. TUNING (參數調整互動)
+        if self.current_state == self.STATE_TUNING:
             x = event.x()
             y = event.y()
             w = self.width()
             h = self.height()
             
-            # 定義區域與按鈕 (需與 paintEvent 對齊)
-            # 這裡簡單劃分區域
-            # Time Scale (1-5): y=100~200, x 分 5 等分
+            # Time Scale (1-5): y=100~200
             if 100 <= y <= 200:
                 step_w = w // 5
                 val = (x // step_w) + 1
                 if 1 <= val <= 5:
                     self.time_scale = val
-                    print(f"Set TimeScale: {val}")
                     self.update()
                     return
 
-            # History Scale (1-3): y=250~350, x 分 3 等分
+            # History Scale (1-3): y=250~350
             if 250 <= y <= 350:
                 step_w = w // 3
                 val = (x // step_w) + 1
                 if 1 <= val <= 3:
                     self.history_scale = val
-                    print(f"Set HistoryScale: {val}")
                     self.update()
                     return
             
-            # Confirm Button: Bottom area (y > h-100)
+            # Confirm Button
             if y > h - 100:
                 self.start_analysis()
                 return
-            
             return
 
-        # 结果页面/失败页面 -> 回到 P1
-        if self.current_state in [self.STATE_RESULT, self.STATE_FAIL]:
-            self.current_state = self.STATE_P1
+        # 5. ANALYZING (分析中禁止手動點擊切換)
+        if self.current_state == self.STATE_ANALYZING:
+            return
+
+        # 6. LISTEN (閱讀劇本) -> 跳轉到 FOCUSING
+        if self.current_state == self.STATE_LISTEN:
+            self.current_state = self.STATE_FOCUSING
+            print("👁️ 進入 FOCUSING 模式")
+            return
+
+        # 7. FOCUSING (對焦) -> 跳轉到 REVEAL
+        if self.current_state == self.STATE_FOCUSING:
+            self.current_state = self.STATE_REVEAL
+            print("✨ 進入 REVEAL 模式 (結果展示)")
+            return
+
+        # 8. REVEAL / FAIL -> 回到 BOOT
+        if self.current_state in [self.STATE_REVEAL, self.STATE_FAIL]:
+            self.current_state = self.STATE_BOOT
             self.captured_pixmap = None
             self.analysis_result = None
             self.generated_pixmap = None
-            print("🔄 重置到 P1")
+            print("🔄 重置到 BOOT")
             return
 
-        # P3 -> 拍照
-        if self.current_state == self.STATE_P3_CAPTURE:
-            self.capture_photo()
-            return
-
-        # 分析中 -> 禁止操作
-        if self.current_state == self.STATE_ANALYZING:
-            return
-            
-        # P1-P5 循环
-        self.current_state += 1
-        if self.current_state > 5:
-            self.current_state = 1
-        print(f"🖱️ 状态切换: P{self.current_state}")
+    def get_state_name(self):
+        """獲取當前狀態名稱"""
+        mapping = {
+            self.STATE_BOOT: "BOOT",
+            self.STATE_PROXIMITY: "PROXIMITY",
+            self.STATE_LOCKED: "LOCKED",
+            self.STATE_TUNING: "TUNING",
+            self.STATE_ANALYZING: "ANALYZING",
+            self.STATE_LISTEN: "LISTEN",
+            self.STATE_FOCUSING: "FOCUSING",
+            self.STATE_REVEAL: "REVEAL",
+            self.STATE_SUCCESS: "SUCCESS",
+            self.STATE_FAIL: "FAIL"
+        }
+        return mapping.get(self.current_state, "UNKNOWN")
 
     def mouseMoveEvent(self, event):
         """
@@ -480,7 +506,7 @@ class SoftwareRenderCamera(QWidget):
         當滑鼠在圓形視窗內移動時，計算相對位移並更新圖片位置。
         邏輯：Mouse Right -> Image Right -> See Left (Reveal)
         """
-        if self.current_state == self.STATE_RESULT:
+        if self.current_state == self.STATE_REVEAL:
             w = self.width()
             h = self.height()
             center_x = w // 2
@@ -552,7 +578,7 @@ class SoftwareRenderCamera(QWidget):
             except Exception as e:
                 print(f"❌ 圖片加載失敗: {e}")
                 
-        self.current_state = self.STATE_RESULT
+        self.current_state = self.STATE_LISTEN
 
     def update_frame(self):
         """
@@ -600,8 +626,8 @@ class SoftwareRenderCamera(QWidget):
             painter.setClipPath(path_window)
 
             # [狀態分流]
-            # (1) 結果展示 (STATE_RESULT)
-            if self.current_state == self.STATE_RESULT and self.generated_pixmap:
+            # (1) 結果展示 (STATE_REVEAL)
+            if self.current_state == self.STATE_REVEAL and self.generated_pixmap:
                 if should_log:
                     print(f"[DEBUG] Generated Pixmap: {self.generated_pixmap.width()}x{self.generated_pixmap.height()}")
                 
@@ -618,8 +644,8 @@ class SoftwareRenderCamera(QWidget):
                 sy = center_y - (scaled.height() / 2) + self.pan_offset_y
                 painter.drawPixmap(int(sx), int(sy), scaled)
 
-            # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL, PARAMETER)
-            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_PARAMETER]:
+            # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL, TUNING, LISTEN, FOCUSING)
+            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_TUNING, self.STATE_LISTEN, self.STATE_FOCUSING]:
                 scaled = self.captured_pixmap.scaled(
                     self.circle_radius * 2, self.circle_radius * 2,
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
@@ -675,12 +701,12 @@ class SoftwareRenderCamera(QWidget):
             border_color = QColor("white")
             if self.current_state == self.STATE_ANALYZING:
                 border_color = QColor("yellow")
-            elif self.current_state == self.STATE_RESULT:
+            elif self.current_state == self.STATE_REVEAL:
                 border_color = QColor("#39ff14") # Neon Green
             # [Phase 3 Fix] UI 參數頁面也需要特殊邊框嗎？其實不需要，因為有全螢幕遮罩
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
-            if self.current_state == self.STATE_PARAMETER:
+            if self.current_state == self.STATE_TUNING:
                 # 半透明黑色遮罩，讓文字更清楚 (全螢幕)
                 painter.fillRect(self.rect(), QColor(0, 0, 0, 200)) # 加深一點
                 
@@ -746,13 +772,14 @@ class SoftwareRenderCamera(QWidget):
                 painter.drawText(btn_rect, Qt.AlignCenter, "開始分析 (Start Analysis)")
             
             # 恢復舊的 P1, P2, P3 狀態文字邏輯 (對應 current_state)
-            state_text = f"P{self.current_state}"
-            if self.current_state == self.STATE_RESULT:
-                state_text = "RESULT"
-            elif self.current_state == self.STATE_ANALYZING:
-                state_text = "ANALYZING"
-            elif self.current_state == self.STATE_SUCCESS:
-                state_text = "SUCCESS"
+            state_text = self.get_state_name()
+        
+
+
+
+
+
+
 
             painter.setPen(QPen(border_color, 4))
             painter.setBrush(Qt.NoBrush)
@@ -760,7 +787,7 @@ class SoftwareRenderCamera(QWidget):
                                 self.circle_radius * 2, self.circle_radius * 2)
 
             # 3. 文字資訊
-            if self.current_state == self.STATE_RESULT and self.analysis_result:
+            if self.current_state == self.STATE_REVEAL and self.analysis_result:
                 name = self.analysis_result.get("name", "")
                 era = self.analysis_result.get("era", "")
                 painter.setPen(QColor("#39ff14"))
@@ -777,12 +804,12 @@ class SoftwareRenderCamera(QWidget):
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
             
-            # [狀態顯示 - 恢復原始邏輯]
-            elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_RESULT]:
+            # [狀態顯示 - 統一使用 get_state_name]
+            elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_REVEAL]:
                  painter.setPen(QColor("white"))
                  painter.setFont(QFont("Arial", 14, QFont.Bold))
                  # 簡單顯示狀態碼，取代掉之前的 label
-                 painter.drawText(10, h - 20, f"State: P{self.current_state}")
+                 painter.drawText(10, h - 20, f"State: {state_text}")
 
             # -------------------------------------------------------------------------
             # [Phase 1 驗證標記]
