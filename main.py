@@ -857,14 +857,14 @@ class SoftwareRenderCamera(QWidget):
                 painter.setFont(QFont("Arial", 25, QFont.Bold)) # Adjusted to 25pt
                 # User requested move down by 3px: -60 -> -57. Now another 4px: -53
                 text_rect_1 = QRect(0, center_y - 53, w, 50)
-                txt_main = self.config_manager.get_text("bootTitle", "正在探測歷史訊號")
+                txt_main = self.config_manager.get_text("bootText", "正在探測歷史訊號")
                 painter.drawText(text_rect_1, Qt.AlignCenter, txt_main)
 
                 # 2. Sub Text: "尋找中..." (11pt Bold)
                 painter.setFont(QFont("Arial", 11, QFont.Bold)) # Adjusted to 11pt
                 # User requested move down by 3px: 0 -> +3. Now another 4px: +7
                 text_rect_2 = QRect(0, center_y + 7, w, 30)
-                txt_sub = self.config_manager.get_text("bootSubtitle", "尋找中...")
+                txt_sub = self.config_manager.get_text("bootSubtext", "尋找中...")
                 painter.drawText(text_rect_2, Qt.AlignCenter, txt_sub)
 
                 # 3. Hint Text: "請在展區中隨意走動" (8pt opacity 0.6)
