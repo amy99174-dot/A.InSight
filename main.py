@@ -548,10 +548,6 @@ class SoftwareRenderCamera(QWidget):
         self.camera.stop()
         self.camera.close()
         event.accept()
-    
-    def resizeEvent(self, event):
-        super().resizeEvent(event)
-        self.label.setGeometry(0, 0, self.width(), self.height())
 
 
 if __name__ == "__main__":
