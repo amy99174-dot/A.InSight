@@ -54,9 +54,11 @@ class GeminiWorker(QThread):
     """后台调用 API 的线程：文字分析 + 图像生成"""
     finished = pyqtSignal(dict)
     
-    def __init__(self, image_data):
+    def __init__(self, image_data, time_scale=3, history_scale=2):
         super().__init__()
         self.image_data = image_data
+        self.time_scale = time_scale
+        self.history_scale = history_scale
         
     def run(self):
         try:
@@ -66,15 +68,129 @@ class GeminiWorker(QThread):
             analyze_url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={API_KEY}"
             headers = {"Content-Type": "application/json"}
             
-            prompt = """
-            Identify the main object in this image and return a JSON with:
-            {
-                "name": "Object Name (Traditional Chinese)",
-                "era": "Period/Dynasty (Traditional Chinese)",
-                "description": "Short description (Traditional Chinese)",
-                "visionPrompt": "A detailed English prompt to regenerate this object in a historical style, photorealistic, 8k resolution."
-            }
-            Output JSON ONLY.
+            # [Phase 3] Full 5-Agent Prompt Logic (From lib/ai-server.ts)
+            role_id = "展品辨識引擎 (Artifact Identifier)"
+            tone = "客觀、學術且帶有敬意"
+            style_keywords = "cinematic lighting, high detail, historical archive style"
+            
+            prompt = f"""
+# Role
+You are the "Chronos Engine," a specialized AI simulation environment.
+You must simulate the following 5 specific AI Agents sequentially.
+
+CUSTOM SETTINGS:
+- Primary Role Identity: {role_id}
+- Required Tone: {tone}
+- Visual Style Guide: {style_keywords}
+
+Current Settings -> timeScale: {self.time_scale} (1-5), historyScale: {self.history_scale} (1-3).
+
+CRITICAL LANGUAGE RULES (MUST FOLLOW):
+1. **Output Language**: STRICTLY Traditional Chinese (繁體中文 - Taiwan usage).
+2. **NO English**: Do not include English translations, original names, or Romanization in the JSON output fields 'name' and 'era'.
+3. **Field Specifics**:
+   - 'name': Only the Chinese name. (e.g., "翠玉白菜" ✅, "Jadeite Cabbage" ❌)
+   - 'era': Only the Chinese dynasty/period. (e.g., "清代" ✅, "Modern" ❌ -> use "現代")
+
+---
+
+## Agent 1: {role_id} (Object Analysis)
+
+【角色設定】
+你是一個「{role_id}」。
+你的語氣必須是：「{tone}」。
+任務是根據使用者照片中可見的物件，找出唯一主要物件並產出基本結構化描述。
+
+【核心規則】
+1. 嚴格遵守設定的語氣 ({tone})。
+2. 若能辨識 → 輸出具體名稱。
+3. 若完全無法辨識 → 回覆「無法解析」，並附上原因。
+4. 誤判允許，不需避免錯誤。
+
+需額外輸出 styleRef, manufacturingMethod, preFormState, 以及 category。
+
+(Reference Constraints for Agent 1):
+- styleRef: Must match the era (Ancient=Painting, Modern=Photo).
+- manufacturingMethod: Must match material (Carving, Casting, etc).
+- preFormState: Must describe raw material for TimeScale 1.
+
+---
+
+## Agent 2: Cultural Search Engine (文化敘事搜尋引擎)
+【角色設定】
+你是一個「文化敘事搜尋引擎」。
+你的任務是根據 Agent 1 的物件資訊，自動搜尋人文與歷史背景，構建一條可用於導覽與美術敘事的故事主線。
+
+【核心規則】
+一、需以 Agent 1 輸出的物件名稱、材質、年代為基礎進行搜尋與推論。
+二、故事必須有人文連結 (例如：人物、習俗、寓意、儀式、社會背景)。
+三、允許推論性敘事，但需保持合理性與考據感。
+
+---
+
+## Agent 3: Vision Prompt Engineer (視覺提示工程師)
+【角色設定】
+你是一名「視覺提示工程師」。
+你的任務是將「物件資訊（含 styleRef）＋ 故事背景（Agent 2）＋ TimeScale」轉換成可供圖像生成模型使用的英文畫面指令。
+
+【核心規則】
+一、藝術風格由 styleRef 與 Global Keywords 主導
+Global Keywords: "{style_keywords}"
+你必須將 styleRef 結合 Global Keywords 轉換為英文繪圖指令。
+
+二、畫面敘事結構由 TimeScale ({self.time_scale}) 決定
+1: 起源 (Abstract / Natural) -> "abstract origin scene..."
+2: 誕生 (POV with hands) -> "first-person hands crafting..."
+3: 全盛期 (Period Still Life) -> "still life in historical setting..."
+4: 流轉 (Excavation / Dusty) -> "excavated artifact, dust, erosion..."
+5: 命運 (Sci-fi relic) -> "futuristic relic chamber..."
+
+三、媒材與寫實度控制
+- 若 styleRef 為「繪畫/水墨」：全圖風格化。
+- 若 styleRef 為「攝影」：保持寫實度但模擬底片質感。
+
+---
+
+## Agent 4: Exhibit Narrator (博物館導覽敘述者)
+【角色設定】
+你是一名「博物館導覽敘述者」。
+你的語氣必須是：「{tone}」。
+你的任務是依據 Agent 2 的故事與 Agent 3 的視覺場景，生成第三人稱繁體中文導覽詞。
+
+【核心規則】
+一、語氣由 HistoryScale ({self.history_scale}) 決定：
+1：軼聞（神秘、低語）
+2：通史（文化與習俗）
+3：正史（考據、學術）
+二、導覽詞不得出現：Prompt、技術詞彙、模型流程、英文描述。
+三、應直接「像在博物館講故事」。
+四、長度約 80-120 字。
+
+---
+
+## Agent 5: Soundscape Curator (音效策展人)
+【角色設定】
+你是一名「音效策展人」。
+你根據 Agent 2 的故事與 Agent 3 的圖像描述，從資料庫中選擇適合的音效。
+
+【核心規則】
+一、必須匹配故事情境與圖像描述，選擇 1-2 個代碼：
+SOUND_WIND, SOUND_WATER, SOUND_CLANK, SOUND_CROWD, SOUND_QUIET, SOUND_LOW, SOUND_HUM, SOUND_FIRE, SOUND_SCREAM
+二、輸出指令，讓系統播放被選擇的音效。
+
+---
+
+# FINAL OUTPUT FORMAT (JSON ONLY)
+Combine the results from all agents into this exact JSON structure:
+
+{{
+  "name": "Object Name (from Agent 1, Traditional Chinese ONLY)",
+  "visionPrompt": "English prompt (from Agent 3)",
+  "scriptPrompt": "Traditional Chinese script (from Agent 4)",
+  "ambienceCategory": "SELECTED_TAGS (comma separated, from Agent 5)",
+  "imageStrength": 0.xx (from Agent 3),
+  "era": "Period (from Agent 1, Traditional Chinese ONLY)"
+}}
             """
             
             data = {
@@ -92,7 +208,7 @@ class GeminiWorker(QThread):
             final_result = {}
             
             # 1. 呼叫分析 API
-            print("🤖 [1/2] 正在分析圖片內容...")
+            print(f"🤖 [1/2] 正在分析圖片內容 (TimeScale={{self.time_scale}}, HistoryScale={{self.history_scale}})...")
             response = requests.post(analyze_url, headers=headers, json=data)
             
             if response.status_code != 200:
@@ -107,6 +223,14 @@ class GeminiWorker(QThread):
             
             final_result = json.loads(text)
             print(f"✅ 分析成功: {final_result.get('name')}")
+            
+            # [Phase 3] Fallback/Default values matching lib/ai-server.ts
+            if not final_result.get("name"): final_result["name"] = "未知文物"
+            if not final_result.get("visionPrompt"): final_result["visionPrompt"] = "Historical artifact close up, photorealistic."
+            if not final_result.get("scriptPrompt"): final_result["scriptPrompt"] = "訊號模糊，無法解析歷史數據。"
+            if not final_result.get("ambienceCategory"): final_result["ambienceCategory"] = "SOUND_QUIET"
+            if not final_result.get("imageStrength"): final_result["imageStrength"] = 0.65
+            if not final_result.get("era"): final_result["era"] = "未知年代"
             
 
             # Step 2: 圖像生成 (Gemini 2.5 Flash Image - Img2Img)
@@ -235,11 +359,6 @@ class SoftwareRenderCamera(QWidget):
         self.circle_diameter = 380
         self.circle_radius = 190  # 380px / 2
         
-        # [Phase 2] 滑鼠互動
-        self.setMouseTracking(True)
-        self.pan_offset_x = 0
-        self.pan_offset_y = 0
-        
         # 掃描線動畫變數 (Phase 1)
         self.scan_line_y = 0
         self.scan_direction = 1
@@ -251,9 +370,14 @@ class SoftwareRenderCamera(QWidget):
         self.STATE_P4 = 4
         self.STATE_P5 = 5
         self.STATE_SUCCESS = 99     # 拍照成功 (点击 -> API)
+        self.STATE_PARAMETER = 98   # [Phase 3] 參數調整頁面
         self.STATE_FAIL = -1        # 拍照失败
         self.STATE_ANALYZING = 100  # AI 分析中
         self.STATE_RESULT = 101     # 显示结果
+        
+        # [Phase 3] AI 參數
+        self.time_scale = 3     # 1-5
+        self.history_scale = 2  # 1-3
         
         self.current_state = self.STATE_P1
         self.captured_pixmap = None
@@ -278,9 +402,46 @@ class SoftwareRenderCamera(QWidget):
     def mousePressEvent(self, event):
         """处理点击事件"""
         
-        # 拍照成功 -> 触发 API 分析
+        # 拍照成功 -> 進入參數調整頁面 [Phase 3]
         if self.current_state == self.STATE_SUCCESS:
-            self.start_analysis()
+            self.current_state = self.STATE_PARAMETER
+            print("⚙️ 進入參數調整模式 (Time/History Scale)")
+            return
+
+        # [Phase 3] 參數調整頁面互動
+        if self.current_state == self.STATE_PARAMETER:
+            x = event.x()
+            y = event.y()
+            w = self.width()
+            h = self.height()
+            
+            # 定義區域與按鈕 (需與 paintEvent 對齊)
+            # 這裡簡單劃分區域
+            # Time Scale (1-5): y=100~200, x 分 5 等分
+            if 100 <= y <= 200:
+                step_w = w // 5
+                val = (x // step_w) + 1
+                if 1 <= val <= 5:
+                    self.time_scale = val
+                    print(f"Set TimeScale: {val}")
+                    self.update()
+                    return
+
+            # History Scale (1-3): y=250~350, x 分 3 等分
+            if 250 <= y <= 350:
+                step_w = w // 3
+                val = (x // step_w) + 1
+                if 1 <= val <= 3:
+                    self.history_scale = val
+                    print(f"Set HistoryScale: {val}")
+                    self.update()
+                    return
+            
+            # Confirm Button: Bottom area (y > h-100)
+            if y > h - 100:
+                self.start_analysis()
+                return
+            
             return
 
         # 结果页面/失败页面 -> 回到 P1
@@ -324,11 +485,12 @@ class SoftwareRenderCamera(QWidget):
         except Exception as e:
             print(f"❌ 拍照失败: {e}")
             self.current_state = self.STATE_FAIL
+            traceback.print_exc()
 
     def start_analysis(self):
         """启动 AI 分析"""
         self.current_state = self.STATE_ANALYZING
-        print("🤖 开始 AI 分析...")
+        print(f"🤖 开始 AI 分析 (T={self.time_scale}, H={self.history_scale})...")
         
         # 将 QPixmap 转为 Base64
         image = self.captured_pixmap.toImage()
@@ -337,8 +499,8 @@ class SoftwareRenderCamera(QWidget):
         image.save(buffer, "JPG")
         b64_data = base64.b64encode(buffer.data()).decode()
         
-        # 启动后台线程
-        self.worker = GeminiWorker(b64_data)
+        # 启动后台线程 [Phase 3: Pass Scales]
+        self.worker = GeminiWorker(b64_data, self.time_scale, self.history_scale)
         self.worker.finished.connect(self.on_analysis_finished)
         self.worker.start()
         
@@ -366,33 +528,6 @@ class SoftwareRenderCamera(QWidget):
         繪圖邏輯全部移至 paintEvent 以利用硬體加速與流暢動畫。
         """
         self.update()
-
-    def mouseMoveEvent(self, event):
-        """
-        [Phase 2] 滑鼠平移邏輯 (Pan Effect)
-        當滑鼠在圓形視窗內移動時，計算相對位移並更新圖片位置。
-        邏輯：Mouse Right -> Image Right -> See Left (Reveal)
-        """
-        if self.current_state == self.STATE_RESULT:
-            w = self.width()
-            h = self.height()
-            center_x = w // 2
-            center_y = h // 2
-            
-            # 計算滑鼠相對於中心的偏移量
-            mx = event.x()
-            my = event.y()
-            dx = mx - center_x
-            dy = my - center_y
-            
-            # [Pan Factor] 調整靈敏度
-            # 這裡簡單設定為 1.5 倍的滑鼠移動量，讓效果更明顯
-            factor = 1.5
-            self.pan_offset_x = dx * factor
-            self.pan_offset_y = dy * factor
-            
-            # 強制重繪以即時更新
-            self.update()
 
     def paintEvent(self, event):
         """
@@ -445,15 +580,13 @@ class SoftwareRenderCamera(QWidget):
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
                 )
                 
-                # [Phase 2] 動態平移計算
-                # 基本置中座標 + 滑鼠偏移量
-                sx = center_x - (scaled.width() / 2) + self.pan_offset_x
-                sy = center_y - (scaled.height() / 2) + self.pan_offset_y
-                
+                # 計算置中座標 (大圖中心點對齊視窗中心點)
+                sx = center_x - (scaled.width() / 2)
+                sy = center_y - (scaled.height() / 2)
                 painter.drawPixmap(int(sx), int(sy), scaled)
 
-            # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL)
-            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL]:
+            # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL, PARAMETER)
+            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_PARAMETER]:
                 scaled = self.captured_pixmap.scaled(
                     self.circle_radius * 2, self.circle_radius * 2,
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
@@ -465,6 +598,72 @@ class SoftwareRenderCamera(QWidget):
                 # 分析中疊加黃色濾鏡
                 if self.current_state == self.STATE_ANALYZING:
                     painter.fillRect(self.rect(), QColor(255, 255, 0, 50))
+                
+                # [Phase 3] 參數調整頁面 UI
+                elif self.current_state == self.STATE_PARAMETER:
+                    # 半透明黑色遮罩，讓文字更清楚
+                    painter.fillRect(self.rect(), QColor(0, 0, 0, 150))
+                    
+                    font_title = QFont("Arial", 16, QFont.Bold)
+                    font_label = QFont("Arial", 12)
+                    painter.setPen(Qt.white)
+                    
+                    # Title
+                    painter.setFont(font_title)
+                    painter.drawText(QRect(0, 20, w, 40), Qt.AlignCenter, "調整參數 (Adjust Parameters)")
+                    
+                    # 1. Time Scale (1-5)
+                    painter.setFont(font_label)
+                    painter.drawText(QRect(20, 70, w, 30), Qt.AlignLeft, "Time Scale (起源 -> 未來):")
+                    
+                    # Draw 5 boxes
+                    step_w = w // 5
+                    for i in range(1, 6):
+                        x_rect = (i-1) * step_w + 10
+                        y_rect = 110
+                        w_rect = step_w - 20
+                        h_rect = 60
+                        
+                        # Selected Highlight
+                        if i == self.time_scale:
+                            painter.setBrush(QColor("#39ff14")) # Neon Green
+                            painter.setPen(Qt.black)
+                        else:
+                            painter.setBrush(Qt.NoBrush)
+                            painter.setPen(Qt.white)
+                        
+                        painter.drawRect(x_rect, y_rect, w_rect, h_rect)
+                        painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
+                        
+                    # 2. History Scale (1-3)
+                    painter.setPen(Qt.white)
+                    painter.drawText(QRect(20, 210, w, 30), Qt.AlignLeft, "History Scale (軼聞 -> 正史):")
+                    
+                    # Draw 3 boxes
+                    step_w = w // 3
+                    for i in range(1, 4):
+                        x_rect = (i-1) * step_w + 10
+                        y_rect = 250
+                        w_rect = step_w - 20
+                        h_rect = 60
+                        
+                        # Selected Highlight
+                        if i == self.history_scale:
+                            painter.setBrush(QColor("#00ffff")) # Cyan
+                            painter.setPen(Qt.black)
+                        else:
+                            painter.setBrush(Qt.NoBrush)
+                            painter.setPen(Qt.white)
+                            
+                        painter.drawRect(x_rect, y_rect, w_rect, h_rect)
+                        painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
+
+                    # 3. Confirm Button
+                    btn_rect = QRect(w//4, h - 80, w//2, 50)
+                    painter.setBrush(QColor("white"))
+                    painter.setPen(Qt.black)
+                    painter.drawRoundedRect(btn_rect, 10, 10)
+                    painter.drawText(btn_rect, Qt.AlignCenter, "開始分析 (Start Analysis)")
 
             # (3) 實時相機 (Live Camera)
             else:
@@ -531,11 +730,6 @@ class SoftwareRenderCamera(QWidget):
                 painter.setPen(QColor("#39ff14"))
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
-                
-                # [Phase 2] Debug Overlay (Temporary)
-                painter.setPen(QColor("cyan"))
-                painter.setFont(QFont("Courier New", 12))
-                painter.drawText(10, h - 50, f"Pan Offset: ({self.pan_offset_x:.1f}, {self.pan_offset_y:.1f})")
             
             elif self.current_state == self.STATE_ANALYZING:
                 painter.setPen(QColor("yellow"))
