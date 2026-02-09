@@ -379,6 +379,12 @@ class SoftwareRenderCamera(QWidget):
         self.time_scale = 3     # 1-5
         self.history_scale = 2  # 1-3
         
+        # [Phase 2] 滑鼠互動
+        self.setMouseTracking(True)
+        self.pan_offset_x = 0
+        self.pan_offset_y = 0
+        
+        
         self.current_state = self.STATE_P1
         self.captured_pixmap = None
         self.analysis_result = None
