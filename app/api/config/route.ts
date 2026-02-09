@@ -1,31 +1,35 @@
+
 import { NextResponse } from 'next/server';
-import fs from 'fs/promises';
-import path from 'path';
+import { supabase } from '@/lib/supabase';
 import { DEFAULT_CONFIG } from '@/lib/defaults';
 
-const CONFIG_FILE_PATH = path.join(process.cwd(), 'scenarios.json');
+// Ensure this route is always fresh
+export const dynamic = 'force-dynamic';
 
 export async function GET() {
     try {
-        // defined strictly for this file
-        let fileExists = false;
-        try {
-            await fs.access(CONFIG_FILE_PATH);
-            fileExists = true;
-        } catch {
-            fileExists = false;
+        // 1. Fetch config with ID=1 from Supabase
+        const { data, error } = await supabase
+            .from('scenario_config')
+            .select('config')
+            .eq('id', 1)
+            .single();
+
+        if (error) {
+            console.warn("Supabase Config Fetch Error (Using Default):", error.message);
+            return NextResponse.json(DEFAULT_CONFIG);
         }
 
-        if (fileExists) {
-            const fileContent = await fs.readFile(CONFIG_FILE_PATH, 'utf-8');
-            const userConfig = JSON.parse(fileContent);
-            // Merge with defaults to ensure all keys exist
+        if (data?.config) {
+            // 2. Merge with defaults (shallow merge)
+            const userConfig = data.config;
             return NextResponse.json({ ...DEFAULT_CONFIG, ...userConfig });
         } else {
             return NextResponse.json(DEFAULT_CONFIG);
         }
+
     } catch (error) {
-        console.error("Error reading config file:", error);
+        console.error("API Route Error:", error);
         return NextResponse.json(DEFAULT_CONFIG);
     }
 }

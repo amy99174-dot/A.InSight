@@ -50,7 +50,65 @@ def list_models():
         print(f"❌ List models error: {e}")
 
 # 啟動時列出一次
+# 啟動時列出一次
 threading.Thread(target=list_models).start()
+
+class ConfigManager(QThread):
+    """
+    后台同步 Web 编辑器配置的管理器
+    每 2 秒轮询一次 API
+    """
+    config_updated = pyqtSignal(dict)
+    
+    def __init__(self, api_url="http://localhost:3000/api/config"):
+        super().__init__()
+        self.api_url = api_url
+        self.current_config = {}
+        self.running = True
+        
+    def run(self):
+        print(f"🔄 ConfigManager Started: Polling {self.api_url}")
+        while self.running:
+            try:
+                resp = requests.get(self.api_url, timeout=1)
+                if resp.status_code == 200:
+                    new_config = resp.json()
+                    # Simple comparison to avoid unnecessary repaints
+                    if json.dumps(new_config, sort_keys=True) != json.dumps(self.current_config, sort_keys=True):
+                        self.current_config = new_config
+                        print("✨ Config Updated from Web!")
+                        self.config_updated.emit(new_config)
+            except Exception as e:
+                # Silently fail on network error to avoid spamming console
+                pass
+            
+            # Sleep for 2 seconds
+            self.msleep(2000)
+            
+    def stop(self):
+        self.running = False
+        self.wait()
+        
+    def get_text(self, key, default=""):
+        """Safely get text from config.text_content"""
+        try:
+            return self.current_config.get("text_content", {}).get(key, default)
+        except:
+            return default
+            
+    def get_color(self, key, default="#ffffff"):
+        """Safely get color from config.ui_theme"""
+        try:
+            return self.current_config.get("ui_theme", {}).get(key, default)
+        except:
+            return default
+
+    def get_theme_value(self, key, default=None):
+        try:
+            return self.current_config.get("ui_theme", {}).get(key, default)
+        except:
+            return default
+
 
 class GeminiWorker(QThread):
     """后台调用 API 的线程：文字分析 + 图像生成"""
@@ -343,6 +401,64 @@ Combine the results from all agents into this exact JSON structure:
 
 
 
+
+class ConfigManager(QThread):
+    """
+    后台同步 Web 编辑器配置的管理器
+    每 2 秒轮询一次 API
+    """
+    config_updated = pyqtSignal(dict)
+    
+    def __init__(self, api_url="http://localhost:3000/api/config"):
+        super().__init__()
+        self.api_url = api_url
+        self.current_config = {}
+        self.running = True
+        
+    def run(self):
+        print(f"🔄 ConfigManager Started: Polling {self.api_url}")
+        while self.running:
+            try:
+                resp = requests.get(self.api_url, timeout=1)
+                if resp.status_code == 200:
+                    new_config = resp.json()
+                    # Simple comparison to avoid unnecessary repaints
+                    if json.dumps(new_config, sort_keys=True) != json.dumps(self.current_config, sort_keys=True):
+                        self.current_config = new_config
+                        print("✨ Config Updated from Web!")
+                        self.config_updated.emit(new_config)
+            except Exception as e:
+                # Silently fail on network error to avoid spamming console
+                pass
+            
+            # Sleep for 2 seconds
+            self.msleep(2000)
+            
+    def stop(self):
+        self.running = False
+        self.wait()
+        
+    def get_text(self, key, default=""):
+        """Safely get text from config.text_content"""
+        try:
+            return self.current_config.get("text_content", {}).get(key, default)
+        except:
+            return default
+            
+    def get_color(self, key, default="#ffffff"):
+        """Safely get color from config.ui_theme"""
+        try:
+            return self.current_config.get("ui_theme", {}).get(key, default)
+        except:
+            return default
+
+    def get_theme_value(self, key, default=None):
+        try:
+            return self.current_config.get("ui_theme", {}).get(key, default)
+        except:
+            return default
+
+
 class SoftwareRenderCamera(QWidget):
     """纯软件渲染的相机显示"""
     
@@ -404,10 +520,19 @@ class SoftwareRenderCamera(QWidget):
         self.camera.start()
         print("✅ 摄像头已启动")
         
+        # [Phase 4.4] Config Manager - Sync with Web Editor
+        self.config_manager = ConfigManager()
+        self.config_manager.config_updated.connect(self.on_config_update)
+        self.config_manager.start()
+        
         # 定时器
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(33)
+    
+    def on_config_update(self, new_config):
+        """Web 端的設定更新了，重新繪製 UI"""
+        self.update()
     
     def mousePressEvent(self, event):
         """处理点击事件 (Aligned with Web App Flow)"""
@@ -732,13 +857,15 @@ class SoftwareRenderCamera(QWidget):
                 painter.setFont(QFont("Arial", 25, QFont.Bold)) # Adjusted to 25pt
                 # User requested move down by 3px: -60 -> -57. Now another 4px: -53
                 text_rect_1 = QRect(0, center_y - 53, w, 50)
-                painter.drawText(text_rect_1, Qt.AlignCenter, "正在探測歷史訊號")
+                txt_main = self.config_manager.get_text("bootTitle", "正在探測歷史訊號")
+                painter.drawText(text_rect_1, Qt.AlignCenter, txt_main)
 
                 # 2. Sub Text: "尋找中..." (11pt Bold)
                 painter.setFont(QFont("Arial", 11, QFont.Bold)) # Adjusted to 11pt
                 # User requested move down by 3px: 0 -> +3. Now another 4px: +7
                 text_rect_2 = QRect(0, center_y + 7, w, 30)
-                painter.drawText(text_rect_2, Qt.AlignCenter, "尋找中...")
+                txt_sub = self.config_manager.get_text("bootSubtitle", "尋找中...")
+                painter.drawText(text_rect_2, Qt.AlignCenter, txt_sub)
 
                 # 3. Hint Text: "請在展區中隨意走動" (8pt opacity 0.6)
                 painter.save()
@@ -746,8 +873,8 @@ class SoftwareRenderCamera(QWidget):
                 painter.setFont(QFont("Arial", 8)) # Adjusted to 8pt
                 # User requested move down by 3px: +40 -> +43. Now another 4px: +47
                 text_rect_3 = QRect(0, center_y + 47, w, 20)
-                painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
-                painter.drawText(text_rect_3, Qt.AlignCenter, "請在展區中隨意走動")
+                txt_hint = self.config_manager.get_text("bootHint", "請在展區中隨意走動")
+                painter.drawText(text_rect_3, Qt.AlignCenter, txt_hint)
                 painter.restore()
 
             # [Phase 4.4] STATE_PROXIMITY UI (Pulsing Ring + Text)
@@ -905,7 +1032,8 @@ class SoftwareRenderCamera(QWidget):
             opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9
             
         # 1. Pulsing Ring (180px)
-        ring_color = QColor(255, 255, 255)
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        ring_color = QColor(primary_hex)
         ring_color.setAlphaF(opacity)
         painter.setPen(QPen(ring_color, 1))
         painter.setBrush(Qt.NoBrush)
@@ -926,7 +1054,8 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(Qt.white)
         painter.setFont(QFont("Arial", 25, QFont.Bold))
         text_rect_1 = QRect(0, cy - 40, self.width(), 40)
-        painter.drawText(text_rect_1, Qt.AlignCenter, "訊號偵測")
+        txt_prox_title = self.config_manager.get_text("proximityTitle", "訊號偵測")
+        painter.drawText(text_rect_1, Qt.AlignCenter, txt_prox_title)
         
         # Separator Line
         painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
@@ -936,7 +1065,8 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(Qt.white)
         painter.setFont(QFont("Arial", 11, QFont.Bold))
         text_rect_2 = QRect(0, cy + 10, self.width(), 20)
-        painter.drawText(text_rect_2, Qt.AlignCenter, "接近目標中")
+        txt_prox_sub = self.config_manager.get_text("proximitySubtext", "接近目標中")
+        painter.drawText(text_rect_2, Qt.AlignCenter, txt_prox_sub)
         
         # 3. Bottom Distance Indicator
         # Position: Bottom 64px.
@@ -983,7 +1113,8 @@ class SoftwareRenderCamera(QWidget):
         else:
             opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9 # 1.0 -> 0.1
             
-        ring_color = QColor(255, 255, 255)
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        ring_color = QColor(primary_hex)
         ring_color.setAlphaF(opacity)
         
         # 1. 括號/Arc Segments (200px square -> 100px radius)
@@ -1058,13 +1189,15 @@ class SoftwareRenderCamera(QWidget):
         painter.drawRoundedRect(bg_rect, 4, 4)
         
         painter.setPen(Qt.white)
-        painter.drawText(bg_rect, Qt.AlignCenter, txt1)
+        txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
+        painter.drawText(bg_rect, Qt.AlignCenter, txt_locked)
         
         # 4. Bottom Text "[ 按下快門捕捉 ]" (11pt Bold)
         # Web: bottom-[30%].
         painter.setFont(QFont("Arial", 11, QFont.Bold))
         text_rect_2 = QRect(0, cy + 120, self.width(), 30)
-        painter.drawText(text_rect_2, Qt.AlignCenter, "[ 按下快門捕捉 ]")
+        txt_locked_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
+        painter.drawText(text_rect_2, Qt.AlignCenter, txt_locked_sub)
         
         painter.restore()
 
@@ -1079,12 +1212,17 @@ class SoftwareRenderCamera(QWidget):
         # 1. External Decoration Ring (370px)
         # Web: border-white/10 (unless REVEAL)
         # Native Refinement: 80% Opacity (204/255) as requested by User
-        ring_color = QColor(255, 255, 255, 204) 
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        base_color = QColor(primary_hex)
+        
+        ring_color = QColor(base_color)
+        ring_color.setAlpha(204) # 80%
+        
         if self.current_state == self.STATE_REVEAL:
             ring_color = QColor(255, 255, 255, 255) # Full white in REVEAL
             
         # Native Refinement: 80% Opacity (204/255) as requested by User
-        ring_color = QColor(255, 255, 255, 204) 
+        # ring_color = QColor(255, 255, 255, 204) 
         
         painter.setPen(QPen(ring_color, 1))
         painter.setBrush(Qt.NoBrush)
@@ -1144,6 +1282,12 @@ class SoftwareRenderCamera(QWidget):
         self.camera.stop()
         self.camera.close()
         event.accept()
+        # Stop Config Sync
+        if hasattr(self, 'config_manager'):
+            self.config_manager.stop()
+        # Stop Config Sync
+        if hasattr(self, 'config_manager'):
+            self.config_manager.stop()
 
 
 if __name__ == "__main__":
