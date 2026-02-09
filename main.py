@@ -404,12 +404,16 @@ class SoftwareRenderCamera(QWidget):
             if self.current_state == self.STATE_RESULT and self.generated_pixmap:
                 if should_log:
                     print(f"[DEBUG] Generated Pixmap: {self.generated_pixmap.width()}x{self.generated_pixmap.height()}")
-                # 目前先簡單置中繪製 (Phase 2 會改為放大與平移)
-                # 保持原始比例縮放至蓋滿視窗
+                
+                # [Phase 2] 靜態放大 3.5 倍 (Pan Effect 準備)
+                # 目標：將圖片放大到視窗直徑的 3.5 倍，並保持置中
+                target_size = self.circle_radius * 2 * 3.5
                 scaled = self.generated_pixmap.scaled(
-                    self.circle_radius * 2, self.circle_radius * 2,
+                    int(target_size), int(target_size),
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
                 )
+                
+                # 計算置中座標 (大圖中心點對齊視窗中心點)
                 sx = center_x - (scaled.width() / 2)
                 sy = center_y - (scaled.height() / 2)
                 painter.drawPixmap(int(sx), int(sy), scaled)
@@ -439,12 +443,12 @@ class SoftwareRenderCamera(QWidget):
                         if image is not None:
                             if should_log:
                                 print(f"[DEBUG] Camera Image Shape: {image.shape}")
-                            # Picamera2 回傳的是 BGR (RGB888 setting) 或其他，需注意
-                            # 這裡假設配置為 RGB888
-                            # 如果是 RGB888 (h, w, 3)
+                            
+                            # [Phase 2 Fix] 修正顏色對調問題 (BGR -> RGB)
+                            # Picamera2 預設回傳 BGR 格式，使用 Format_BGR888 讓 Qt 正確解讀
                             h_img, w_img, ch = image.shape
                             bytes_per_line = ch * w_img
-                            qimg = QImage(image.data, w_img, h_img, bytes_per_line, QImage.Format_RGB888)
+                            qimg = QImage(image.data, w_img, h_img, bytes_per_line, QImage.Format_BGR888)
                             
                             scaled_qimg = qimg.scaled(
                                 int(self.circle_radius * 2), int(self.circle_radius * 2),
