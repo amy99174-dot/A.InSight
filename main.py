@@ -11,8 +11,10 @@ from picamera2 import Picamera2
 import requests
 import json
 import base64
+import base64
 import threading
 import sys
+import math
 import traceback
 from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
 
