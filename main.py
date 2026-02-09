@@ -1049,7 +1049,10 @@ class SoftwareRenderCamera(QWidget):
         th = fm.height()
         
         # Draw Pill BG
-        bg_rect = QRect(cx - tw//2 - 10, cy - 150, tw + 20, th)
+        # User requested 5px gap from bracket frame (200px wide).
+        # Capsule width = 200 - 2*5 = 190px.
+        bg_width = 190
+        bg_rect = QRect(cx - bg_width//2, cy - 150, bg_width, th)
         painter.setBrush(QColor(0, 0, 0, 230)) # Black 90%
         painter.setPen(QPen(Qt.white, 1)) # Border white
         painter.drawRoundedRect(bg_rect, 4, 4)
@@ -1123,10 +1126,10 @@ class SoftwareRenderCamera(QWidget):
             painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
             
         # 3. Top Label "A.InSight" (9pt)
-        # Position: Cy - 190 (Top of container) + 24
+        # Position: Cy - 190 (Top of container) + 24 + 4px (User request)
         painter.setPen(QColor(255, 255, 255, 200)) # 80% opacity white text
         painter.setFont(QFont("Arial", 9)) # Modified to 9pt
-        text_y = int(cy - 190 + 24)
+        text_y = int(cy - 190 + 28)
         painter.drawText(QRect(0, text_y, self.width(), 20), Qt.AlignCenter, "A.InSight")
 
         painter.restore()
