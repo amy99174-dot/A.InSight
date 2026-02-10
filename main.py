@@ -143,7 +143,14 @@ class GeminiWorker(QThread):
     
     def __init__(self, image_data, time_scale=3, history_scale=2):
         super().__init__()
-        self.image_data = image_data
+        # Convert QPixmap to base64 for API
+        if isinstance(image_data, QPixmap):
+            buffer = QBuffer()
+            buffer.open(QBuffer.WriteOnly)
+            image_data.save(buffer, "JPEG", 95)
+            self.image_data = base64.b64encode(buffer.data()).decode('utf-8')
+        else:
+            self.image_data = image_data
         self.time_scale = time_scale
         self.history_scale = history_scale
         
