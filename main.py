@@ -1141,21 +1141,18 @@ class SoftwareRenderCamera(QWidget):
         painter.save()
         
         # 動畫與樣式參數
-        # Cycle: 3000ms. Stepped logic 0.1 -> 0.5 -> 1.0 -> 0.1
-        # Re-use logic from Proximity but maybe stricter steps as per Web
+        # Cycle: 3000ms. Stepped opacity: 0.1 -> 0.5 -> 1.0 -> 0.1
+        # Web CSS: animation: stepped-opacity 3s steps(1) infinite
         import time
-        t = (time.time() * 1000) % 3000
-        opacity = 0.1
+        t = time.time() % 3  # 3 second cycle
         
-        # Web CSS: 0% -> 0.1, 33% -> 0.5, 66% -> 1.0, 100% -> 0.1
-        # Steps(1) means it jumps. Proximity was linear. 
-        # Web locked code also uses 'stepped-opacity'. Let's try smoothed steps.
-        if t < 1000:
-            opacity = 0.1 + (t / 1000.0) * 0.4 # 0.1 -> 0.5
-        elif t < 2000:
-            opacity = 0.5 + ((t - 1000) / 1000.0) * 0.5 # 0.5 -> 1.0
+        # Stepped animation (instant transitions, not smooth)
+        if t < 1:
+            opacity = 0.1
+        elif t < 2:
+            opacity = 0.5
         else:
-            opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9 # 1.0 -> 0.1
+            opacity = 1.0
             
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         ring_color = QColor(primary_hex)
@@ -1202,43 +1199,42 @@ class SoftwareRenderCamera(QWidget):
         # Right (0 deg)
         painter.drawArc(cx - r, cy - r, 200, 200, -30 * 16, 60 * 16)
         
-        # 2. Center Dot (2x2)
+        # 2. Center Dot (2px, same color as brackets)
+        dot_color = QColor(primary_hex)
         painter.setPen(Qt.NoPen)
-        painter.setBrush(Qt.white)
-        painter.drawEllipse(cx - 2, cy - 2, 4, 4)
+        painter.setBrush(dot_color)
+        painter.drawEllipse(cx - 1, cy - 1, 2, 2)
         
-        # 3. Top Text "鎖定目標" (25pt Bold)
-        # Web: top-[35%]. 35% of h? Container is full screen? 
-        # In Native, let's look at BOOT logic. 
-        # Let's center it roughly above the ring.
-        # Ring top is cy - 100.
-        # Text at cy - 140?
-        painter.setPen(Qt.white)
-        painter.setFont(QFont("Arial", 25, QFont.Bold))
-        text_rect_1 = QRect(0, cy - 150, self.width(), 40)
-        # Draw background pill? Web code: bg-black/90 px-2 rounded-sm
-        # Let's draw text with simple background rect
+        # 3. Title Box: "鎖定目標" 
+        # Web: top-[35%], bg-black/90, border (dynamic color), rounded-sm, text-[10px]
+        txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
+        painter.setFont(QFont("Arial", 10, QFont.Bold))
         fm = painter.fontMetrics()
-        txt1 = "鎖定目標"
-        tw = fm.width(txt1)
+        tw = fm.horizontalAdvance(txt_locked)
         th = fm.height()
         
-        # Draw Pill BG
-        # User requested 5px gap from bracket frame (200px wide).
-        # Capsule width = 200 - 2*5 = 190px.
-        bg_width = 190
-        bg_rect = QRect(cx - bg_width//2, cy - 150, bg_width, th)
-        painter.setBrush(QColor(0, 0, 0, 230)) # Black 90%
-        painter.setPen(QPen(Qt.white, 1)) # Border white
-        painter.drawRoundedRect(bg_rect, 4, 4)
+        # Create box with padding
+        padding_x = 6
+        padding_y = 3
+        box_width = tw + padding_x * 2
+        box_height = th + padding_y * 2
+        box_rect = QRect(cx - box_width // 2, cy - 80, box_width, box_height)
         
-        painter.setPen(Qt.white)
-        txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
-        painter.drawText(bg_rect, Qt.AlignCenter, txt_locked)
+        # Draw background and border (border uses primary color)
+        title_bg = QColor(0, 0, 0, 230)  # black/90%
+        title_border = QColor(primary_hex)
+        painter.setBrush(title_bg)
+        painter.setPen(QPen(title_border, 1))
+        painter.drawRoundedRect(box_rect, 2, 2)
         
-        # 4. Bottom Text "[ 按下快門捕捉 ]" (11pt Bold)
-        # Web: bottom-[30%].
-        painter.setFont(QFont("Arial", 11, QFont.Bold))
+        # Draw text (also uses primary color)
+        text_color = QColor(primary_hex)
+        painter.setPen(text_color)
+        painter.drawText(box_rect, Qt.AlignCenter, txt_locked)
+        
+        # 4. Bottom Subtext: "[ 按下快門捕捉 ]" (Web: text-[10px] white)
+        painter.setFont(QFont("Arial", 10))
+        painter.setPen(Qt.white)  # Web shows white text, not themed
         text_rect_2 = QRect(0, cy + 120, self.width(), 30)
         txt_locked_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_locked_sub)
