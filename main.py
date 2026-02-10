@@ -1278,7 +1278,8 @@ class SoftwareRenderCamera(QWidget):
         # Radius = 175px (half of 350)
         # Ticks: Longer at 0, 90, 180, 270.
         
-        tick_color = QColor(255, 255, 255, 204) # White/80% (255 * 0.8 = 204)
+        tick_color = QColor(base_color)  # Use theme color
+        tick_color.setAlpha(204)  # 80% opacity
         
         radius = 175
         for i in range(12):
@@ -1309,10 +1310,13 @@ class SoftwareRenderCamera(QWidget):
             
         # 3. Top Label "A.InSight" (9pt)
         # Position: Cy - 190 (Top of container) + 24 + 4px (User request)
-        painter.setPen(QColor(255, 255, 255, 200)) # 80% opacity white text
+        title_text = self.config_manager.get_text("title", "A.InSight")
+        title_color = QColor(base_color)  # Use theme color
+        title_color.setAlpha(200)  # 80% opacity
+        painter.setPen(title_color)
         painter.setFont(QFont("Arial", 9)) # Modified to 9pt
         text_y = int(cy - 190 + 28)
-        painter.drawText(QRect(0, text_y, self.width(), 20), Qt.AlignCenter, "A.InSight")
+        painter.drawText(QRect(0, text_y, self.width(), 20), Qt.AlignCenter, title_text)
 
         painter.restore()
 
