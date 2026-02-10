@@ -1408,6 +1408,95 @@ class SoftwareRenderCamera(QWidget):
         if event.key() == Qt.Key_Escape:
             self.close()
     
+    
+    def wheelEvent(self, event):
+        """[Phase 5B] Mouse wheel event for FOCUSING state"""
+        if self.current_state == self.STATE_FOCUSING:
+            delta = event.angleDelta().y()
+            if delta > 0:
+                self.focus_percentage = min(100, self.focus_percentage + 5)
+            else:
+                self.focus_percentage = max(0, self.focus_percentage - 5)
+            self.update()
+            if self.focus_percentage >= 100:
+                print("✅ Focus complete! Transitioning to LISTEN state.")
+                QTimer.singleShot(500, lambda: self.transition_to_listen())
+    
+    def transition_to_listen(self):
+        """Helper to transition from FOCUSING to LISTEN state"""
+        if self.focus_percentage >= 100:
+            self.current_state = self.STATE_LISTEN
+            self.update()
+    
+    def draw_analyzing_state(self, painter, cx, cy):
+        """[Phase 5A] ANALYZING state with dotted circle animation"""
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        theme_color = QColor(primary_hex)
+        outer_border = QColor(theme_color)
+        outer_border.setAlpha(26)
+        painter.setPen(QPen(outer_border, 1))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(cx - 140, cy - 140, 280, 280)
+        import time
+        t = time.time() % 2
+        opacity = 0.2 if t < 0.67 else (0.6 if t < 1.33 else 1.0)
+        dotted_color = QColor(theme_color)
+        dotted_color.setAlphaF(opacity)
+        dotted_pen = QPen(dotted_color, 2)
+        dotted_pen.setDashPattern([10, 15])
+        painter.setPen(dotted_pen)
+        painter.drawEllipse(cx - 100, cy - 100, 200, 200)
+        painter.setPen(Qt.white)
+        txt_title = self.config_manager.get_text("analyzingTitle", "解析中")
+        painter.setFont(QFont("Arial", 14, QFont.Bold))
+        painter.drawText(QRect(cx - 60, cy - 20, 120, 20), Qt.AlignCenter, txt_title)
+        txt_analysis = self.config_manager.get_text("analyzingText", "正在分析歷史資料")
+        label_color = QColor(255, 255, 255, 179)
+        painter.setPen(label_color)
+        painter.setFont(QFont("Arial", 9))
+        painter.drawText(QRect(cx - 80, cy + 5, 160, 20), Qt.AlignCenter, txt_analysis)
+        painter.restore()
+
+    def draw_focusing_state(self, painter, cx, cy):
+        """[Phase 5B] FOCUSING state with 3 concentric blinking circles"""
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        theme_color = QColor(primary_hex)
+        outer_border = QColor(theme_color)
+        outer_border.setAlpha(51)
+        painter.setPen(QPen(outer_border, 1))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(cx - 140, cy - 140, 280, 280)
+        import time
+        t = time.time() % 3
+        circles = [(120, 240), (90, 180), (60, 120)]
+        for i, (radius, diameter) in enumerate(circles):
+            opacity = 0.8 if int(t) == i else 0.2
+            circle_color = QColor(theme_color)
+            circle_color.setAlpha(int(opacity * 255))
+            painter.setPen(QPen(circle_color, 2))
+            painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(cx - radius, cy - radius, diameter, diameter)
+        center_bg = QColor(0, 0, 0, 230)
+        painter.setBrush(center_bg)
+        painter.setPen(QPen(theme_color, 1))
+        painter.drawEllipse(cx - 50, cy - 50, 100, 100)
+        txt_title = self.config_manager.get_text("focusingTitle", "對焦")
+        painter.setPen(Qt.white)
+        painter.setFont(QFont("Arial", 12, QFont.Bold))
+        painter.drawText(QRect(cx - 40, cy - 15, 80, 20), Qt.AlignCenter, txt_title)
+        painter.setFont(QFont("Arial", 16, QFont.Bold))
+        focus_text = f"{self.focus_percentage}%"
+        painter.drawText(QRect(cx - 40, cy + 5, 80, 20), Qt.AlignCenter, focus_text)
+        txt_hint = self.config_manager.get_text("focusingHint", "[ 旋轉對焦 ]")
+        label_color = QColor(255, 255, 255, 153)
+        painter.setPen(label_color)
+        painter.setFont(QFont("Arial", 9))
+        painter.drawText(QRect(cx - 80, cy + 160, 160, 20), Qt.AlignCenter, txt_hint)
+        painter.restore()
     def closeEvent(self, event):
         print("🛑 关闭摄像头...")
         self.timer.stop()
@@ -1433,126 +1522,3 @@ if __name__ == "__main__":
     window.showFullScreen()
     sys.exit(app.exec_())
 
-    def draw_analyzing_state(self, painter, cx, cy):
-        """[Phase 5A] ANALYZING state with dotted circle animation"""
-        painter.save()
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
-        theme_color = QColor(primary_hex)
-        
-        # Outer Circle Border (280px)
-        outer_border = QColor(theme_color)
-        outer_border.setAlpha(26)
-        painter.setPen(QPen(outer_border, 1))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(cx - 140, cy - 140, 280, 280)
-        
-        # Dotted Circle Animation (200px)
-        import time
-        t = time.time() % 2
-        opacity = 0.2 if t < 0.67 else (0.6 if t < 1.33 else 1.0)
-        
-        dotted_color = QColor(theme_color)
-        dotted_color.setAlphaF(opacity)
-        dotted_pen = QPen(dotted_color, 2)
-        dotted_pen.setDashPattern([10, 15])
-        painter.setPen(dotted_pen)
-        painter.drawEllipse(cx - 100, cy - 100, 200, 200)
-        
-        # Center Text
-        painter.setPen(Qt.white)
-        txt_title = self.config_manager.get_text("analyzingTitle", "解析中")
-        painter.setFont(QFont("Arial", 14, QFont.Bold))
-        painter.drawText(QRect(cx - 60, cy - 20, 120, 20), Qt.AlignCenter, txt_title)
-        
-        txt_analysis = self.config_manager.get_text("analyzingText", "正在分析歷史資料")
-        label_color = QColor(255, 255, 255, 179)
-        painter.setPen(label_color)
-        painter.setFont(QFont("Arial", 9))
-        painter.drawText(QRect(cx - 80, cy + 5, 160, 20), Qt.AlignCenter, txt_analysis)
-        
-        painter.restore()
-
-    def draw_focusing_state(self, painter, cx, cy):
-        """[Phase 5B] FOCUSING state with 3 concentric blinking circles"""
-        painter.save()
-        painter.setRenderHint(QPainter.Antialiasing)
-        
-        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
-        theme_color = QColor(primary_hex)
-        
-        # Outer Circle Border
-        outer_border = QColor(theme_color)
-        outer_border.setAlpha(51)
-        painter.setPen(QPen(outer_border, 1))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(cx - 140, cy - 140, 280, 280)
-        
-        # Three Concentric Circles with Sequential Blink
-        import time
-        t = time.time() % 3
-        circles = [(120, 240), (90, 180), (60, 120)]
-        
-        for i, (radius, diameter) in enumerate(circles):
-            opacity = 0.8 if int(t) == i else 0.2
-            circle_color = QColor(theme_color)
-            circle_color.setAlpha(int(opacity * 255))
-            painter.setPen(QPen(circle_color, 2))
-            painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(cx - radius, cy - radius, diameter, diameter)
-        
-        # Center Circle with Info
-        center_bg = QColor(0, 0, 0, 230)
-        painter.setBrush(center_bg)
-        painter.setPen(QPen(theme_color, 1))
-        painter.drawEllipse(cx - 50, cy - 50, 100, 100)
-        
-        txt_title = self.config_manager.get_text("focusingTitle", "對焦")
-        painter.setPen(Qt.white)
-        painter.setFont(QFont("Arial", 12, QFont.Bold))
-        painter.drawText(QRect(cx - 40, cy - 15, 80, 20), Qt.AlignCenter, txt_title)
-        
-        painter.setFont(QFont("Arial", 16, QFont.Bold))
-        focus_text = f"{self.focus_percentage}%"
-        painter.drawText(QRect(cx - 40, cy + 5, 80, 20), Qt.AlignCenter, focus_text)
-        
-        txt_hint = self.config_manager.get_text("focusingHint", "[ 旋轉對焦 ]")
-        label_color = QColor(255, 255, 255, 153)
-        painter.setPen(label_color)
-        painter.setFont(QFont("Arial", 9))
-        painter.drawText(QRect(cx - 80, cy + 160, 160, 20), Qt.AlignCenter, txt_hint)
-        
-        painter.restore()
-
-    
-    def wheelEvent(self, event):
-        """
-        [Phase 5B] Mouse wheel event for FOCUSING state
-        """
-        if self.current_state == self.STATE_FOCUSING:
-            # Get wheel delta (positive = scroll up, negative = scroll down)
-            delta = event.angleDelta().y()
-            
-            # Adjust focus percentage (5% per wheel notch)
-            if delta > 0:
-                # Scroll up: increase focus
-                self.focus_percentage = min(100, self.focus_percentage + 5)
-            else:
-                # Scroll down: decrease focus
-                self.focus_percentage = max(0, self.focus_percentage - 5)
-            
-            # Update display
-            self.update()
-            
-            # When reaching 100%, automatically transition to LISTEN state
-            if self.focus_percentage >= 100:
-                print("✅ Focus complete! Transitioning to LISTEN state.")
-                # Delay transition slightly for visual feedback
-                QTimer.singleShot(500, lambda: self.transition_to_listen())
-    
-    def transition_to_listen(self):
-        """Helper to transition from FOCUSING to LISTEN state"""
-        if self.focus_percentage >= 100:
-            self.current_state = self.STATE_LISTEN
-            self.update()
