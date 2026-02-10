@@ -874,12 +874,10 @@ class SoftwareRenderCamera(QWidget):
             # C. 狀態特定 UI Overlays
             # -------------------------------------------------------------------------
             
-            # 1. 圓形邊框
-            border_color = QColor("white")
-            if self.current_state == self.STATE_ANALYZING:
-                border_color = QColor("yellow")
-            elif self.current_state == self.STATE_REVEAL:
-                border_color = QColor("#39ff14") # Neon Green
+            # 1. 圓形邊框 (Use dynamic color for all states)
+            primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+            border_color = QColor(primary_hex)
+            # No state-specific overrides - all use theme color
             # [Phase 3 Fix] UI 參數頁面也需要特殊邊框嗎？其實不需要，因為有全螢幕遮罩
 
             # [Phase 4.2] STATE_BOOT UI (Visual Parity)
@@ -925,19 +923,24 @@ class SoftwareRenderCamera(QWidget):
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             if self.current_state == self.STATE_TUNING:
+                # Get dynamic primary color
+                primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+                theme_color = QColor(primary_hex)
+                
                 # 半透明黑色遮罩，讓文字更清楚 (全螢幕)
                 painter.fillRect(self.rect(), QColor(0, 0, 0, 200)) # 加深一點
                 
                 font_title = QFont("Arial", 16, QFont.Bold)
                 font_label = QFont("Arial", 12)
-                painter.setPen(Qt.white)
                 
                 # Title
                 painter.setFont(font_title)
+                painter.setPen(theme_color)
                 painter.drawText(QRect(0, 40, w, 40), Qt.AlignCenter, "調整參數 (Adjust Parameters)")
                 
                 # 1. Time Scale (1-5)
                 painter.setFont(font_label)
+                painter.setPen(theme_color)
                 painter.drawText(QRect(20, 100, w, 30), Qt.AlignLeft, "Time Scale (起源 -> 未來):")
                 
                 # Draw 5 boxes
@@ -950,17 +953,17 @@ class SoftwareRenderCamera(QWidget):
                     
                     # Selected Highlight
                     if i == self.time_scale:
-                        painter.setBrush(QColor("#39ff14")) # Neon Green
+                        painter.setBrush(theme_color)
                         painter.setPen(Qt.black)
                     else:
                         painter.setBrush(Qt.NoBrush)
-                        painter.setPen(Qt.white)
+                        painter.setPen(theme_color)
                     
                     painter.drawRect(x_rect, y_rect, w_rect, h_rect)
                     painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
                     
                 # 2. History Scale (1-3)
-                painter.setPen(Qt.white)
+                painter.setPen(theme_color)
                 painter.drawText(QRect(20, 240, w, 30), Qt.AlignLeft, "History Scale (軼聞 -> 正史):")
                 
                 # Draw 3 boxes
@@ -973,18 +976,18 @@ class SoftwareRenderCamera(QWidget):
                     
                     # Selected Highlight
                     if i == self.history_scale:
-                        painter.setBrush(QColor("#00ffff")) # Cyan
+                        painter.setBrush(theme_color)
                         painter.setPen(Qt.black)
                     else:
                         painter.setBrush(Qt.NoBrush)
-                        painter.setPen(Qt.white)
+                        painter.setPen(theme_color)
                         
                     painter.drawRect(x_rect, y_rect, w_rect, h_rect)
                     painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
 
                 # 3. Confirm Button
                 btn_rect = QRect(w//4, h - 80, w//2, 50)
-                painter.setBrush(QColor("white"))
+                painter.setBrush(theme_color)
                 painter.setPen(Qt.black)
                 painter.drawRoundedRect(btn_rect, 10, 10)
                 painter.drawText(btn_rect, Qt.AlignCenter, "開始分析 (Start Analysis)")
@@ -1004,35 +1007,38 @@ class SoftwareRenderCamera(QWidget):
             painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
                                 self.circle_radius * 2, self.circle_radius * 2)
 
-            # 3. 文字資訊
+            # 3. 文字資訊 (Use dynamic theme color)
+            primary_hex_bottom = self.config_manager.get_color("primary_color", "#ffffff")
+            status_color = QColor(primary_hex_bottom)
+            
             if self.current_state == self.STATE_REVEAL and self.analysis_result:
                 name = self.analysis_result.get("name", "")
                 era = self.analysis_result.get("era", "")
-                painter.setPen(QColor("#39ff14"))
+                painter.setPen(status_color)
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
             
             elif self.current_state == self.STATE_ANALYZING:
-                painter.setPen(QColor("yellow"))
+                painter.setPen(status_color)
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "AI 分析中...")
                 
             elif self.current_state == self.STATE_SUCCESS:
-                painter.setPen(QColor("green"))
+                painter.setPen(status_color)
                 painter.setFont(QFont("Arial", 16, QFont.Bold))
                 painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
             
             # [狀態顯示 - 統一使用 get_state_name]
             elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_REVEAL]:
-                 painter.setPen(QColor("white"))
+                 painter.setPen(status_color)
                  painter.setFont(QFont("Arial", 14, QFont.Bold))
                  # 簡單顯示狀態碼，取代掉之前的 label
                  painter.drawText(10, h - 20, f"State: {state_text}")
 
             # -------------------------------------------------------------------------
-            # [Phase 1 驗證標記]
+            # [Phase 1 驗證標記] (Use dynamic color)
             # -------------------------------------------------------------------------
-            painter.setPen(QColor("#00FF00"))
+            painter.setPen(status_color)
             painter.setFont(QFont("Courier New", 12, QFont.Bold))
             painter.drawText(10, 20, "[Phase 1 Verified]")
             
