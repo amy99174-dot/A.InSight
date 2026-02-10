@@ -533,6 +533,9 @@ class SoftwareRenderCamera(QWidget):
         self.time_scale = 3     # 1-5
         self.history_scale = 2  # 1-3
         
+        # [Phase 5B] FOCUSING 參數
+        self.focus_percentage = 0  # 0-100
+        
         # [Phase 2] 滑鼠互動
         self.setMouseTracking(True)
         self.pan_offset_x = 0
@@ -1511,7 +1514,8 @@ if __name__ == "__main__":
         painter.drawText(QRect(cx - 40, cy - 15, 80, 20), Qt.AlignCenter, txt_title)
         
         painter.setFont(QFont("Arial", 16, QFont.Bold))
-        painter.drawText(QRect(cx - 40, cy + 5, 80, 20), Qt.AlignCenter, "100%")
+        focus_text = f"{self.focus_percentage}%"
+        painter.drawText(QRect(cx - 40, cy + 5, 80, 20), Qt.AlignCenter, focus_text)
         
         txt_hint = self.config_manager.get_text("focusingHint", "[ 旋轉對焦 ]")
         label_color = QColor(255, 255, 255, 153)
@@ -1521,3 +1525,34 @@ if __name__ == "__main__":
         
         painter.restore()
 
+    
+    def wheelEvent(self, event):
+        """
+        [Phase 5B] Mouse wheel event for FOCUSING state
+        """
+        if self.current_state == self.STATE_FOCUSING:
+            # Get wheel delta (positive = scroll up, negative = scroll down)
+            delta = event.angleDelta().y()
+            
+            # Adjust focus percentage (5% per wheel notch)
+            if delta > 0:
+                # Scroll up: increase focus
+                self.focus_percentage = min(100, self.focus_percentage + 5)
+            else:
+                # Scroll down: decrease focus
+                self.focus_percentage = max(0, self.focus_percentage - 5)
+            
+            # Update display
+            self.update()
+            
+            # When reaching 100%, automatically transition to LISTEN state
+            if self.focus_percentage >= 100:
+                print("✅ Focus complete! Transitioning to LISTEN state.")
+                # Delay transition slightly for visual feedback
+                QTimer.singleShot(500, lambda: self.transition_to_listen())
+    
+    def transition_to_listen(self):
+        """Helper to transition from FOCUSING to LISTEN state"""
+        if self.focus_percentage >= 100:
+            self.current_state = self.STATE_LISTEN
+            self.update()
