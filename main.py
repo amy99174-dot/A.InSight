@@ -884,8 +884,12 @@ class SoftwareRenderCamera(QWidget):
 
             # [Phase 4.2] STATE_BOOT UI (Visual Parity)
             if self.current_state == self.STATE_BOOT:
+                # Get dynamic primary color
+                primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+                text_color = QColor(primary_hex)
+                
                 # 1. Main Text: "正在探測歷史訊號" (25pt Bold)
-                painter.setPen(Qt.white)
+                painter.setPen(text_color)
                 painter.setFont(QFont("Arial", 25, QFont.Bold)) # Adjusted to 25pt
                 # User requested move down by 3px: -60 -> -57. Now another 4px: -53
                 text_rect_1 = QRect(0, center_y - 53, w, 50)
@@ -893,6 +897,7 @@ class SoftwareRenderCamera(QWidget):
                 painter.drawText(text_rect_1, Qt.AlignCenter, txt_main)
 
                 # 2. Sub Text: "尋找中..." (11pt Bold)
+                painter.setPen(text_color)
                 painter.setFont(QFont("Arial", 11, QFont.Bold)) # Adjusted to 11pt
                 # User requested move down by 3px: 0 -> +3. Now another 4px: +7
                 text_rect_2 = QRect(0, center_y + 7, w, 30)
@@ -901,6 +906,7 @@ class SoftwareRenderCamera(QWidget):
 
                 # 3. Hint Text: "請在展區中隨意走動" (8pt opacity 0.6)
                 painter.save()
+                painter.setPen(text_color)
                 painter.setOpacity(0.6)
                 painter.setFont(QFont("Arial", 8)) # Adjusted to 8pt
                 # User requested move down by 3px: +40 -> +43. Now another 4px: +47
