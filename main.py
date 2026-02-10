@@ -951,18 +951,17 @@ class SoftwareRenderCamera(QWidget):
                 painter.setBrush(Qt.NoBrush)
                 painter.drawEllipse(cx_tuning - 130, cy_tuning - 130, 260, 260)
                 
-                # Filled arc (conic gradient simulation)
+                # Filled arc (conic gradient simulation using thick stroke)
                 fill_angle = self.time_scale * 72  # 1-5 maps to 72-360°
                 if fill_angle > 0:
                     fill_color = QColor(theme_color)
-                    fill_color.setAlpha(204)  # 80% opacity (Web: 0.8)
+                    fill_color.setAlpha(204)  # 80% opacity
                     
-                    # Draw pie slice from top (90°) clockwise
-                    path_outer = QPainterPath()
-                    path_outer.moveTo(cx_tuning, cy_tuning)
-                    path_outer.arcTo(cx_tuning - 130, cy_tuning - 130, 260, 260, 90, -fill_angle)
-                    path_outer.lineTo(cx_tuning, cy_tuning)
-                    painter.fillPath(path_outer, fill_color)
+                    # Use thick pen (30px) to create ring effect
+                    painter.setPen(QPen(fill_color, 30))
+                    painter.setBrush(Qt.NoBrush)
+                    # Draw arc from top (90°) clockwise
+                    painter.drawArc(cx_tuning - 130, cy_tuning - 130, 260, 260, 90 * 16, -fill_angle * 16)
                 
                 # 2. Inner Ring (History Scale 1-3) - 200px diameter (inset 30px)
                 # Web: border-white/20 + conic-gradient(color 0deg XXXdeg)
@@ -975,54 +974,54 @@ class SoftwareRenderCamera(QWidget):
                 painter.setBrush(Qt.NoBrush)
                 painter.drawEllipse(cx_tuning - 100, cy_tuning - 100, 200, 200)
                 
-                # Filled arc
+                # Filled arc (conic gradient simulation using thick stroke)
                 inner_fill_angle = self.history_scale * 120  # 1-3 maps to 120-360°
                 if inner_fill_angle > 0:
                     inner_fill_color = QColor(theme_color)
-                    inner_fill_color.setAlpha(128)  # 50% opacity (Web: 0.5)
+                    inner_fill_color.setAlpha(128)  # 50% opacity
                     
-                    path_inner = QPainterPath()
-                    path_inner.moveTo(cx_tuning, cy_tuning)
-                    path_inner.arcTo(cx_tuning - 100, cy_tuning - 100, 200, 200, 90, -inner_fill_angle)
-                    path_inner.lineTo(cx_tuning, cy_tuning)
-                    painter.fillPath(path_inner, inner_fill_color)
+                    # Use thick pen (30px) to create ring effect
+                    painter.setPen(QPen(inner_fill_color, 30))
+                    painter.setBrush(Qt.NoBrush)
+                    painter.drawArc(cx_tuning - 100, cy_tuning - 100, 200, 200, 90 * 16, -inner_fill_angle * 16)
                 
                 painter.restore()
                 
-                # 3. Center Display - Labels and Values
-                # Web: flex flex-col text-center z-10 gap-2
+                # 3. Center Display - Labels and Values (ensure visibility on top)
                 painter.save()
+                painter.setRenderHint(QPainter.TextAntialiasing)
                 
                 # Time Scale Section (Top)
                 txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
-                painter.setPen(QColor(255, 255, 255, 153))  # opacity-60
+                label_color = QColor(255, 255, 255, 153)  # opacity-60
+                painter.setPen(label_color)
                 painter.setFont(QFont("Arial", 8))
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 35, 100, 15), Qt.AlignCenter, txt_outer_label)
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 40, 100, 15), Qt.AlignCenter, txt_outer_label)
                 
                 # Time value "L-0X"
                 painter.setPen(Qt.white)
                 painter.setFont(QFont("Arial", 20, QFont.Bold))
                 time_value_text = f"L-0{self.time_scale}"
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 20, 100, 25), Qt.AlignCenter, time_value_text)
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 22, 100, 25), Qt.AlignCenter, time_value_text)
                 
-                # Divider line (border-b border-white/20 pb-1 w-20)
-                divider_y = cy_tuning + 8
+                # Divider line
+                divider_y = cy_tuning + 5
                 divider_color = QColor(255, 255, 255, 51)  # white/20
                 painter.setPen(QPen(divider_color, 1))
                 painter.drawLine(cx_tuning - 40, divider_y, cx_tuning + 40, divider_y)
                 
                 # History Scale Section (Bottom)
                 txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
-                painter.setPen(QColor(255, 255, 255, 153))  # opacity-60
+                painter.setPen(label_color)
                 painter.setFont(QFont("Arial", 8))
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 12, 100, 15), Qt.AlignCenter, txt_inner_label)
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 10, 100, 15), Qt.AlignCenter, txt_inner_label)
                 
-                # History label mapping
+                # History label
                 history_labels = {1: "低度", 2: "中度", 3: "高度"}
                 history_label = history_labels.get(self.history_scale, "低度")
                 painter.setPen(Qt.white)
                 painter.setFont(QFont("Arial", 18, QFont.Bold))
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 25, 100, 25), Qt.AlignCenter, history_label)
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 23, 100, 25), Qt.AlignCenter, history_label)
                 
                 painter.restore()
 
