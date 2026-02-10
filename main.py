@@ -932,6 +932,10 @@ class SoftwareRenderCamera(QWidget):
             if self.current_state == self.STATE_ANALYZING:
                 self.draw_analyzing_state(painter, center_x, center_y)
             
+            # [Phase 5B] STATE_FOCUSING UI (3 Concentric Blinking Circles)
+            if self.current_state == self.STATE_FOCUSING:
+                self.draw_focusing_state(painter, center_x, center_y)
+            
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             # 2. [Phase 5A] TUNING State - Circular Conic Gradients
             # Matching Web: ClassicSkinV2.tsx lines 220-254
