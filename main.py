@@ -922,75 +922,110 @@ class SoftwareRenderCamera(QWidget):
                 self.draw_locked_state(painter, center_x, center_y)
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
+            # 2. [Phase 5A] TUNING State - Circular Conic Gradients
+            # Matching Web: ClassicSkinV2.tsx lines 220-254
             if self.current_state == self.STATE_TUNING:
                 # Get dynamic primary color
                 primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
                 theme_color = QColor(primary_hex)
                 
-                # 半透明黑色遮罩，讓文字更清楚 (全螢幕)
-                painter.fillRect(self.rect(), QColor(0, 0, 0, 200)) # 加深一點
+                # Semi-transparent black overlay (bg-black/60)
+                painter.fillRect(self.rect(), QColor(0, 0, 0, 153))
                 
-                font_title = QFont("Arial", 16, QFont.Bold)
-                font_label = QFont("Arial", 12)
+                # Container: 260px x 260px centered
+                container_size = 260
+                cx_tuning = center_x
+                cy_tuning = center_y
                 
-                # Title
-                painter.setFont(font_title)
-                painter.setPen(theme_color)
-                painter.drawText(QRect(0, 40, w, 40), Qt.AlignCenter, "調整參數 (Adjust Parameters)")
+                painter.save()
+                painter.setRenderHint(QPainter.Antialiasing)
                 
-                # 1. Time Scale (1-5)
-                painter.setFont(font_label)
-                painter.setPen(theme_color)
-                painter.drawText(QRect(20, 100, w, 30), Qt.AlignLeft, "Time Scale (起源 -> 未來):")
+                # 1. Outer Ring (Time Scale 1-5) - 260px diameter
+                # Web: border-white/20 + conic-gradient(color 0deg XXXdeg)
+                # XXX = timeScale * 72 degrees (72° per level, 5 levels = 360°)
                 
-                # Draw 5 boxes
-                step_w = w // 5
-                for i in range(1, 6):
-                    x_rect = (i-1) * step_w + 10
-                    y_rect = 140
-                    w_rect = step_w - 20
-                    h_rect = 60
+                # Base circle border
+                base_border = QColor(theme_color)
+                base_border.setAlpha(51)  # 20% opacity
+                painter.setPen(QPen(base_border, 1))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(cx_tuning - 130, cy_tuning - 130, 260, 260)
+                
+                # Filled arc (conic gradient simulation)
+                fill_angle = self.time_scale * 72  # 1-5 maps to 72-360°
+                if fill_angle > 0:
+                    fill_color = QColor(theme_color)
+                    fill_color.setAlpha(204)  # 80% opacity (Web: 0.8)
                     
-                    # Selected Highlight
-                    if i == self.time_scale:
-                        painter.setBrush(theme_color)
-                        painter.setPen(Qt.black)
-                    else:
-                        painter.setBrush(Qt.NoBrush)
-                        painter.setPen(theme_color)
-                    
-                    painter.drawRect(x_rect, y_rect, w_rect, h_rect)
-                    painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
-                    
-                # 2. History Scale (1-3)
-                painter.setPen(theme_color)
-                painter.drawText(QRect(20, 240, w, 30), Qt.AlignLeft, "History Scale (軼聞 -> 正史):")
+                    # Draw pie slice from top (90°) clockwise
+                    path_outer = QPainterPath()
+                    path_outer.moveTo(cx_tuning, cy_tuning)
+                    path_outer.arcTo(cx_tuning - 130, cy_tuning - 130, 260, 260, 90, -fill_angle)
+                    path_outer.lineTo(cx_tuning, cy_tuning)
+                    painter.fillPath(path_outer, fill_color)
                 
-                # Draw 3 boxes
-                step_w = w // 3
-                for i in range(1, 4):
-                    x_rect = (i-1) * step_w + 10
-                    y_rect = 280
-                    w_rect = step_w - 20
-                    h_rect = 60
+                # 2. Inner Ring (History Scale 1-3) - 200px diameter (inset 30px)
+                # Web: border-white/20 + conic-gradient(color 0deg XXXdeg)
+                # XXX = historyScale * 120 degrees (120° per level, 3 levels = 360°)
+                
+                # Base circle border
+                inner_border = QColor(theme_color)
+                inner_border.setAlpha(51)  # 20% opacity
+                painter.setPen(QPen(inner_border, 1))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(cx_tuning - 100, cy_tuning - 100, 200, 200)
+                
+                # Filled arc
+                inner_fill_angle = self.history_scale * 120  # 1-3 maps to 120-360°
+                if inner_fill_angle > 0:
+                    inner_fill_color = QColor(theme_color)
+                    inner_fill_color.setAlpha(128)  # 50% opacity (Web: 0.5)
                     
-                    # Selected Highlight
-                    if i == self.history_scale:
-                        painter.setBrush(theme_color)
-                        painter.setPen(Qt.black)
-                    else:
-                        painter.setBrush(Qt.NoBrush)
-                        painter.setPen(theme_color)
-                        
-                    painter.drawRect(x_rect, y_rect, w_rect, h_rect)
-                    painter.drawText(QRect(x_rect, y_rect, w_rect, h_rect), Qt.AlignCenter, str(i))
+                    path_inner = QPainterPath()
+                    path_inner.moveTo(cx_tuning, cy_tuning)
+                    path_inner.arcTo(cx_tuning - 100, cy_tuning - 100, 200, 200, 90, -inner_fill_angle)
+                    path_inner.lineTo(cx_tuning, cy_tuning)
+                    painter.fillPath(path_inner, inner_fill_color)
+                
+                painter.restore()
+                
+                # 3. Center Display - Labels and Values
+                # Web: flex flex-col text-center z-10 gap-2
+                painter.save()
+                
+                # Time Scale Section (Top)
+                txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
+                painter.setPen(QColor(255, 255, 255, 153))  # opacity-60
+                painter.setFont(QFont("Arial", 8))
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 35, 100, 15), Qt.AlignCenter, txt_outer_label)
+                
+                # Time value "L-0X"
+                painter.setPen(Qt.white)
+                painter.setFont(QFont("Arial", 20, QFont.Bold))
+                time_value_text = f"L-0{self.time_scale}"
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 20, 100, 25), Qt.AlignCenter, time_value_text)
+                
+                # Divider line (border-b border-white/20 pb-1 w-20)
+                divider_y = cy_tuning + 8
+                divider_color = QColor(255, 255, 255, 51)  # white/20
+                painter.setPen(QPen(divider_color, 1))
+                painter.drawLine(cx_tuning - 40, divider_y, cx_tuning + 40, divider_y)
+                
+                # History Scale Section (Bottom)
+                txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
+                painter.setPen(QColor(255, 255, 255, 153))  # opacity-60
+                painter.setFont(QFont("Arial", 8))
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 12, 100, 15), Qt.AlignCenter, txt_inner_label)
+                
+                # History label mapping
+                history_labels = {1: "低度", 2: "中度", 3: "高度"}
+                history_label = history_labels.get(self.history_scale, "低度")
+                painter.setPen(Qt.white)
+                painter.setFont(QFont("Arial", 18, QFont.Bold))
+                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 25, 100, 25), Qt.AlignCenter, history_label)
+                
+                painter.restore()
 
-                # 3. Confirm Button
-                btn_rect = QRect(w//4, h - 80, w//2, 50)
-                painter.setBrush(theme_color)
-                painter.setPen(Qt.black)
-                painter.drawRoundedRect(btn_rect, 10, 10)
-                painter.drawText(btn_rect, Qt.AlignCenter, "開始分析 (Start Analysis)")
             
             # 恢復舊的 P1, P2, P3 狀態文字邏輯 (對應 current_state)
             state_text = self.get_state_name()
