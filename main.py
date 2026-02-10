@@ -1382,7 +1382,7 @@ class SoftwareRenderCamera(QWidget):
                 print(f"✅ Parameters confirmed: time={self.time_scale}, history={self.history_scale}")
                 self.current_state = self.STATE_ANALYZING
                 self.gemini_worker = GeminiWorker(self.captured_pixmap, self.time_scale, self.history_scale)
-                self.gemini_worker.analysis_complete.connect(self.on_analysis_complete)
+                self.gemini_worker.finished.connect(self.on_analysis_complete)
                 self.gemini_worker.start()
                 self.update()
         
