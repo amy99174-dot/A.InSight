@@ -957,8 +957,10 @@ class SoftwareRenderCamera(QWidget):
                     fill_color = QColor(theme_color)
                     fill_color.setAlpha(204)  # 80% opacity
                     
-                    # Use thick pen (30px) to create ring effect
-                    painter.setPen(QPen(fill_color, 30))
+                    # Use thick pen (30px) with flat cap to create ring effect
+                    pen = QPen(fill_color, 30)
+                    pen.setCapStyle(Qt.FlatCap)  # Prevent rounded ends
+                    painter.setPen(pen)
                     painter.setBrush(Qt.NoBrush)
                     # Draw arc from top (90°) clockwise
                     painter.drawArc(cx_tuning - 130, cy_tuning - 130, 260, 260, 90 * 16, -fill_angle * 16)
@@ -980,8 +982,10 @@ class SoftwareRenderCamera(QWidget):
                     inner_fill_color = QColor(theme_color)
                     inner_fill_color.setAlpha(128)  # 50% opacity
                     
-                    # Use thick pen (30px) to create ring effect
-                    painter.setPen(QPen(inner_fill_color, 30))
+                    # Use thick pen (30px) with flat cap to create ring effect
+                    pen_inner = QPen(inner_fill_color, 30)
+                    pen_inner.setCapStyle(Qt.FlatCap)
+                    painter.setPen(pen_inner)
                     painter.setBrush(Qt.NoBrush)
                     painter.drawArc(cx_tuning - 100, cy_tuning - 100, 200, 200, 90 * 16, -inner_fill_angle * 16)
                 
@@ -1351,6 +1355,38 @@ class SoftwareRenderCamera(QWidget):
         painter.restore()
 
     def keyPressEvent(self, event):
+        # [Phase 5A] TUNING State Keyboard Controls
+        if self.current_state == self.STATE_TUNING:
+            if event.key() == Qt.Key_Left:
+                # Decrease time_scale (min 1)
+                if self.time_scale > 1:
+                    self.time_scale -= 1
+                    self.update()
+            elif event.key() == Qt.Key_Right:
+                # Increase time_scale (max 5)
+                if self.time_scale < 5:
+                    self.time_scale += 1
+                    self.update()
+            elif event.key() == Qt.Key_Up:
+                # Increase history_scale (max 3)
+                if self.history_scale < 3:
+                    self.history_scale += 1
+                    self.update()
+            elif event.key() == Qt.Key_Down:
+                # Decrease history_scale (min 1)
+                if self.history_scale > 1:
+                    self.history_scale -= 1
+                    self.update()
+            elif event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+                # Confirm and start analyzing
+                print(f"✅ Parameters confirmed: time={self.time_scale}, history={self.history_scale}")
+                self.current_state = self.STATE_ANALYZING
+                self.gemini_worker = GeminiWorker(self.captured_pixmap, self.time_scale, self.history_scale)
+                self.gemini_worker.analysis_complete.connect(self.on_analysis_complete)
+                self.gemini_worker.start()
+                self.update()
+        
+        # Global ESC to quit
         if event.key() == Qt.Key_Escape:
             self.close()
     
