@@ -14,6 +14,7 @@ import base64
 
 import threading
 import sys
+import os
 import math
 import traceback
 from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
@@ -60,27 +61,52 @@ class ConfigManager(QThread):
     """
     config_updated = pyqtSignal(dict)
     
+    
     def __init__(self, api_url="http://localhost:3000/api/config"):
         super().__init__()
         self.api_url = api_url
         self.current_config = {}
         self.running = True
+        self.first_fetch = True  # Flag for initial fetch
         
     def run(self):
         print(f"🔄 ConfigManager Started: Polling {self.api_url}")
+        print(f"   Interval: 2 seconds")
+        
         while self.running:
             try:
+                print(f"📡 Fetching config from API...")
                 resp = requests.get(self.api_url, timeout=1)
+                print(f"   Status Code: {resp.status_code}")
+                
                 if resp.status_code == 200:
                     new_config = resp.json()
-                    # Simple comparison to avoid unnecessary repaints
-                    if json.dumps(new_config, sort_keys=True) != json.dumps(self.current_config, sort_keys=True):
+                    
+                    # On first fetch, always print the config
+                    if self.first_fetch:
+                        print(f"✅ Initial Config Loaded:")
+                        print(f"   bootText: {new_config.get('text_content', {}).get('bootText', 'N/A')}")
+                        print(f"   primary_color: {new_config.get('ui_theme', {}).get('primary_color', 'N/A')}")
                         self.current_config = new_config
-                        print("✨ Config Updated from Web!")
                         self.config_updated.emit(new_config)
+                        self.first_fetch = False
+                    else:
+                        # Simple comparison to avoid unnecessary repaints
+                        if json.dumps(new_config, sort_keys=True) != json.dumps(self.current_config, sort_keys=True):
+                            self.current_config = new_config
+                            print("✨ Config Updated from Web!")
+                            print(f"   bootText: {new_config.get('text_content', {}).get('bootText', 'N/A')}")
+                            print(f"   primary_color: {new_config.get('ui_theme', {}).get('primary_color', 'N/A')}")
+                            self.config_updated.emit(new_config)
+                else:
+                    print(f"⚠️ API Error: Status {resp.status_code}")
+                    
+            except requests.exceptions.Timeout:
+                print(f"⏱️ Timeout: Could not reach {self.api_url}")
+            except requests.exceptions.ConnectionError as e:
+                print(f"🔌 Connection Error: {str(e)[:100]}")
             except Exception as e:
-                # Silently fail on network error to avoid spamming console
-                pass
+                print(f"❌ ConfigManager Error: {type(e).__name__}: {str(e)[:100]}")
             
             # Sleep for 2 seconds
             self.msleep(2000)
@@ -88,6 +114,7 @@ class ConfigManager(QThread):
     def stop(self):
         self.running = False
         self.wait()
+
         
     def get_text(self, key, default=""):
         """Safely get text from config.text_content"""
@@ -521,7 +548,12 @@ class SoftwareRenderCamera(QWidget):
         print("✅ 摄像头已启动")
         
         # [Phase 4.4] Config Manager - Sync with Web Editor
-        self.config_manager = ConfigManager()
+        # Read API host from environment variable or default to Mac IP
+        api_host = os.environ.get('API_HOST', '192.168.1.118')
+        api_url = f"http://{api_host}:3000/api/config"
+        print(f"🌐 Config API: {api_url}")
+        
+        self.config_manager = ConfigManager(api_url=api_url)
         self.config_manager.config_updated.connect(self.on_config_update)
         self.config_manager.start()
         
