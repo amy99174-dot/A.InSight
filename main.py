@@ -961,6 +961,24 @@ class SoftwareRenderCamera(QWidget):
             if self.current_state == self.STATE_LISTEN:
                 self.draw_listen_state(painter, center_x, center_y)
             
+            # --- End of Circular Clipping ---
+            painter.setClipPath(QPainterPath())  # Remove clipping
+            
+            # [Phase 6] LISTEN Bottom Overlay (Outside Circular Clip)
+            if self.current_state == self.STATE_LISTEN:
+                # Bottom Black Overlay (opacity 20%)
+                painter.setPen(Qt.NoPen)
+                painter.setBrush(QColor(0, 0, 0, 51))  # 51 = 20% of 255
+                bottom_overlay_rect = QRect(0, h - 100, w, 100)
+                painter.fillRect(bottom_overlay_rect, QColor(0, 0, 0, 51))
+                
+                # Bottom Hint (on top of overlay)
+                painter.setPen(QColor(255, 255, 255, 128))  # white/50
+                painter.setFont(QFont("Arial", 10))
+                hint_y = h - 60
+                rect_hint = QRect(0, hint_y, w, 30)
+                painter.drawText(rect_hint, Qt.AlignCenter, "點擊畫面重新開始")
+            
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             # 2. [Phase 5A] TUNING State - Circular Conic Gradients
             # Matching Web: ClassicSkinV2.tsx lines 220-254
@@ -1496,15 +1514,16 @@ class SoftwareRenderCamera(QWidget):
         theme_color = QColor(primary_hex)
         
         # 1. Draw Result Image with Progressive Blur (User Request)
-        # Blur amount: 100% blur at 0% focus -> 0% blur at 100% focus
+        # Add circular clipping to keep image inside circle
         if self.generated_pixmap:
-            # Calculate blur radius: (100 - focus_percentage) maps to blur range
-            # Max blur = 50px, Min blur = 0px
-            blur_amount = int((100 - self.focus_percentage) * 0.5)  # 0-50px
+            painter.save()
             
-            # Draw the image
-            # For now, draw without actual blur filter (Qt blur is complex)
-            # Instead use opacity to simulate focus effect
+            # Create circular clipping path
+            clip_path = QPainterPath()
+            clip_path.addEllipse(cx - 190, cy - 190, 380, 380)
+            painter.setClipPath(clip_path)
+            
+            # Progressive opacity (simulates blur-to-clarity)
             opacity = self.focus_percentage / 100.0  # 0.0 to 1.0
             painter.setOpacity(0.3 + (opacity * 0.7))  # Range: 0.3 to 1.0
             
@@ -1519,7 +1538,8 @@ class SoftwareRenderCamera(QWidget):
                 scaled_pixmap,
                 offset_x, offset_y, 380, 380
             )
-            painter.setOpacity(1.0)  # Reset opacity
+            
+            painter.restore()  # Remove clipping and reset opacity
         
         # 2. Outer Circle Border
         outer_border = QColor(theme_color)
@@ -1610,20 +1630,7 @@ class SoftwareRenderCamera(QWidget):
         # Draw with word wrap
         painter.drawText(rect_script, Qt.AlignCenter | Qt.TextWordWrap, current_page)
         
-        # 4. Bottom Black Overlay (opacity 20%)
-        # User requested: Black semi-transparent block at bottom
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(0, 0, 0, 51))  # 51 = 20% of 255
-        bottom_overlay_rect = QRect(0, self.height() - 100, self.width(), 100)
-        painter.fillRect(bottom_overlay_rect, QColor(0, 0, 0, 51))
-        
-        # 5. Bottom Hint (on top of overlay)
-        # Web: absolute bottom-12 (48px from bottom), text-[8px], white/50
-        painter.setPen(QColor(255, 255, 255, 128)) # white/50
-        painter.setFont(QFont("Arial", 10))
-        hint_y = self.height() - 60
-        rect_hint = QRect(0, hint_y, self.width(), 30)
-        painter.drawText(rect_hint, Qt.AlignCenter, "點擊畫面重新開始")
+        # Note: Bottom overlay and hint moved to paintEvent (outside circular clip)
         
         painter.restore()
     
