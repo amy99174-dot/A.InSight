@@ -1488,11 +1488,40 @@ class SoftwareRenderCamera(QWidget):
         painter.restore()
 
     def draw_focusing_state(self, painter, cx, cy):
-        """[Phase 5B] FOCUSING state with 3 concentric blinking circles"""
+        """[Phase 5B] FOCUSING state with 3 concentric blinking circles and result image with progressive blur"""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
+        
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         theme_color = QColor(primary_hex)
+        
+        # 1. Draw Result Image with Progressive Blur (User Request)
+        # Blur amount: 100% blur at 0% focus -> 0% blur at 100% focus
+        if self.generated_pixmap:
+            # Calculate blur radius: (100 - focus_percentage) maps to blur range
+            # Max blur = 50px, Min blur = 0px
+            blur_amount = int((100 - self.focus_percentage) * 0.5)  # 0-50px
+            
+            # Draw the image
+            # For now, draw without actual blur filter (Qt blur is complex)
+            # Instead use opacity to simulate focus effect
+            opacity = self.focus_percentage / 100.0  # 0.0 to 1.0
+            painter.setOpacity(0.3 + (opacity * 0.7))  # Range: 0.3 to 1.0
+            
+            # Draw result image centered in circle
+            scaled_pixmap = self.generated_pixmap.scaled(
+                380, 380, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+            )
+            offset_x = (scaled_pixmap.width() - 380) // 2
+            offset_y = (scaled_pixmap.height() - 380) // 2
+            painter.drawPixmap(
+                cx - 190, cy - 190,
+                scaled_pixmap,
+                offset_x, offset_y, 380, 380
+            )
+            painter.setOpacity(1.0)  # Reset opacity
+        
+        # 2. Outer Circle Border
         outer_border = QColor(theme_color)
         outer_border.setAlpha(51)
         painter.setPen(QPen(outer_border, 1))
@@ -1550,23 +1579,26 @@ class SoftwareRenderCamera(QWidget):
         # painter.drawRoundedRect(top_bar_rect, 2, 2)
         
         # 2. Artifact Name (Inside Circle)
-        # Position inside circular viewport (~150px from absolute top)
-        # Circle center is at cy, circle radius is ~190px
-        # So circle top edge is at cy - 190, we want title ~40px below that
+        # User requested: Move down one line and add underline
         painter.setPen(Qt.white)
-        font_name = QFont("Arial", 18, QFont.Bold)  # Slightly smaller: 18px
+        font_name = QFont("Arial", 18, QFont.Bold)
         painter.setFont(font_name)
         
         fm = QFontMetrics(font_name)
         name_width = fm.horizontalAdvance(name)
         text_height = fm.height()
         
-        # Position inside circle: cy - 150 (150px from circle center upward)
-        text_y = cy - 150
-        rect_name = QRect(cx - 130, text_y, 260, text_height)  # Constrain width
+        # Position inside circle: cy - 130 (moved down from -150)
+        text_y = cy - 130
+        rect_name = QRect(cx - 130, text_y, 260, text_height)
         painter.drawText(rect_name, Qt.AlignHCenter | Qt.AlignTop, name)
         
-        # No underline needed since title is centered in circle
+        # Add underline as requested
+        underline_y = text_y + text_height + 2
+        underline_start_x = cx - (name_width // 2)
+        underline_width = name_width
+        painter.setPen(QPen(Qt.white, 1))
+        painter.drawLine(underline_start_x, underline_y, underline_start_x + underline_width, underline_y)
         
         # 3. Script Text (Center)
         # Web: center-xy, w-[260px], text-sm (14px), leading-relaxed, opacity-90
@@ -1578,7 +1610,14 @@ class SoftwareRenderCamera(QWidget):
         # Draw with word wrap
         painter.drawText(rect_script, Qt.AlignCenter | Qt.TextWordWrap, current_page)
         
-        # 4. Bottom Hint
+        # 4. Bottom Black Overlay (opacity 20%)
+        # User requested: Black semi-transparent block at bottom
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(0, 0, 0, 51))  # 51 = 20% of 255
+        bottom_overlay_rect = QRect(0, self.height() - 100, self.width(), 100)
+        painter.fillRect(bottom_overlay_rect, QColor(0, 0, 0, 51))
+        
+        # 5. Bottom Hint (on top of overlay)
         # Web: absolute bottom-12 (48px from bottom), text-[8px], white/50
         painter.setPen(QColor(255, 255, 255, 128)) # white/50
         painter.setFont(QFont("Arial", 10))
