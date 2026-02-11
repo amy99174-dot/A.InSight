@@ -1521,16 +1521,19 @@ class SoftwareRenderCamera(QWidget):
         name = self.analysis_result.get("name", "Unknown")
         script = self.analysis_result.get("scriptPrompt", "No description available.")
         
+        # Split script into pages (55 chars per page, matching Web)
+        pages = self.split_text_into_pages(script, max_chars=55)
+        current_page = pages[0] if pages else "..."
+        
         # 1. Top Divider (Rounded Rect)
-        # Web: bg-white/20, w-32 (128px), h-1
+        # Web: absolute top-12 (48px), bg-white/20, w-32 (128px), h-1
         painter.setPen(Qt.NoPen)
         painter.setBrush(QColor(255, 255, 255, 51)) # white/20
-        # Position: Top 12% or fixed pixels? Web uses top-12 (48px)
-        top_bar_rect = QRect(cx - 64, 50, 128, 4)
+        top_bar_rect = QRect(cx - 64, 48, 128, 4)
         painter.drawRoundedRect(top_bar_rect, 2, 2)
         
         # 2. Artifact Name
-        # Web: text-xl (20px), font-bold, border-b
+        # Web: absolute top-16 (64px), text-xl (20px), font-bold, border-b
         painter.setPen(Qt.white)
         font_name = QFont("Arial", 20, QFont.Bold)
         painter.setFont(font_name)
@@ -1539,34 +1542,65 @@ class SoftwareRenderCamera(QWidget):
         name_width = fm.horizontalAdvance(name)
         text_height = fm.height()
         
-        text_y = 80
+        # Position at top-16 (64px from top)
+        text_y = 64
         rect_name = QRect(0, text_y, self.width(), text_height)
         painter.drawText(rect_name, Qt.AlignCenter, name)
         
-        # Underline
-        underline_y = text_y + text_height + 5
-        underline_start_x = cx - (name_width // 2) - 10
-        underline_width = name_width + 20
+        # Underline (border-b)
+        underline_y = text_y + text_height + 2
+        underline_start_x = cx - (name_width // 2)
+        underline_width = name_width
         painter.setPen(QPen(Qt.white, 1))
         painter.drawLine(underline_start_x, underline_y, underline_start_x + underline_width, underline_y)
         
-        # 3. Script Text
-        # Web: w-[260px], text-sm (14px), opacity-90
-        rect_script = QRect(cx - 130, cy - 120, 260, 240)
-        painter.setPen(QColor(255, 255, 255, 230)) # opacity 90
-        painter.setFont(QFont("Arial", 12)) # slightly smaller for content
+        # 3. Script Text (Center)
+        # Web: center-xy, w-[260px], text-sm (14px), leading-relaxed, opacity-90
+        rect_script = QRect(cx - 130, cy - 100, 260, 200)
+        painter.setPen(QColor(255, 255, 255, 230)) # opacity-90
+        font_script = QFont("Arial", 14) # text-sm = 14px
+        painter.setFont(font_script)
         
-        # Enable word wrap
-        painter.drawText(rect_script, Qt.AlignCenter | Qt.TextWordWrap, script)
+        # Draw with word wrap
+        painter.drawText(rect_script, Qt.AlignCenter | Qt.TextWordWrap, current_page)
         
         # 4. Bottom Hint
-        # Web: text-[8px], white/50
-        painter.setPen(QColor(255, 255, 255, 128))
+        # Web: absolute bottom-12 (48px from bottom), text-[8px], white/50
+        painter.setPen(QColor(255, 255, 255, 128)) # white/50
         painter.setFont(QFont("Arial", 10))
-        rect_hint = QRect(0, self.height() - 80, self.width(), 30)
+        hint_y = self.height() - 60
+        rect_hint = QRect(0, hint_y, self.width(), 30)
         painter.drawText(rect_hint, Qt.AlignCenter, "點擊畫面重新開始")
         
         painter.restore()
+    
+    def split_text_into_pages(self, text, max_chars=55):
+        """
+        Split text into pages (max 55 chars per page, matching Web)
+        Splits on sentence boundaries (。！？\n)
+        """
+        if not text:
+            return ["..."]
+        
+        # Split by sentence delimiters
+        import re
+        sentences = re.split(r'([。！？\n])', text)
+        sentences = [s for s in sentences if s]  # Remove empty
+        
+        pages = []
+        current_page = ""
+        
+        for part in sentences:
+            if len(current_page + part) > max_chars and len(current_page) > 0:
+                pages.append(current_page)
+                current_page = part
+            else:
+                current_page += part
+        
+        if current_page:
+            pages.append(current_page)
+        
+        return pages if pages else [text]
 
     def closeEvent(self, event):
         print("🛑 关闭摄像头...")
