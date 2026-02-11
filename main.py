@@ -6,7 +6,7 @@ A.InSight - 软件渲染 + 圆形遮罩
 
 from PyQt5.QtWidgets import QApplication, QWidget, QLabel
 from PyQt5.QtCore import Qt, QTimer, QThread, pyqtSignal, QBuffer, QRectF, QRect
-from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QPainterPath, QBrush, QPen, QRadialGradient
+from PyQt5.QtGui import QImage, QPixmap, QPainter, QColor, QFont, QPainterPath, QBrush, QPen, QRadialGradient, QFontMetrics
 from picamera2 import Picamera2
 import requests
 import json
@@ -1439,6 +1439,9 @@ class SoftwareRenderCamera(QWidget):
         """[Phase 5A] ANALYZING state with dotted circle animation"""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Black transparent overlay at bottom layer (bg-black/80)
+        painter.fillRect(self.rect(), QColor(0, 0, 0, 204))
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         theme_color = QColor(primary_hex)
         outer_border = QColor(theme_color)
