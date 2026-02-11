@@ -541,6 +541,9 @@ class SoftwareRenderCamera(QWidget):
         self.pan_offset_x = 0
         self.pan_offset_y = 0
         
+        # [Phase 5] 分析結果
+        self.analysis_result = {}
+        
         
         self.current_state = self.STATE_BOOT
         self.captured_pixmap = None
@@ -938,6 +941,10 @@ class SoftwareRenderCamera(QWidget):
             # [Phase 5B] STATE_FOCUSING UI (3 Concentric Blinking Circles)
             if self.current_state == self.STATE_FOCUSING:
                 self.draw_focusing_state(painter, center_x, center_y)
+
+            # [Phase 6] STATE_LISTEN UI (Final Result)
+            if self.current_state == self.STATE_LISTEN:
+                self.draw_listen_state(painter, center_x, center_y)
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             # 2. [Phase 5A] TUNING State - Circular Conic Gradients
@@ -1443,10 +1450,12 @@ class SoftwareRenderCamera(QWidget):
         t = time.time() % 2
         opacity = 0.2 if t < 0.67 else (0.6 if t < 1.33 else 1.0)
         dotted_color = QColor(theme_color)
-        dotted_color.setAlphaF(opacity)
+        dotted_color.setAlphaF(opacity)  # Apply opacity animation
+        # Create dotted pen (3px dash, 6px space - denser)
         dotted_pen = QPen(dotted_color, 2)
-        dotted_pen.setDashPattern([10, 15])
+        dotted_pen.setDashPattern([3, 6])
         painter.setPen(dotted_pen)
+        painter.setBrush(Qt.NoBrush) # Ensure no fill
         painter.drawEllipse(cx - 100, cy - 100, 200, 200)
         painter.setPen(Qt.white)
         txt_title = self.config_manager.get_text("analyzingTitle", "解析中")
@@ -1497,6 +1506,65 @@ class SoftwareRenderCamera(QWidget):
         painter.setFont(QFont("Arial", 9))
         painter.drawText(QRect(cx - 80, cy + 160, 160, 20), Qt.AlignCenter, txt_hint)
         painter.restore()
+
+    def draw_listen_state(self, painter, cx, cy):
+        """
+        [Phase 6] LISTEN state UI matching Web format
+        """
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+        
+        # Data from analysis result
+        name = self.analysis_result.get("name", "Unknown")
+        script = self.analysis_result.get("scriptPrompt", "No description available.")
+        
+        # 1. Top Divider (Rounded Rect)
+        # Web: bg-white/20, w-32 (128px), h-1
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(QColor(255, 255, 255, 51)) # white/20
+        # Position: Top 12% or fixed pixels? Web uses top-12 (48px)
+        top_bar_rect = QRect(cx - 64, 50, 128, 4)
+        painter.drawRoundedRect(top_bar_rect, 2, 2)
+        
+        # 2. Artifact Name
+        # Web: text-xl (20px), font-bold, border-b
+        painter.setPen(Qt.white)
+        font_name = QFont("Arial", 20, QFont.Bold)
+        painter.setFont(font_name)
+        
+        fm = QFontMetrics(font_name)
+        name_width = fm.horizontalAdvance(name)
+        text_height = fm.height()
+        
+        text_y = 80
+        rect_name = QRect(0, text_y, self.width(), text_height)
+        painter.drawText(rect_name, Qt.AlignCenter, name)
+        
+        # Underline
+        underline_y = text_y + text_height + 5
+        underline_start_x = cx - (name_width // 2) - 10
+        underline_width = name_width + 20
+        painter.setPen(QPen(Qt.white, 1))
+        painter.drawLine(underline_start_x, underline_y, underline_start_x + underline_width, underline_y)
+        
+        # 3. Script Text
+        # Web: w-[260px], text-sm (14px), opacity-90
+        rect_script = QRect(cx - 130, cy - 120, 260, 240)
+        painter.setPen(QColor(255, 255, 255, 230)) # opacity 90
+        painter.setFont(QFont("Arial", 12)) # slightly smaller for content
+        
+        # Enable word wrap
+        painter.drawText(rect_script, Qt.AlignCenter | Qt.TextWordWrap, script)
+        
+        # 4. Bottom Hint
+        # Web: text-[8px], white/50
+        painter.setPen(QColor(255, 255, 255, 128))
+        painter.setFont(QFont("Arial", 10))
+        rect_hint = QRect(0, self.height() - 80, self.width(), 30)
+        painter.drawText(rect_hint, Qt.AlignCenter, "點擊畫面重新開始")
+        
+        painter.restore()
+
     def closeEvent(self, event):
         print("🛑 关闭摄像头...")
         self.timer.stop()
