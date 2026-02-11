@@ -962,7 +962,7 @@ class SoftwareRenderCamera(QWidget):
                 self.draw_listen_state(painter, center_x, center_y)
             
             # --- End of Circular Clipping ---
-            painter.setClipPath(QPainterPath())  # Remove clipping
+            painter.setClipping(False)  # Remove clipping for overlay UI
             
             # [Phase 6] LISTEN Bottom Overlay (Outside Circular Clip)
             if self.current_state == self.STATE_LISTEN:
