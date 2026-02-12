@@ -802,6 +802,11 @@ class SoftwareRenderCamera(QWidget):
                 self.focus_percentage = min(100, self.focus_percentage + 5)
                 print(f"🔍 Focus: {self.focus_percentage}%")
                 self.update()
+                
+                # Auto-transition to REVEAL when reaching 100%
+                if self.focus_percentage >= 100:
+                    self.current_state = self.STATE_REVEAL
+                    print("✨ 進入 REVEAL 模式 (結果展示)")
     
     def on_encoder_ccw(self):
         """Handle rotary encoder counter-clockwise rotation - decrease parameter in TUNING or focus in FOCUSING"""
