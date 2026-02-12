@@ -786,21 +786,39 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
     
     def on_encoder_cw(self):
-        """Handle rotary encoder clockwise rotation - increase time_scale in TUNING"""
+        """Handle rotary encoder clockwise rotation - increase parameter in TUNING or focus in FOCUSING"""
         print("🔄 GPIO: Encoder CW")
+        
+        # In TUNING state: increase time_scale
         if self.current_state == self.STATE_TUNING:
             if self.time_scale < 5:
                 self.time_scale += 1
                 print(f"⬆️ Time Scale: {self.time_scale}/5")
                 self.update()
+        
+        # In FOCUSING state: increase focus percentage
+        elif self.current_state == self.STATE_FOCUSING:
+            if self.focus_percentage < 100:
+                self.focus_percentage = min(100, self.focus_percentage + 5)
+                print(f"🔍 Focus: {self.focus_percentage}%")
+                self.update()
     
     def on_encoder_ccw(self):
-        """Handle rotary encoder counter-clockwise rotation - decrease time_scale in TUNING"""
+        """Handle rotary encoder counter-clockwise rotation - decrease parameter in TUNING or focus in FOCUSING"""
         print("🔄 GPIO: Encoder CCW")
+        
+        # In TUNING state: decrease time_scale
         if self.current_state == self.STATE_TUNING:
             if self.time_scale > 1:
                 self.time_scale -= 1
                 print(f"⬇️ Time Scale: {self.time_scale}/5")
+                self.update()
+        
+        # In FOCUSING state: decrease focus percentage
+        elif self.current_state == self.STATE_FOCUSING:
+            if self.focus_percentage > 0:
+                self.focus_percentage = max(0, self.focus_percentage - 5)
+                print(f"🔍 Focus: {self.focus_percentage}%")
                 self.update()
 
 
