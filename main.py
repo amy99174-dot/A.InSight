@@ -12,6 +12,9 @@ import requests
 import json
 import base64
 
+# Audio Manager for TTS
+from audio_manager import AudioManager
+
 import threading
 import sys
 import os
@@ -545,6 +548,18 @@ class SoftwareRenderCamera(QWidget):
         self.analysis_result = {}
         self.script_page = 0  # Current page index for LISTEN state
         
+        # [Audio] Initialize Audio Manager
+        openai_key = os.environ.get("OPENAI_KEY", "")
+        if openai_key:
+            try:
+                self.audio_manager = AudioManager(openai_key)
+                print("🔊 Audio Manager initialized")
+            except Exception as e:
+                print(f"⚠️ Audio Manager init failed: {e}")
+                self.audio_manager = None
+        else:
+            print("⚠️ OPENAI_KEY not set, audio disabled")
+            self.audio_manager = None
         
         self.current_state = self.STATE_BOOT
         self.captured_pixmap = None
@@ -649,6 +664,10 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
             else:
                 # Last page, transition to FOCUSING
+                # Stop audio before leaving LISTEN state
+                if hasattr(self, 'audio_manager') and self.audio_manager:
+                    self.audio_manager.stop()
+                
                 self.current_state = self.STATE_FOCUSING
                 self.focus_percentage = 0  # Reset focus
                 print("👁️ 進入 FOCUSING 模式")
@@ -766,6 +785,15 @@ class SoftwareRenderCamera(QWidget):
         # Reset to first page
         self.script_page = 0
         self.current_state = self.STATE_LISTEN
+        
+        # Generate and play audio narration
+        if self.audio_manager and "scriptPrompt" in result:
+            script_text = result["scriptPrompt"]
+            if script_text:
+                print("🔊 Generating audio narration...")
+                success = self.audio_manager.generate_and_play_audio(script_text)
+                if not success:
+                    print("❌ Audio generation failed, continuing without audio")
 
     def update_frame(self):
         """
@@ -1663,17 +1691,22 @@ class SoftwareRenderCamera(QWidget):
         return pages if pages else [text]
 
     def closeEvent(self, event):
-        print("🛑 关闭摄像头...")
+        print("🛑 关闭应用...")
+        
+        # Cleanup audio
+        if hasattr(self, 'audio_manager') and self.audio_manager:
+            self.audio_manager.cleanup()
+        
+        # Stop camera
         self.timer.stop()
         self.camera.stop()
         self.camera.close()
+        
+        # Stop Config Sync
+        if hasattr(self, 'config_manager'):
+            self.config_manager.stop()
+        
         event.accept()
-        # Stop Config Sync
-        if hasattr(self, 'config_manager'):
-            self.config_manager.stop()
-        # Stop Config Sync
-        if hasattr(self, 'config_manager'):
-            self.config_manager.stop()
 
 
 if __name__ == "__main__":
