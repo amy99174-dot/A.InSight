@@ -581,6 +581,8 @@ class SoftwareRenderCamera(QWidget):
                 self.gpio_controller.confirm_pressed.connect(self.on_gpio_confirm)
                 self.gpio_controller.left_pressed.connect(self.on_gpio_left)
                 self.gpio_controller.right_pressed.connect(self.on_gpio_right)
+                self.gpio_controller.encoder_rotated_cw.connect(self.on_encoder_cw)
+                self.gpio_controller.encoder_rotated_ccw.connect(self.on_encoder_ccw)
             except Exception as e:
                 print(f"⚠️ GPIO Controller init failed: {e}")
                 self.gpio_controller = None
@@ -755,6 +757,25 @@ class SoftwareRenderCamera(QWidget):
                 self.script_page += 1
                 print(f"📄 下一頁: {self.script_page + 1}/{len(pages)}")
                 self.update()
+    
+    def on_encoder_cw(self):
+        """Handle rotary encoder clockwise rotation - increase time_scale in TUNING"""
+        print("🔄 GPIO: Encoder CW")
+        if self.current_state == self.STATE_TUNING:
+            if self.time_scale < 5:
+                self.time_scale += 1
+                print(f"⬆️ Time Scale: {self.time_scale}/5")
+                self.update()
+    
+    def on_encoder_ccw(self):
+        """Handle rotary encoder counter-clockwise rotation - decrease time_scale in TUNING"""
+        print("🔄 GPIO: Encoder CCW")
+        if self.current_state == self.STATE_TUNING:
+            if self.time_scale > 1:
+                self.time_scale -= 1
+                print(f"⬇️ Time Scale: {self.time_scale}/5")
+                self.update()
+
 
         # 8. REVEAL / FAIL -> 回到 BOOT
         if self.current_state in [self.STATE_REVEAL, self.STATE_FAIL]:

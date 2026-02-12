@@ -1,22 +1,27 @@
 """
 GPIO Controller for A.InSight Native App
-Handles physical button inputs using gpiozero
+Handles physical button inputs and rotary encoder using gpiozero
 """
 
-from gpiozero import Button
+from gpiozero import Button, RotaryEncoder
 from PyQt5.QtCore import QObject, pyqtSignal
 import sys
 
 
 class GPIOController(QObject):
-    """Manages GPIO button inputs and emits Qt signals"""
+    """Manages GPIO button inputs and rotary encoder, emits Qt signals"""
     
     # Qt signals for button events
     confirm_pressed = pyqtSignal()
     left_pressed = pyqtSignal()
     right_pressed = pyqtSignal()
     
-    def __init__(self, confirm_pin=5, left_pin=6, right_pin=13):
+    # Qt signals for rotary encoder
+    encoder_rotated_cw = pyqtSignal()  # Clockwise
+    encoder_rotated_ccw = pyqtSignal()  # Counter-clockwise
+    
+    def __init__(self, confirm_pin=3, left_pin=19, right_pin=26, 
+                 encoder_a=20, encoder_b=21):
         """
         Initialize GPIO Controller
         
@@ -24,6 +29,8 @@ class GPIOController(QObject):
             confirm_pin: GPIO pin for confirm button
             left_pin: GPIO pin for left button
             right_pin: GPIO pin for right button
+            encoder_a: GPIO pin for rotary encoder A (CLK)
+            encoder_b: GPIO pin for rotary encoder B (DT)
         """
         super().__init__()
         
@@ -43,12 +50,29 @@ class GPIOController(QObject):
             print(f"   Left:    GPIO {left_pin}")
             print(f"   Right:   GPIO {right_pin}")
             
+            # Initialize rotary encoder
+            try:
+                self.encoder = RotaryEncoder(
+                    a=encoder_a,
+                    b=encoder_b,
+                    wrap=False,
+                    max_steps=100
+                )
+                self.encoder.when_rotated = self._on_encoder_rotated
+                self._last_encoder_value = self.encoder.value
+                print(f"   Encoder: GPIO {encoder_a}/{encoder_b}")
+                
+            except Exception as e:
+                print(f"⚠️ Encoder init failed: {e}")
+                self.encoder = None
+            
         except Exception as e:
             print(f"❌ GPIO initialization failed: {e}")
             print("   Running without GPIO support")
             self.confirm_btn = None
             self.left_btn = None
             self.right_btn = None
+            self.encoder = None
     
     def _on_confirm_press(self):
         """Handle confirm button press"""
@@ -65,6 +89,25 @@ class GPIOController(QObject):
         print("➡️ Right button pressed")
         self.right_pressed.emit()
     
+    def _on_encoder_rotated(self):
+        """Handle rotary encoder rotation"""
+        if not self.encoder:
+            return
+        
+        current_value = self.encoder.value
+        
+        # Detect direction
+        if current_value > self._last_encoder_value:
+            # Clockwise rotation
+            print(f"🔄 Encoder CW: {current_value}")
+            self.encoder_rotated_cw.emit()
+        elif current_value < self._last_encoder_value:
+            # Counter-clockwise rotation
+            print(f"🔄 Encoder CCW: {current_value}")
+            self.encoder_rotated_ccw.emit()
+        
+        self._last_encoder_value = current_value
+    
     def cleanup(self):
         """Clean up GPIO resources"""
         try:
@@ -74,6 +117,8 @@ class GPIOController(QObject):
                 self.left_btn.close()
             if self.right_btn:
                 self.right_btn.close()
+            if self.encoder:
+                self.encoder.close()
             print("🧹 GPIO cleanup completed")
         except Exception as e:
             print(f"⚠️ GPIO cleanup warning: {e}")
