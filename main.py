@@ -15,6 +15,14 @@ import base64
 # Audio Manager for TTS
 from audio_manager import AudioManager
 
+# GPIO Controller for physical buttons
+try:
+    from gpio_controller import GPIOController
+    GPIO_AVAILABLE = True
+except ImportError:
+    print("⚠️ gpiozero not available, GPIO disabled")
+    GPIO_AVAILABLE = False
+
 import threading
 import sys
 import os
@@ -561,6 +569,24 @@ class SoftwareRenderCamera(QWidget):
             print("⚠️ OPENAI_KEY not set, audio disabled")
             self.audio_manager = None
         
+        # [GPIO] Initialize GPIO Controller
+        if GPIO_AVAILABLE:
+            try:
+                self.gpio_controller = GPIOController(
+                    confirm_pin=3,  # GPIO 3
+                    left_pin=19,    # GPIO 19
+                    right_pin=26    # GPIO 26
+                )
+                # Connect GPIO signals to handlers
+                self.gpio_controller.confirm_pressed.connect(self.on_gpio_confirm)
+                self.gpio_controller.left_pressed.connect(self.on_gpio_left)
+                self.gpio_controller.right_pressed.connect(self.on_gpio_right)
+            except Exception as e:
+                print(f"⚠️ GPIO Controller init failed: {e}")
+                self.gpio_controller = None
+        else:
+            self.gpio_controller = None
+        
         self.current_state = self.STATE_BOOT
         self.captured_pixmap = None
         self.analysis_result = None
@@ -678,6 +704,57 @@ class SoftwareRenderCamera(QWidget):
             self.current_state = self.STATE_REVEAL
             print("✨ 進入 REVEAL 模式 (結果展示)")
             return
+        
+        # 8. REVEAL (結果展示) -> 返回 BOOT (重新開始)
+        if self.current_state == self.STATE_REVEAL:
+            # 清理狀態，重新初始化
+            self.current_state = self.STATE_BOOT
+            self.captured_pixmap = None
+            self.generated_pixmap = None
+            self.analysis_result = {}
+            self.pan_offset_x = 0
+            self.pan_offset_y = 0
+            print("🔄 返回初始狀態")
+            self.update()
+            return
+    
+    # ========== GPIO Button Handlers ==========
+    
+    def on_gpio_confirm(self):
+        """Handle GPIO confirm button press - same as mouse click"""
+        print("🔘 GPIO: Confirm button")
+        # Simulate mouse click at center of screen
+        from PyQt5.QtCore import QEvent, QPoint
+        from PyQt5.QtGui import QMouseEvent
+        
+        event = QMouseEvent(
+            QEvent.MouseButtonPress,
+            QPoint(self.width() // 2, self.height() // 2),
+            Qt.LeftButton,
+            Qt.LeftButton,
+            Qt.NoModifier
+        )
+        self.mousePressEvent(event)
+    
+    def on_gpio_left(self):
+        """Handle GPIO left button press - previous page in LISTEN state"""
+        print("⬅️ GPIO: Left button")
+        if self.current_state == self.STATE_LISTEN:
+            if self.script_page > 0:
+                self.script_page -= 1
+                print(f"📄 上一頁: {self.script_page + 1}")
+                self.update()
+    
+    def on_gpio_right(self):
+        """Handle GPIO right button press - next page in LISTEN state"""
+        print("➡️ GPIO: Right button")
+        if self.current_state == self.STATE_LISTEN:
+            script = self.analysis_result.get("scriptPrompt", "")
+            pages = self.split_text_into_pages(script, max_chars=55)
+            if self.script_page < len(pages) - 1:
+                self.script_page += 1
+                print(f"📄 下一頁: {self.script_page + 1}/{len(pages)}")
+                self.update()
 
         # 8. REVEAL / FAIL -> 回到 BOOT
         if self.current_state in [self.STATE_REVEAL, self.STATE_FAIL]:
@@ -1704,6 +1781,10 @@ class SoftwareRenderCamera(QWidget):
         # Cleanup audio
         if hasattr(self, 'audio_manager') and self.audio_manager:
             self.audio_manager.cleanup()
+        
+        # Cleanup GPIO
+        if hasattr(self, 'gpio_controller') and self.gpio_controller:
+            self.gpio_controller.cleanup()
         
         # Stop camera
         self.timer.stop()
