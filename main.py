@@ -723,9 +723,16 @@ class SoftwareRenderCamera(QWidget):
     # ========== GPIO Button Handlers ==========
     
     def on_gpio_confirm(self):
-        """Handle GPIO confirm button press - same as mouse click"""
+        """Handle GPIO confirm button press - state-aware confirmation"""
         print("🔘 GPIO: Confirm button")
-        # Simulate mouse click at center of screen
+        
+        # Special handling for TUNING state - directly start analysis
+        if self.current_state == self.STATE_TUNING:
+            print("✅ GPIO: Confirming parameters")
+            self.start_analysis()
+            return
+        
+        # For other states, simulate mouse click at center
         from PyQt5.QtCore import QEvent, QPoint
         from PyQt5.QtGui import QMouseEvent
         
@@ -739,8 +746,18 @@ class SoftwareRenderCamera(QWidget):
         self.mousePressEvent(event)
     
     def on_gpio_left(self):
-        """Handle GPIO left button press - previous page in LISTEN state"""
+        """Handle GPIO left button press - previous page in LISTEN or decrease history in TUNING"""
         print("⬅️ GPIO: Left button")
+        
+        # In TUNING state: decrease history_scale
+        if self.current_state == self.STATE_TUNING:
+            if self.history_scale > 1:
+                self.history_scale -= 1
+                print(f"⬇️ History Scale: {self.history_scale}/3")
+                self.update()
+                return
+        
+        # In LISTEN state: previous page
         if self.current_state == self.STATE_LISTEN:
             if self.script_page > 0:
                 self.script_page -= 1
@@ -748,8 +765,18 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
     
     def on_gpio_right(self):
-        """Handle GPIO right button press - next page in LISTEN state"""
+        """Handle GPIO right button press - next page in LISTEN or increase history in TUNING"""
         print("➡️ GPIO: Right button")
+        
+        # In TUNING state: increase history_scale
+        if self.current_state == self.STATE_TUNING:
+            if self.history_scale < 3:
+                self.history_scale += 1
+                print(f"⬆️ History Scale: {self.history_scale}/3")
+                self.update()
+                return
+        
+        # In LISTEN state: next page
         if self.current_state == self.STATE_LISTEN:
             script = self.analysis_result.get("scriptPrompt", "")
             pages = self.split_text_into_pages(script, max_chars=55)
