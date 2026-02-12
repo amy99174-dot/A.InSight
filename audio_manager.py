@@ -22,11 +22,31 @@ class AudioManager:
         """
         self.api_key = openai_api_key
         
-        # Initialize pygame mixer for audio playback
+        # Initialize pygame mixer for audio playback with multiple channels
         pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+        pygame.mixer.set_num_channels(10)  # Support up to 10 simultaneous sounds
         
+        # TTS playback (using mixer.music)
         self.current_audio_path = None
-        print("🔊 AudioManager initialized")
+        
+        # Background ambience (using Sound objects on channels)
+        self.ambience_sounds = []  # List of (Sound, temp_path) tuples
+        self.ambience_channels = []  # List of Channel objects
+        
+        # Ambience sound URLs from Web version
+        self.AMBIENCE_URLS = {
+            "SOUND_WIND": "https://storage.googleapis.com/my-rpg-game-sounds/WINTER.mp3",
+            "SOUND_WATER": "https://storage.googleapis.com/my-rpg-game-sounds/WATER.mp3",
+            "SOUND_SCREAM": "https://storage.googleapis.com/my-rpg-game-sounds/SCREAM.mp3",
+            "SOUND_CLANK": "https://storage.googleapis.com/my-rpg-game-sounds/CLANK.mp3",
+            "SOUND_CROWD": "https://storage.googleapis.com/my-rpg-game-sounds/CROWD.mp3",
+            "SOUND_QUIET": "https://storage.googleapis.com/my-rpg-game-sounds/QUIET.mp3",
+            "SOUND_LOW": "https://storage.googleapis.com/my-rpg-game-sounds/LOW.mp3",
+            "SOUND_HUM": "https://storage.googleapis.com/my-rpg-game-sounds/HUM.mp3",
+            "SOUND_FIRE": "https://storage.googleapis.com/my-rpg-game-sounds/FIRE.mp3",
+        }
+        
+        print("🔊 AudioManager initialized with ambience support")
     
     def generate_and_play_audio(self, script_text: str) -> bool:
         """
@@ -139,17 +159,132 @@ class AudioManager:
             print(f"❌ Playback failed: {e}")
     
     def stop(self):
-        """Stop current audio playback"""
+        """Stop TTS narration only (keep ambience playing)"""
         try:
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.stop()
-                print("⏹️ Audio stopped")
+                print("⏹️ TTS stopped")
         except Exception as e:
             print(f"⚠️ Stop failed: {e}")
     
+    def play_ambience(self, ambience_category: str):
+        """
+        Play background ambience sounds based on AI-selected categories
+        
+        Args:
+            ambience_category: Comma-separated categories (e.g., "SOUND_WIND,SOUND_WATER")
+        """
+        try:
+            # Stop existing ambience first
+            self.stop_ambience()
+            
+            # Parse categories
+            categories = [cat.strip() for cat in ambience_category.split(',') if cat.strip()]
+            if not categories:
+                print("⚠️ No ambience categories specified")
+                return
+            
+            print(f"🎵 Playing ambience: {categories}")
+            
+            # Download and play each ambience sound
+            for i, category in enumerate(categories):
+                url = self.AMBIENCE_URLS.get(category)
+                if not url:
+                    print(f"⚠️ Unknown ambience category: {category}")
+                    continue
+                
+                # Download sound file
+                sound_path = self._download_ambience(url, category)
+                if not sound_path:
+                    continue
+                
+                try:
+                    # Load sound
+                    sound = pygame.mixer.Sound(sound_path)
+                    sound.set_volume(0.6)  # 60% volume for background
+                    
+                    # Get available channel (start from channel 1, 0 reserved for music)
+                    channel = pygame.mixer.Channel(i + 1)
+                    channel.play(sound, loops=-1)  # Loop forever
+                    
+                    # Store references
+                    self.ambience_sounds.append((sound, sound_path))
+                    self.ambience_channels.append(channel)
+                    
+                    print(f"✅ Ambience playing on channel {i + 1}: {category}")
+                    
+                except Exception as e:
+                    print(f"❌ Failed to play {category}: {e}")
+                    # Clean up failed download
+                    if os.path.exists(sound_path):
+                        os.remove(sound_path)
+                    
+        except Exception as e:
+            print(f"❌ Ambience playback failed: {e}")
+    
+    def _download_ambience(self, url: str, category: str) -> Optional[str]:
+        """
+        Download ambience sound file from URL
+        
+        Args:
+            url: URL to download from
+            category: Category name for logging
+            
+        Returns:
+            Path to downloaded file, or None if failed
+        """
+        try:
+            print(f"⬇️ Downloading {category}...")
+            response = requests.get(url, timeout=15)
+            
+            if response.status_code == 200:
+                # Save to temp file
+                temp_file = tempfile.NamedTemporaryFile(
+                    delete=False, 
+                    suffix=f'_{category}.mp3'
+                )
+                temp_file.write(response.content)
+                temp_file.close()
+                print(f"✅ Downloaded {category} ({len(response.content)} bytes)")
+                return temp_file.name
+            else:
+                print(f"❌ Failed to download {category}: HTTP {response.status_code}")
+                return None
+                
+        except requests.exceptions.Timeout:
+            print(f"❌ Download timeout for {category}")
+            return None
+        except Exception as e:
+            print(f"❌ Download error for {category}: {e}")
+            return None
+    
+    def stop_ambience(self):
+        """Stop all background ambience sounds"""
+        try:
+            # Stop all channels
+            for channel in self.ambience_channels:
+                if channel:
+                    channel.stop()
+            
+            # Clear lists
+            self.ambience_channels = []
+            self.ambience_sounds = []
+            
+            if self.ambience_channels or self.ambience_sounds:
+                print("⏹️ Ambience stopped")
+                
+        except Exception as e:
+            print(f"⚠️ Stop ambience failed: {e}")
+    
+    def stop_all(self):
+        """Stop both TTS narration and ambience"""
+        self.stop()  # Stop TTS
+        self.stop_ambience()  # Stop ambience
+        print("⏹️ All audio stopped")
+    
     def is_playing(self) -> bool:
         """
-        Check if audio is currently playing
+        Check if TTS audio is currently playing
         
         Returns:
             True if audio is playing, False otherwise
@@ -162,14 +297,22 @@ class AudioManager:
     def cleanup(self):
         """Clean up resources and temporary files"""
         try:
-            # Stop playback
-            self.stop()
+            # Stop all playback
+            self.stop_all()
             
-            # Remove temp file
+            # Remove TTS temp file
             if self.current_audio_path and os.path.exists(self.current_audio_path):
                 os.remove(self.current_audio_path)
-                print(f"🗑️ Cleaned up: {self.current_audio_path}")
+                print(f"🗑️ Cleaned up TTS: {self.current_audio_path}")
                 self.current_audio_path = None
+            
+            # Remove ambience temp files
+            for sound, temp_path in self.ambience_sounds:
+                if temp_path and os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    print(f"🗑️ Cleaned up ambience: {temp_path}")
+            
+            self.ambience_sounds = []
                 
         except Exception as e:
             print(f"⚠️ Cleanup warning: {e}")

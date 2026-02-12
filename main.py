@@ -664,9 +664,9 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
             else:
                 # Last page, transition to FOCUSING
-                # Stop audio before leaving LISTEN state
+                # Stop both TTS and ambience before leaving LISTEN state
                 if hasattr(self, 'audio_manager') and self.audio_manager:
-                    self.audio_manager.stop()
+                    self.audio_manager.stop_all()
                 
                 self.current_state = self.STATE_FOCUSING
                 self.focus_percentage = 0  # Reset focus
@@ -786,14 +786,22 @@ class SoftwareRenderCamera(QWidget):
         self.script_page = 0
         self.current_state = self.STATE_LISTEN
         
-        # Generate and play audio narration
-        if self.audio_manager and "scriptPrompt" in result:
-            script_text = result["scriptPrompt"]
-            if script_text:
-                print("🔊 Generating audio narration...")
-                success = self.audio_manager.generate_and_play_audio(script_text)
-                if not success:
-                    print("❌ Audio generation failed, continuing without audio")
+        # Play audio: ambience + TTS narration
+        if self.audio_manager:
+            # 1. Play background ambience (looping)
+            ambience_category = result.get("ambienceCategory", "SOUND_QUIET")
+            if ambience_category:
+                print(f"🎵 Starting ambience: {ambience_category}")
+                self.audio_manager.play_ambience(ambience_category)
+            
+            # 2. Play TTS narration (on top of ambience)
+            if "scriptPrompt" in result:
+                script_text = result["scriptPrompt"]
+                if script_text:
+                    print("🔊 Generating audio narration...")
+                    success = self.audio_manager.generate_and_play_audio(script_text)
+                    if not success:
+                        print("❌ Audio generation failed, continuing without audio")
 
     def update_frame(self):
         """
