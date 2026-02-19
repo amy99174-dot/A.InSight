@@ -551,6 +551,7 @@ class SoftwareRenderCamera(QWidget):
         # [Phase 3] AI 參數
         self.time_scale = 3     # 1-5
         self.history_scale = 2  # 1-3
+        self.tuning_selected_param = 0  # 0 = time_scale, 1 = history_scale
         
         # [Phase 5B] FOCUSING 參數
         self.focus_percentage = 0  # 0-100
@@ -780,16 +781,15 @@ class SoftwareRenderCamera(QWidget):
         self.mousePressEvent(event)
     
     def on_gpio_left(self):
-        """Handle GPIO left button press - previous page in LISTEN or decrease history in TUNING"""
+        """Handle GPIO left button - switch param in TUNING or prev page in LISTEN"""
         print("⬅️ GPIO: Left button")
         
-        # In TUNING state: decrease history_scale
+        # In TUNING state: select previous parameter
         if self.current_state == self.STATE_TUNING:
-            if self.history_scale > 1:
-                self.history_scale -= 1
-                print(f"⬇️ History Scale: {self.history_scale}/3")
-                self.update()
-                return
+            self.tuning_selected_param = 0  # Select time_scale
+            print(f"🔘 Selected: 時間軸 (time_scale)")
+            self.update()
+            return
         
         # In LISTEN state: previous page
         if self.current_state == self.STATE_LISTEN:
@@ -799,16 +799,15 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
     
     def on_gpio_right(self):
-        """Handle GPIO right button press - next page in LISTEN or increase history in TUNING"""
+        """Handle GPIO right button - switch param in TUNING or next page in LISTEN"""
         print("➡️ GPIO: Right button")
         
-        # In TUNING state: increase history_scale
+        # In TUNING state: select next parameter
         if self.current_state == self.STATE_TUNING:
-            if self.history_scale < 3:
-                self.history_scale += 1
-                print(f"⬆️ History Scale: {self.history_scale}/3")
-                self.update()
-                return
+            self.tuning_selected_param = 1  # Select history_scale
+            print(f"🔘 Selected: 史實度 (history_scale)")
+            self.update()
+            return
         
         # In LISTEN state: next page
         if self.current_state == self.STATE_LISTEN:
@@ -820,15 +819,21 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
     
     def on_encoder_cw(self):
-        """Handle rotary encoder clockwise rotation - increase parameter in TUNING or focus in FOCUSING"""
+        """Handle rotary encoder clockwise rotation"""
         print("🔄 GPIO: Encoder CW")
         
-        # In TUNING state: increase time_scale
+        # In TUNING state: increase selected parameter
         if self.current_state == self.STATE_TUNING:
-            if self.time_scale < 5:
-                self.time_scale += 1
-                print(f"⬆️ Time Scale: {self.time_scale}/5")
-                self.update()
+            if self.tuning_selected_param == 0:
+                if self.time_scale < 5:
+                    self.time_scale += 1
+                    print(f"⬆️ Time Scale: {self.time_scale}/5")
+                    self.update()
+            else:
+                if self.history_scale < 3:
+                    self.history_scale += 1
+                    print(f"⬆️ History Scale: {self.history_scale}/3")
+                    self.update()
         
         # In FOCUSING state: increase focus percentage
         elif self.current_state == self.STATE_FOCUSING:
@@ -845,15 +850,21 @@ class SoftwareRenderCamera(QWidget):
                     print("✨ 進入 REVEAL 模式 (結果展示)")
     
     def on_encoder_ccw(self):
-        """Handle rotary encoder counter-clockwise rotation - decrease parameter in TUNING or focus in FOCUSING"""
+        """Handle rotary encoder counter-clockwise rotation"""
         print("🔄 GPIO: Encoder CCW")
         
-        # In TUNING state: decrease time_scale
+        # In TUNING state: decrease selected parameter
         if self.current_state == self.STATE_TUNING:
-            if self.time_scale > 1:
-                self.time_scale -= 1
-                print(f"⬇️ Time Scale: {self.time_scale}/5")
-                self.update()
+            if self.tuning_selected_param == 0:
+                if self.time_scale > 1:
+                    self.time_scale -= 1
+                    print(f"⬇️ Time Scale: {self.time_scale}/5")
+                    self.update()
+            else:
+                if self.history_scale > 1:
+                    self.history_scale -= 1
+                    print(f"⬇️ History Scale: {self.history_scale}/3")
+                    self.update()
         
         # In FOCUSING state: decrease focus percentage
         elif self.current_state == self.STATE_FOCUSING:
@@ -1212,6 +1223,11 @@ class SoftwareRenderCamera(QWidget):
                 primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
                 theme_color = QColor(primary_hex)
                 
+                # Blink effect: selected parameter blinks (toggling opacity)
+                import time
+                blink_on = (int(time.time() * 3) % 2 == 0)  # Blink ~3 Hz
+                selected = self.tuning_selected_param  # 0=time, 1=history
+                
                 # Semi-transparent black overlay (bg-black/60)
                 painter.fillRect(self.rect(), QColor(0, 0, 0, 153))
                 
@@ -1224,8 +1240,7 @@ class SoftwareRenderCamera(QWidget):
                 painter.setRenderHint(QPainter.Antialiasing)
                 
                 # 1. Outer Ring (Time Scale 1-5) - 260px diameter
-                # Web: border-white/20 + conic-gradient(color 0deg XXXdeg)
-                # XXX = timeScale * 72 degrees (72° per level, 5 levels = 360°)
+                outer_alpha = 204 if (selected != 0 or blink_on) else 50
                 
                 # Base circle border
                 base_border = QColor(theme_color)
@@ -1234,23 +1249,20 @@ class SoftwareRenderCamera(QWidget):
                 painter.setBrush(Qt.NoBrush)
                 painter.drawEllipse(cx_tuning - 130, cy_tuning - 130, 260, 260)
                 
-                # Filled arc (conic gradient simulation using thick stroke)
+                # Filled arc
                 fill_angle = self.time_scale * 72  # 1-5 maps to 72-360°
                 if fill_angle > 0:
                     fill_color = QColor(theme_color)
-                    fill_color.setAlpha(204)  # 80% opacity
+                    fill_color.setAlpha(outer_alpha)
                     
-                    # Use thick pen (30px) with flat cap to create ring effect
                     pen = QPen(fill_color, 30)
-                    pen.setCapStyle(Qt.FlatCap)  # Prevent rounded ends
+                    pen.setCapStyle(Qt.FlatCap)
                     painter.setPen(pen)
                     painter.setBrush(Qt.NoBrush)
-                    # Draw arc from top (90°) clockwise
                     painter.drawArc(cx_tuning - 130, cy_tuning - 130, 260, 260, 90 * 16, -fill_angle * 16)
                 
-                # 2. Inner Ring (History Scale 1-3) - 200px diameter (inset 30px)
-                # Web: border-white/20 + conic-gradient(color 0deg XXXdeg)
-                # XXX = historyScale * 120 degrees (120° per level, 3 levels = 360°)
+                # 2. Inner Ring (History Scale 1-3) - 200px diameter
+                inner_alpha = 128 if (selected != 1 or blink_on) else 30
                 
                 # Base circle border
                 inner_border = QColor(theme_color)
@@ -1259,13 +1271,12 @@ class SoftwareRenderCamera(QWidget):
                 painter.setBrush(Qt.NoBrush)
                 painter.drawEllipse(cx_tuning - 100, cy_tuning - 100, 200, 200)
                 
-                # Filled arc (conic gradient simulation using thick stroke)
+                # Filled arc
                 inner_fill_angle = self.history_scale * 120  # 1-3 maps to 120-360°
                 if inner_fill_angle > 0:
                     inner_fill_color = QColor(theme_color)
-                    inner_fill_color.setAlpha(128)  # 50% opacity
+                    inner_fill_color.setAlpha(inner_alpha)
                     
-                    # Use thick pen (30px) with flat cap to create ring effect
                     pen_inner = QPen(inner_fill_color, 30)
                     pen_inner.setCapStyle(Qt.FlatCap)
                     painter.setPen(pen_inner)
@@ -1274,22 +1285,29 @@ class SoftwareRenderCamera(QWidget):
                 
                 painter.restore()
                 
-                # 3. Center Display - Labels and Values (ensure visibility on top)
+                # 3. Center Display - Labels and Values
                 painter.save()
                 painter.setRenderHint(QPainter.TextAntialiasing)
                 
-                # Time Scale Section (Top)
+                # Time Scale Section (Top) - blink if selected
+                time_text_alpha = 255 if (selected != 0 or blink_on) else 60
                 txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
-                label_color = QColor(255, 255, 255, 153)  # opacity-60
+                label_color = QColor(255, 255, 255, 153 if selected != 0 else (153 if blink_on else 40))
                 painter.setPen(label_color)
                 painter.setFont(QFont("Arial", 8))
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning - 40, 100, 15), Qt.AlignCenter, txt_outer_label)
                 
                 # Time value "L-0X"
-                painter.setPen(Qt.white)
+                painter.setPen(QColor(255, 255, 255, time_text_alpha))
                 painter.setFont(QFont("Arial", 20, QFont.Bold))
                 time_value_text = f"L-0{self.time_scale}"
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning - 22, 100, 25), Qt.AlignCenter, time_value_text)
+                
+                # Selection indicator for time (left arrow)
+                if selected == 0:
+                    painter.setPen(QColor(255, 255, 255, time_text_alpha))
+                    painter.setFont(QFont("Arial", 12))
+                    painter.drawText(QRect(cx_tuning - 80, cy_tuning - 22, 25, 25), Qt.AlignCenter, "◀")
                 
                 # Divider line
                 divider_y = cy_tuning + 5
@@ -1297,18 +1315,26 @@ class SoftwareRenderCamera(QWidget):
                 painter.setPen(QPen(divider_color, 1))
                 painter.drawLine(cx_tuning - 40, divider_y, cx_tuning + 40, divider_y)
                 
-                # History Scale Section (Bottom)
+                # History Scale Section (Bottom) - blink if selected
+                hist_text_alpha = 255 if (selected != 1 or blink_on) else 60
                 txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
-                painter.setPen(label_color)
+                label_color_h = QColor(255, 255, 255, 153 if selected != 1 else (153 if blink_on else 40))
+                painter.setPen(label_color_h)
                 painter.setFont(QFont("Arial", 8))
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning + 10, 100, 15), Qt.AlignCenter, txt_inner_label)
                 
                 # History label
                 history_labels = {1: "低度", 2: "中度", 3: "高度"}
                 history_label = history_labels.get(self.history_scale, "低度")
-                painter.setPen(Qt.white)
+                painter.setPen(QColor(255, 255, 255, hist_text_alpha))
                 painter.setFont(QFont("Arial", 18, QFont.Bold))
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning + 23, 100, 25), Qt.AlignCenter, history_label)
+                
+                # Selection indicator for history (right arrow)
+                if selected == 1:
+                    painter.setPen(QColor(255, 255, 255, hist_text_alpha))
+                    painter.setFont(QFont("Arial", 12))
+                    painter.drawText(QRect(cx_tuning + 55, cy_tuning + 23, 25, 25), Qt.AlignCenter, "▶")
                 
                 painter.restore()
 
