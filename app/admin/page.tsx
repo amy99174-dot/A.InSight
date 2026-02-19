@@ -2,12 +2,13 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { supabase } from '../../lib/supabase';
 import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell,
     PieChart, Pie, Legend
 } from 'recharts';
-import { Loader2, Database, Activity, Clock, Users, Zap, Award, PieChart as PieIcon, Eye, X, Copy, Check, Search, Calendar, Filter, XCircle } from 'lucide-react';
+import { Loader2, Database, Activity, Clock, Users, Zap, Award, PieChart as PieIcon, Eye, X, Copy, Check, Search, Calendar, Filter, XCircle, Palette } from 'lucide-react';
 
 // Color palette
 const COLORS = ['#8884d8', '#82ca9d', '#ffc658', '#ff8042', '#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
@@ -328,13 +329,22 @@ export default function AdminPage() {
                     </h1>
                     <p className="text-gray-500 mt-1 ml-11">Curatorial Analytics & Insights</p>
                 </div>
-                <button
-                    onClick={fetchData}
-                    className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 text-sm font-medium transition-all flex items-center gap-2"
-                >
-                    <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-                    重新整理 (Refresh)
-                </button>
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/admin/scenarios/builder"
+                        className="px-5 py-2.5 bg-indigo-600 text-white rounded-lg shadow-sm hover:bg-indigo-500 text-sm font-medium transition-all flex items-center gap-2"
+                    >
+                        <Palette className="w-4 h-4" />
+                        UI 編輯器
+                    </Link>
+                    <button
+                        onClick={fetchData}
+                        className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 text-sm font-medium transition-all flex items-center gap-2"
+                    >
+                        <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                        重新整理
+                    </button>
+                </div>
             </div>
 
             {/* Level 1: KPIs */}

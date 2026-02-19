@@ -1,10 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import ScannerDisplay from '../../../../components/ScannerDisplayV2';
 import { DEFAULT_CONFIG, STEPS } from '../../../../lib/defaults';
 import { supabase } from '@/lib/supabase';
-import { Palette, Brain, Type, Save, Radio, Camera, MonitorPlay } from 'lucide-react';
+import { Palette, Brain, Type, Save, Camera, MonitorPlay, ArrowLeft, Loader2, Settings } from 'lucide-react';
 
 export default function ScenarioBuilder() {
     // Top-Level Config State (The Source of Truth)
@@ -28,7 +29,6 @@ export default function ScenarioBuilder() {
             let current: any = newConfig;
 
             for (let i = 0; i < keys.length - 1; i++) {
-                // If key missing, create object (shouldn't happen with default init)
                 if (!current[keys[i]]) current[keys[i]] = {};
                 current = current[keys[i]];
             }
@@ -37,19 +37,18 @@ export default function ScenarioBuilder() {
         });
     };
 
-    // Load initial config from DB (on mount) to ensuring syncing
+    // Load initial config from DB (on mount)
     useEffect(() => {
         const loadConfig = async () => {
             const { data } = await supabase.from('scenario_config').select('config').eq('id', 1).single();
             if (data?.config) {
-                // Deep merge with defaults to ensure new keys exist if old config is loaded
                 setConfig(prev => ({ ...prev, ...data.config }));
             }
         };
         loadConfig();
     }, []);
 
-    // PeerJS Monitoring Logic (Same as before)
+    // PeerJS Monitoring Logic
     useEffect(() => {
         if (!isMonitoring) return;
         let peer: any = null;
@@ -104,7 +103,7 @@ export default function ScenarioBuilder() {
                 {activeTab === 'visuals' && (
                     <div className="space-y-6 animate-in slide-in-from-right duration-300">
                         <section>
-                            <h3 className="text-xs font-bold text-lime-400 mb-4 uppercase tracking-widest border-b border-lime-900/50 pb-2">
+                            <h3 className="text-xs font-bold text-indigo-600 mb-4 uppercase tracking-widest border-b border-gray-200 pb-2">
                                 主題與濾鏡
                             </h3>
 
@@ -122,27 +121,27 @@ export default function ScenarioBuilder() {
                                             handleDeepConfigChange('ui_theme.primary_color', theme.color);
                                             handleDeepConfigChange('ui_theme.camera_filter', theme.filter);
                                         }}
-                                        className="bg-white/5 hover:bg-white/10 border border-white/10 rounded p-3 text-left transition-all hover:border-lime-400/50"
+                                        className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-left transition-all hover:border-indigo-300 hover:shadow-sm"
                                     >
-                                        <div className="text-[10px] text-white/50 mb-1">{theme.label}</div>
-                                        <div className="w-full h-2 rounded-full" style={{ backgroundColor: theme.color }}></div>
+                                        <div className="text-[10px] text-gray-500 mb-1 font-medium">{theme.label}</div>
+                                        <div className="w-full h-2 rounded-full border border-gray-200" style={{ backgroundColor: theme.color }}></div>
                                     </button>
                                 ))}
                             </div>
 
-                            {/* Layout Mode Selector (Added back) */}
+                            {/* Layout Mode Selector */}
                             <div className="mb-6">
-                                <label className="text-[10px] text-white/50 block mb-2 uppercase tracking-widest font-bold">介面佈局 (Layout Mode)</label>
+                                <label className="text-[10px] text-gray-500 block mb-2 uppercase tracking-widest font-bold">介面佈局 (Layout Mode)</label>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => handleDeepConfigChange('ui_theme.layout_mode', 'classic')}
-                                        className={`flex-1 py-3 border rounded text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode !== 'industrial' ? 'bg-lime-400 text-black border-lime-400' : 'bg-black/50 text-white/50 border-white/20 hover:border-white/50'}`}
+                                        className={`flex-1 py-3 border rounded-lg text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode !== 'industrial' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-500 border-gray-300 hover:border-indigo-300'}`}
                                     >
                                         Classic Radar
                                     </button>
                                     <button
                                         onClick={() => handleDeepConfigChange('ui_theme.layout_mode', 'industrial')}
-                                        className={`flex-1 py-3 border rounded text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode === 'industrial' ? 'bg-lime-400 text-black border-lime-400' : 'bg-black/50 text-white/50 border-white/20 hover:border-white/50'}`}
+                                        className={`flex-1 py-3 border rounded-lg text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode === 'industrial' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-500 border-gray-300 hover:border-indigo-300'}`}
                                     >
                                         Industrial HUD
                                     </button>
@@ -151,7 +150,7 @@ export default function ScenarioBuilder() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[10px] text-white/50 block mb-2">主色調 (Hex)</label>
+                                    <label className="text-[10px] text-gray-500 block mb-2 font-medium">主色調 (Hex)</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="color"
@@ -163,17 +162,17 @@ export default function ScenarioBuilder() {
                                             type="text"
                                             value={config.ui_theme?.primary_color || ''}
                                             onChange={(e) => handleDeepConfigChange('ui_theme.primary_color', e.target.value)}
-                                            className="flex-1 bg-black/50 border border-white/20 rounded px-2 text-xs text-white font-mono"
+                                            className="flex-1 bg-white border border-gray-300 rounded-lg px-3 text-xs text-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="text-[10px] text-white/50 block mb-2">相機濾鏡</label>
+                                    <label className="text-[10px] text-gray-500 block mb-2 font-medium">相機濾鏡</label>
                                     <select
                                         value={config.ui_theme?.camera_filter || 'none'}
                                         onChange={(e) => handleDeepConfigChange('ui_theme.camera_filter', e.target.value)}
-                                        className="w-full bg-black/50 border border-white/20 rounded px-2 py-2 text-xs text-white font-mono outline-none focus:border-lime-400"
+                                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono outline-none focus:ring-2 focus:ring-indigo-500/50"
                                     >
                                         <option value="none">無 (原色)</option>
                                         <option value="grayscale">黑白 (Noir)</option>
@@ -189,40 +188,40 @@ export default function ScenarioBuilder() {
                 {/* --- BRAIN TAB --- */}
                 {activeTab === 'brain' && (
                     <div className="space-y-6 animate-in slide-in-from-right duration-300">
-                        <div className="p-3 bg-indigo-900/20 border border-indigo-500/30 rounded text-[10px] text-indigo-200 mb-4">
+                        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-[10px] text-indigo-700 mb-4">
                             此處設定用於辨識古物與講述故事的 AI 人格。
                         </div>
 
                         <section className="space-y-4">
                             <div>
-                                <label className="text-[10px] text-white/50 block mb-2 uppercase">角色身分</label>
+                                <label className="text-[10px] text-gray-500 block mb-2 uppercase font-medium">角色身分</label>
                                 <input
                                     type="text"
                                     value={config.ai_brain?.role || ''}
                                     onChange={(e) => handleDeepConfigChange('ai_brain.role', e.target.value)}
                                     placeholder="例如：資深考古學家"
-                                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white font-mono text-xs focus:border-indigo-400 outline-none"
+                                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                                 />
                             </div>
 
                             <div>
-                                <label className="text-[10px] text-white/50 block mb-2 uppercase">說話語氣</label>
+                                <label className="text-[10px] text-gray-500 block mb-2 uppercase font-medium">說話語氣</label>
                                 <input
                                     type="text"
                                     value={config.ai_brain?.tone || ''}
                                     onChange={(e) => handleDeepConfigChange('ai_brain.tone', e.target.value)}
                                     placeholder="例如：正式、學術、神秘"
-                                    className="w-full bg-black/50 border border-white/20 rounded px-3 py-2 text-white font-mono text-xs focus:border-indigo-400 outline-none"
+                                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
                                 />
                             </div>
 
                             <div>
-                                <label className="text-[10px] text-white/50 block mb-2 uppercase">視覺生成關鍵字</label>
+                                <label className="text-[10px] text-gray-500 block mb-2 uppercase font-medium">視覺生成關鍵字</label>
                                 <textarea
                                     value={config.ai_brain?.vision_style_keywords || ''}
                                     onChange={(e) => handleDeepConfigChange('ai_brain.vision_style_keywords', e.target.value)}
                                     placeholder="用於生成歷史圖像的風格關鍵字..."
-                                    className="w-full h-20 bg-black/50 border border-white/20 rounded px-3 py-2 text-white font-mono text-xs focus:border-indigo-400 outline-none resize-none"
+                                    className="w-full h-20 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
                                 />
                             </div>
                         </section>
@@ -234,19 +233,19 @@ export default function ScenarioBuilder() {
                     <div className="space-y-6 animate-in slide-in-from-right duration-300">
                         {selectedField ? (
                             <div className="space-y-4">
-                                <div className="border-b border-white/10 pb-2 mb-2">
-                                    <label className="text-[10px] uppercase tracking-widest text-lime-400 mb-1 block">已選欄位</label>
-                                    <div className="text-sm font-mono text-white break-words">{selectedField.split('.').pop()}</div>
+                                <div className="border-b border-gray-200 pb-2 mb-2">
+                                    <label className="text-[10px] uppercase tracking-widest text-indigo-600 mb-1 block font-bold">已選欄位</label>
+                                    <div className="text-sm font-mono text-gray-800 break-words">{selectedField.split('.').pop()}</div>
                                 </div>
                                 <textarea
                                     value={(config.text_content as any)[selectedField.split('.').pop() as string] || ""}
                                     onChange={(e) => handleDeepConfigChange(`text_content.${selectedField.split('.').pop()}`, e.target.value)}
-                                    className="w-full h-32 bg-black/50 border border-white/20 rounded px-3 py-2 text-white font-mono text-sm focus:border-lime-400 outline-none resize-none"
+                                    className="w-full h-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
                                     placeholder="編輯文字內容..."
                                 />
                             </div>
                         ) : (
-                            <div className="text-center py-10 text-white/30 text-xs">
+                            <div className="text-center py-10 text-gray-400 text-xs">
                                 請點擊預覽畫面中的文字進行編輯。
                             </div>
                         )}
@@ -258,133 +257,168 @@ export default function ScenarioBuilder() {
     };
 
     return (
-        <main className="w-screen h-screen bg-neutral-900 flex overflow-hidden font-mono text-sm">
-            {/* LEFT: Preview Stage */}
-            <div className="flex-1 relative bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-neutral-800 to-neutral-950 flex flex-col items-center justify-center p-8">
-
-                {/* Step Selector */}
-                <div className="mb-6 flex gap-2 flex-wrap justify-center z-10 w-full max-w-2xl bg-black/30 p-2 rounded-lg backdrop-blur-sm">
-                    {Object.entries(STEPS).map(([key, value]) => (
-                        <button
-                            key={key}
-                            onClick={() => setCurrentStep(value)}
-                            className={`px-3 py-1 text-[10px] font-bold tracking-widest rounded transition-all ${currentStep === value ? 'bg-lime-400 text-black shadow-lg shadow-lime-400/20' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
-                        >
-                            {key}
-                        </button>
-                    ))}
+        <div className="min-h-screen bg-gray-100 p-8 font-sans text-gray-800">
+            {/* Header */}
+            <div className="mb-8 flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
+                        <Settings className="w-8 h-8 text-indigo-600" />
+                        A.InSight UI 編輯器
+                    </h1>
+                    <p className="text-gray-500 mt-1 ml-11">Scenario Builder &amp; Visual Designer</p>
                 </div>
-
-                {/* Hardware Simulator */}
-                <div className="relative w-[600px] h-[600px] border-8 border-neutral-950 rounded-full shadow-2xl bg-black overflow-hidden ring-1 ring-white/10 shrink-0">
-                    <ScannerDisplay
-                        step={currentStep}
-                        config={config}
-                        isEditable={true}
-                        onEdit={(key) => {
-                            setActiveTab('texts'); // Switch to texts tab on click
-                            setSelectedField(key);
-                        }}
-
-                        // Mock Props
-                        artifactName="Builder Preview"
-                        analysisText="Editing Mode..."
-                        scriptPages={["Preview Content"]}
-                        scriptPage={0}
-                        debugLog="// Builder Mode Active"
-                        isProcessing={false}
-                        isPlayingAudio={false}
-                        focusRotation={0}
-                        historyScale={2}
-                        timeScale={3}
-                        onTrigger={() => { }}
-                        onWheel={() => { }}
-                        toggleAudio={() => { }}
-                        showSettings={false}
-                        setShowSettings={() => { }}
-                        userGoogleKey=""
-                        setUserGoogleKey={() => { }}
-                        userOpenAIKey=""
-                        setUserOpenAIKey={() => { }}
-                        hasGoogleKey={true}
-                        historyImage={null}
-                        orientation={{ x: 0, y: 0 }}
+                <div className="flex items-center gap-3">
+                    <Link
+                        href="/admin"
+                        className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 text-sm font-medium transition-all flex items-center gap-2"
                     >
-                        {/* Mock Camera Layer - Simulates the real app environment */}
-                        <div id="bg-layer" className="absolute inset-0 bg-cover bg-center transition-all duration-500 pointer-events-none"
-                            style={{
-                                backgroundImage: 'url("https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop")', // Clean Office/Indoor Space
-                                opacity: (currentStep === STEPS.REVEAL) ? 0 : 0.6,
-                                backgroundSize: 'cover'
-                            }}>
-                            {/* Mock Scan Lines */}
-                            <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_1px] pointer-events-none z-10" />
-                        </div>
-
-                        {/* Monitor Layer */}
-                        {isMonitoring ? (
-                            <video
-                                ref={videoRef}
-                                autoPlay
-                                playsInline
-                                muted
-                                className="w-full h-full object-cover opacity-50 grayscale absolute inset-0 z-20"
-                            />
-                        ) : null}
-                    </ScannerDisplay>
-                </div>
-            </div>
-
-            {/* RIGHT: Inspector Panel */}
-            <div className="w-[400px] border-l border-white/10 bg-neutral-900/95 backdrop-blur shadow-2xl flex flex-col z-20">
-                {/* Header Actions */}
-                <div className="flex items-center justify-between p-6 border-b border-white/10">
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setIsMonitoring(!isMonitoring)}
-                            className={`p-2 rounded border transition-all ${isMonitoring ? 'bg-red-900/50 border-red-500 text-red-100 animate-pulse' : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'}`}
-                            title="Toggle Remote Monitor"
-                        >
-                            {isMonitoring ? <MonitorPlay size={16} /> : <Camera size={16} />}
-                        </button>
-                    </div>
+                        <ArrowLeft className="w-4 h-4" />
+                        數據中心
+                    </Link>
+                    <button
+                        onClick={() => setIsMonitoring(!isMonitoring)}
+                        className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isMonitoring
+                            ? 'bg-red-100 text-red-700 border border-red-200 animate-pulse'
+                            : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 shadow-sm'}`}
+                    >
+                        {isMonitoring ? <MonitorPlay className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
+                        {isMonitoring ? '監控中' : '遠端監控'}
+                    </button>
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex items-center gap-2 bg-lime-400 text-black text-xs font-bold px-4 py-2 rounded hover:bg-lime-300 disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-sm disabled:opacity-50 transition-all"
                     >
-                        <Save size={14} />
+                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {isSaving ? "儲存中..." : "儲存變更"}
                     </button>
                 </div>
+            </div>
 
-                {/* Tabs */}
-                <div className="flex border-b border-white/10">
-                    <button
-                        onClick={() => setActiveTab('visuals')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'visuals' ? 'border-lime-400 text-lime-400' : 'border-transparent text-white/30 hover:text-white/70'}`}
-                    >
-                        <Palette size={14} /> 視覺設計
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('brain')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'brain' ? 'border-indigo-400 text-indigo-400' : 'border-transparent text-white/30 hover:text-white/70'}`}
-                    >
-                        <Brain size={14} /> AI 大腦
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('texts')}
-                        className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'texts' ? 'border-yellow-400 text-yellow-400' : 'border-transparent text-white/30 hover:text-white/70'}`}
-                    >
-                        <Type size={14} /> 欄位設定
-                    </button>
+            {/* Main Content: Two-Column Layout */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+                {/* LEFT: Preview Stage (2/3 width) */}
+                <div className="lg:col-span-2">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                        {/* Card Header */}
+                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+                                <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded"><Palette className="w-5 h-5" /></span>
+                                即時預覽
+                            </h2>
+                        </div>
+
+                        {/* Preview Content */}
+                        <div className="p-8 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+                            {/* Step Selector */}
+                            <div className="mb-6 flex gap-2 flex-wrap justify-center w-full max-w-2xl">
+                                {Object.entries(STEPS).map(([key, value]) => (
+                                    <button
+                                        key={key}
+                                        onClick={() => setCurrentStep(value)}
+                                        className={`px-3 py-1.5 text-[10px] font-bold tracking-widest rounded-lg transition-all ${currentStep === value
+                                            ? 'bg-indigo-600 text-white shadow-sm'
+                                            : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:border-indigo-200'}`}
+                                    >
+                                        {key}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Hardware Simulator */}
+                            <div className="relative w-[500px] h-[500px] border-8 border-gray-900 rounded-full shadow-2xl bg-black overflow-hidden ring-1 ring-gray-300 shrink-0">
+                                <ScannerDisplay
+                                    step={currentStep}
+                                    config={config}
+                                    isEditable={true}
+                                    onEdit={(key) => {
+                                        setActiveTab('texts');
+                                        setSelectedField(key);
+                                    }}
+
+                                    // Mock Props
+                                    artifactName="Builder Preview"
+                                    analysisText="Editing Mode..."
+                                    scriptPages={["Preview Content"]}
+                                    scriptPage={0}
+                                    debugLog="// Builder Mode Active"
+                                    isProcessing={false}
+                                    isPlayingAudio={false}
+                                    focusRotation={0}
+                                    historyScale={2}
+                                    timeScale={3}
+                                    onTrigger={() => { }}
+                                    onWheel={() => { }}
+                                    toggleAudio={() => { }}
+                                    showSettings={false}
+                                    setShowSettings={() => { }}
+                                    userGoogleKey=""
+                                    setUserGoogleKey={() => { }}
+                                    userOpenAIKey=""
+                                    setUserOpenAIKey={() => { }}
+                                    hasGoogleKey={true}
+                                    historyImage={null}
+                                    orientation={{ x: 0, y: 0 }}
+                                >
+                                    {/* Mock Camera Layer */}
+                                    <div id="bg-layer" className="absolute inset-0 bg-cover bg-center transition-all duration-500 pointer-events-none"
+                                        style={{
+                                            backgroundImage: 'url("https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=800&auto=format&fit=crop")',
+                                            opacity: (currentStep === STEPS.REVEAL) ? 0 : 0.6,
+                                            backgroundSize: 'cover'
+                                        }}>
+                                        <div className="absolute inset-0 bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.25)_50%),linear-gradient(90deg,rgba(255,0,0,0.06),rgba(0,255,0,0.02),rgba(0,0,255,0.06))] bg-[length:100%_2px,3px_1px] pointer-events-none z-10" />
+                                    </div>
+
+                                    {/* Monitor Layer */}
+                                    {isMonitoring ? (
+                                        <video
+                                            ref={videoRef}
+                                            autoPlay
+                                            playsInline
+                                            muted
+                                            className="w-full h-full object-cover opacity-50 grayscale absolute inset-0 z-20"
+                                        />
+                                    ) : null}
+                                </ScannerDisplay>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                {/* Content Area */}
-                <div className="flex-1 overflow-hidden p-6 relative">
-                    {renderInspector()}
+                {/* RIGHT: Inspector Panel (1/3 width) */}
+                <div className="lg:col-span-1">
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-8">
+                        {/* Tabs */}
+                        <div className="flex border-b border-gray-200">
+                            <button
+                                onClick={() => setActiveTab('visuals')}
+                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'visuals' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <Palette size={14} /> 視覺
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('brain')}
+                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'brain' ? 'border-purple-600 text-purple-600 bg-purple-50/50' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <Brain size={14} /> AI
+                            </button>
+                            <button
+                                onClick={() => setActiveTab('texts')}
+                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'texts' ? 'border-amber-500 text-amber-600 bg-amber-50/50' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                            >
+                                <Type size={14} /> 文字
+                            </button>
+                        </div>
+
+                        {/* Content Area */}
+                        <div className="p-6">
+                            {renderInspector()}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </main>
+        </div>
     );
 }
