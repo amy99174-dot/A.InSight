@@ -31,12 +31,13 @@ except ImportError:
     print("⚠️ mpu6050 not available, gyroscope disabled")
     GYRO_AVAILABLE = False
 
-# Supabase Client for database logging
+# Supabase Client for database logging (uses requests, no extra install needed)
 try:
     from supabase_client import log_history as supabase_log_history
     SUPABASE_AVAILABLE = True
-except ImportError:
-    print("⚠️ supabase_client not available, database logging disabled")
+    print("✅ Supabase client loaded")
+except ImportError as e:
+    print(f"⚠️ supabase_client not available: {e}")
     SUPABASE_AVAILABLE = False
 
 import threading
