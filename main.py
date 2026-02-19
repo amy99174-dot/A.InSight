@@ -1441,10 +1441,10 @@ class SoftwareRenderCamera(QWidget):
         painter.setBrush(QColor(0, 0, 0, 204)) # Black 80%
         painter.drawEllipse(cx - bg_radius, cy - bg_radius, bg_radius * 2, bg_radius * 2)
         
-        # Text 1: "訊號偵測" (25pt Bold)
+        # Text 1: "訊號偵測" (18pt Bold - matches LOCKED title size)
         painter.setPen(Qt.white)
-        painter.setFont(QFont("Arial", 25, QFont.Bold))
-        text_rect_1 = QRect(0, cy - 40, self.width(), 40)
+        painter.setFont(QFont("Arial", 18, QFont.Bold))
+        text_rect_1 = QRect(0, cy - 35, self.width(), 35)
         txt_prox_title = self.config_manager.get_text("proximityTitle", "訊號偵測")
         painter.drawText(text_rect_1, Qt.AlignCenter, txt_prox_title)
         
@@ -1452,8 +1452,8 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
         painter.drawLine(cx - 50, cy + 5, cx + 50, cy + 5)
         
-        # Text 2: "接近目標中" (11pt Bold) - Capsule/Pill shape background
-        painter.setFont(QFont("Arial", 11, QFont.Bold))
+        # Text 2: "接近目標中" (10pt - matches LOCKED subtitle size) - Capsule/Pill shape
+        painter.setFont(QFont("Arial", 10, QFont.Bold))
         txt_prox_sub = self.config_manager.get_text("proximitySubtext", "接近目標中")
         fm = painter.fontMetrics()
         sub_tw = fm.horizontalAdvance(txt_prox_sub)
@@ -1573,13 +1573,13 @@ class SoftwareRenderCamera(QWidget):
         painter.setFont(QFont("Arial", 18, QFont.Bold))
         text_color = QColor(255, 255, 255)
         painter.setPen(text_color)
-        text_rect_locked = QRect(0, cy - 30, self.width(), 30)
+        text_rect_locked = QRect(0, cy - 45, self.width(), 30)
         painter.drawText(text_rect_locked, Qt.AlignCenter, txt_locked)
         
         # 4. Bottom Subtext: "[ 按下快門捕捉 ]" inside bracket area
         painter.setFont(QFont("Arial", 10))
         painter.setPen(Qt.white)
-        text_rect_2 = QRect(0, cy + 50, self.width(), 30)
+        text_rect_2 = QRect(0, cy + 30, self.width(), 30)
         txt_locked_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_locked_sub)
         
