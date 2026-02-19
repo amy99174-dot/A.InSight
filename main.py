@@ -1459,20 +1459,20 @@ class SoftwareRenderCamera(QWidget):
         sub_tw = fm.horizontalAdvance(txt_prox_sub)
         sub_th = fm.height()
         
-        # Capsule background
-        capsule_pad_x = 12
-        capsule_pad_y = 4
+        # Capsule background - uses lighter bg to contrast against circle
+        capsule_pad_x = 14
+        capsule_pad_y = 5
         capsule_w = sub_tw + capsule_pad_x * 2
         capsule_h = sub_th + capsule_pad_y * 2
-        capsule_rect = QRect(cx - capsule_w // 2, cy + 10, capsule_w, capsule_h)
+        capsule_rect = QRect(cx - capsule_w // 2, cy + 12, capsule_w, capsule_h)
         capsule_radius = capsule_h // 2  # Full round = pill shape
         
-        painter.setPen(QPen(QColor(255, 255, 255, 40), 1))
-        painter.setBrush(QColor(0, 0, 0, 180))
+        painter.setPen(QPen(QColor(255, 255, 255, 100), 1))  # Visible white border
+        painter.setBrush(QColor(60, 60, 60, 220))  # Lighter gray to contrast dark circle
         painter.drawRoundedRect(capsule_rect, capsule_radius, capsule_radius)
         
         # Draw subtitle text inside capsule
-        painter.setPen(Qt.white)
+        painter.setPen(QColor(255, 255, 255, 200))
         painter.drawText(capsule_rect, Qt.AlignCenter, txt_prox_sub)
         
         # 3. Bottom Distance Indicator
@@ -1573,13 +1573,13 @@ class SoftwareRenderCamera(QWidget):
         painter.setFont(QFont("Arial", 18, QFont.Bold))
         text_color = QColor(255, 255, 255)
         painter.setPen(text_color)
-        text_rect_locked = QRect(0, cy - 90, self.width(), 30)
+        text_rect_locked = QRect(0, cy - 30, self.width(), 30)
         painter.drawText(text_rect_locked, Qt.AlignCenter, txt_locked)
         
-        # 4. Bottom Subtext: "[ 按下快門捕捉 ]" (no background box)
+        # 4. Bottom Subtext: "[ 按下快門捕捉 ]" inside bracket area
         painter.setFont(QFont("Arial", 10))
         painter.setPen(Qt.white)
-        text_rect_2 = QRect(0, cy + 120, self.width(), 30)
+        text_rect_2 = QRect(0, cy + 50, self.width(), 30)
         txt_locked_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_locked_sub)
         
