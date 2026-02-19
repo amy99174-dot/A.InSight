@@ -573,7 +573,11 @@ class SoftwareRenderCamera(QWidget):
         # [Phase 5] 分析結果
         self.analysis_result = {}
         self.script_page = 0  # Current page index for LISTEN state
-        self.session_id = 1   # Session counter for Supabase logging
+        
+        # [Supabase] Session ID: UUID generated once per app startup
+        import uuid
+        self.session_id = str(uuid.uuid4())[:8]  # e.g. "a1b2c3d4"
+        print(f"📎 Session ID: {self.session_id}")
         
         # [Audio] Initialize Audio Manager
         openai_key = os.environ.get("OPENAI_KEY", "")
@@ -758,8 +762,7 @@ class SoftwareRenderCamera(QWidget):
             self.analysis_result = {}
             self.pan_offset_x = 0
             self.pan_offset_y = 0
-            self.session_id += 1  # New session for next cycle
-            print(f"🔄 返回初始狀態 (下一場次: S-{self.session_id})")
+            print(f"🔄 返回初始狀態 (場次: {self.session_id})")
             self.update()
             return
     
