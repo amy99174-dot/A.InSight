@@ -36,9 +36,9 @@ class GPIOController(QObject):
         
         try:
             # Create button objects (default pull-up configuration)
-            self.confirm_btn = Button(confirm_pin)
-            self.left_btn = Button(left_pin)
-            self.right_btn = Button(right_pin)
+            self.confirm_btn = Button(confirm_pin, bounce_time=0.3)  # 300ms debounce
+            self.left_btn = Button(left_pin, bounce_time=0.2)
+            self.right_btn = Button(right_pin, bounce_time=0.2)
             
             # Connect button events to handlers
             self.confirm_btn.when_pressed = self._on_confirm_press

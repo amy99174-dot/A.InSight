@@ -699,6 +699,8 @@ class SoftwareRenderCamera(QWidget):
             if y > h - 100:
                 self.start_analysis()
                 return
+            
+            # No matching area, ignore click
             return
 
         # 5. ANALYZING (分析中禁止手動點擊切換)
@@ -1223,9 +1225,7 @@ class SoftwareRenderCamera(QWidget):
                 primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
                 theme_color = QColor(primary_hex)
                 
-                # Blink effect: selected parameter blinks (toggling opacity)
-                import time
-                blink_on = (int(time.time() * 3) % 2 == 0)  # Blink ~3 Hz
+                # Dim effect: unselected parameter is dimmed
                 selected = self.tuning_selected_param  # 0=time, 1=history
                 
                 # Semi-transparent black overlay (bg-black/60)
@@ -1240,7 +1240,7 @@ class SoftwareRenderCamera(QWidget):
                 painter.setRenderHint(QPainter.Antialiasing)
                 
                 # 1. Outer Ring (Time Scale 1-5) - 260px diameter
-                outer_alpha = 204 if (selected != 0 or blink_on) else 50
+                outer_alpha = 204 if selected == 0 else 50
                 
                 # Base circle border
                 base_border = QColor(theme_color)
@@ -1262,7 +1262,7 @@ class SoftwareRenderCamera(QWidget):
                     painter.drawArc(cx_tuning - 130, cy_tuning - 130, 260, 260, 90 * 16, -fill_angle * 16)
                 
                 # 2. Inner Ring (History Scale 1-3) - 200px diameter
-                inner_alpha = 128 if (selected != 1 or blink_on) else 30
+                inner_alpha = 128 if selected == 1 else 30
                 
                 # Base circle border
                 inner_border = QColor(theme_color)
@@ -1289,10 +1289,10 @@ class SoftwareRenderCamera(QWidget):
                 painter.save()
                 painter.setRenderHint(QPainter.TextAntialiasing)
                 
-                # Time Scale Section (Top) - blink if selected
-                time_text_alpha = 255 if (selected != 0 or blink_on) else 60
+                # Time Scale Section (Top) - bright if selected, dim if not
+                time_text_alpha = 255 if selected == 0 else 80
                 txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
-                label_color = QColor(255, 255, 255, 153 if selected != 0 else (153 if blink_on else 40))
+                label_color = QColor(255, 255, 255, 153 if selected == 0 else 50)
                 painter.setPen(label_color)
                 painter.setFont(QFont("Arial", 8))
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning - 40, 100, 15), Qt.AlignCenter, txt_outer_label)
@@ -1303,9 +1303,9 @@ class SoftwareRenderCamera(QWidget):
                 time_value_text = f"L-0{self.time_scale}"
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning - 22, 100, 25), Qt.AlignCenter, time_value_text)
                 
-                # Selection indicator for time (left arrow)
+                # Selection indicator for time
                 if selected == 0:
-                    painter.setPen(QColor(255, 255, 255, time_text_alpha))
+                    painter.setPen(QColor(255, 255, 255, 200))
                     painter.setFont(QFont("Arial", 12))
                     painter.drawText(QRect(cx_tuning - 80, cy_tuning - 22, 25, 25), Qt.AlignCenter, "◀")
                 
@@ -1315,10 +1315,10 @@ class SoftwareRenderCamera(QWidget):
                 painter.setPen(QPen(divider_color, 1))
                 painter.drawLine(cx_tuning - 40, divider_y, cx_tuning + 40, divider_y)
                 
-                # History Scale Section (Bottom) - blink if selected
-                hist_text_alpha = 255 if (selected != 1 or blink_on) else 60
+                # History Scale Section (Bottom) - bright if selected, dim if not
+                hist_text_alpha = 255 if selected == 1 else 80
                 txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
-                label_color_h = QColor(255, 255, 255, 153 if selected != 1 else (153 if blink_on else 40))
+                label_color_h = QColor(255, 255, 255, 153 if selected == 1 else 50)
                 painter.setPen(label_color_h)
                 painter.setFont(QFont("Arial", 8))
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning + 10, 100, 15), Qt.AlignCenter, txt_inner_label)
@@ -1330,9 +1330,9 @@ class SoftwareRenderCamera(QWidget):
                 painter.setFont(QFont("Arial", 18, QFont.Bold))
                 painter.drawText(QRect(cx_tuning - 50, cy_tuning + 23, 100, 25), Qt.AlignCenter, history_label)
                 
-                # Selection indicator for history (right arrow)
+                # Selection indicator for history
                 if selected == 1:
-                    painter.setPen(QColor(255, 255, 255, hist_text_alpha))
+                    painter.setPen(QColor(255, 255, 255, 200))
                     painter.setFont(QFont("Arial", 12))
                     painter.drawText(QRect(cx_tuning + 55, cy_tuning + 23, 25, 25), Qt.AlignCenter, "▶")
                 
