@@ -865,19 +865,6 @@ class SoftwareRenderCamera(QWidget):
             self.pan_offset_y += dy
             self.update()
 
-        # 8. REVEAL / FAIL -> 回到 BOOT
-        if self.current_state in [self.STATE_REVEAL, self.STATE_FAIL]:
-            if hasattr(self, 'gyro_controller') and self.gyro_controller:
-                self.gyro_controller.set_active(False)
-            self.current_state = self.STATE_BOOT
-            self.captured_pixmap = None
-            self.analysis_result = None
-            self.generated_pixmap = None
-            self.pan_offset_x = 0
-            self.pan_offset_y = 0
-            print("🔄 重置到 BOOT")
-            return
-
     def get_state_name(self):
         """獲取當前狀態名稱"""
         mapping = {
