@@ -23,6 +23,14 @@ except ImportError:
     print("⚠️ gpiozero not available, GPIO disabled")
     GPIO_AVAILABLE = False
 
+# Gyroscope Controller for image panning
+try:
+    from gyro_controller import GyroController
+    GYRO_AVAILABLE = True
+except ImportError:
+    print("⚠️ mpu6050 not available, gyroscope disabled")
+    GYRO_AVAILABLE = False
+
 import threading
 import sys
 import os
@@ -589,6 +597,23 @@ class SoftwareRenderCamera(QWidget):
         else:
             self.gpio_controller = None
         
+        # [Gyro] Initialize Gyroscope Controller
+        if GYRO_AVAILABLE:
+            try:
+                self.gyro_controller = GyroController(
+                    address=0x68,
+                    sensitivity=8.0,
+                    dead_zone=0.15,
+                    poll_ms=50
+                )
+                self.gyro_controller.pan_update.connect(self.on_gyro_pan)
+                self.gyro_controller.set_active(False)  # Only active in REVEAL
+            except Exception as e:
+                print(f"⚠️ Gyro Controller init failed: {e}")
+                self.gyro_controller = None
+        else:
+            self.gyro_controller = None
+        
         self.current_state = self.STATE_BOOT
         self.captured_pixmap = None
         self.analysis_result = None
@@ -704,11 +729,15 @@ class SoftwareRenderCamera(QWidget):
         # 7. FOCUSING (對焦) -> 跳轉到 REVEAL
         if self.current_state == self.STATE_FOCUSING:
             self.current_state = self.STATE_REVEAL
+            if hasattr(self, 'gyro_controller') and self.gyro_controller:
+                self.gyro_controller.set_active(True)
             print("✨ 進入 REVEAL 模式 (結果展示)")
             return
         
         # 8. REVEAL (結果展示) -> 返回 BOOT (重新開始)
         if self.current_state == self.STATE_REVEAL:
+            if hasattr(self, 'gyro_controller') and self.gyro_controller:
+                self.gyro_controller.set_active(False)
             # 清理狀態，重新初始化
             self.current_state = self.STATE_BOOT
             self.captured_pixmap = None
@@ -806,6 +835,8 @@ class SoftwareRenderCamera(QWidget):
                 # Auto-transition to REVEAL when reaching 100%
                 if self.focus_percentage >= 100:
                     self.current_state = self.STATE_REVEAL
+                    if hasattr(self, 'gyro_controller') and self.gyro_controller:
+                        self.gyro_controller.set_active(True)
                     print("✨ 進入 REVEAL 模式 (結果展示)")
     
     def on_encoder_ccw(self):
@@ -827,12 +858,23 @@ class SoftwareRenderCamera(QWidget):
                 self.update()
 
 
+    def on_gyro_pan(self, dx, dy):
+        """Handle gyroscope pan update - move image in REVEAL state"""
+        if self.current_state == self.STATE_REVEAL:
+            self.pan_offset_x += dx
+            self.pan_offset_y += dy
+            self.update()
+
         # 8. REVEAL / FAIL -> 回到 BOOT
         if self.current_state in [self.STATE_REVEAL, self.STATE_FAIL]:
+            if hasattr(self, 'gyro_controller') and self.gyro_controller:
+                self.gyro_controller.set_active(False)
             self.current_state = self.STATE_BOOT
             self.captured_pixmap = None
             self.analysis_result = None
             self.generated_pixmap = None
+            self.pan_offset_x = 0
+            self.pan_offset_y = 0
             print("🔄 重置到 BOOT")
             return
 
@@ -1856,6 +1898,10 @@ class SoftwareRenderCamera(QWidget):
         # Cleanup GPIO
         if hasattr(self, 'gpio_controller') and self.gpio_controller:
             self.gpio_controller.cleanup()
+        
+        # Cleanup Gyro
+        if hasattr(self, 'gyro_controller') and self.gyro_controller:
+            self.gyro_controller.cleanup()
         
         # Stop camera
         self.timer.stop()
