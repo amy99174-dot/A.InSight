@@ -1452,12 +1452,28 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
         painter.drawLine(cx - 50, cy + 5, cx + 50, cy + 5)
         
-        # Text 2: "接近目標中" (11pt Bold)
-        painter.setPen(Qt.white)
+        # Text 2: "接近目標中" (11pt Bold) - Capsule/Pill shape background
         painter.setFont(QFont("Arial", 11, QFont.Bold))
-        text_rect_2 = QRect(0, cy + 10, self.width(), 20)
         txt_prox_sub = self.config_manager.get_text("proximitySubtext", "接近目標中")
-        painter.drawText(text_rect_2, Qt.AlignCenter, txt_prox_sub)
+        fm = painter.fontMetrics()
+        sub_tw = fm.horizontalAdvance(txt_prox_sub)
+        sub_th = fm.height()
+        
+        # Capsule background
+        capsule_pad_x = 12
+        capsule_pad_y = 4
+        capsule_w = sub_tw + capsule_pad_x * 2
+        capsule_h = sub_th + capsule_pad_y * 2
+        capsule_rect = QRect(cx - capsule_w // 2, cy + 10, capsule_w, capsule_h)
+        capsule_radius = capsule_h // 2  # Full round = pill shape
+        
+        painter.setPen(QPen(QColor(255, 255, 255, 40), 1))
+        painter.setBrush(QColor(0, 0, 0, 180))
+        painter.drawRoundedRect(capsule_rect, capsule_radius, capsule_radius)
+        
+        # Draw subtitle text inside capsule
+        painter.setPen(Qt.white)
+        painter.drawText(capsule_rect, Qt.AlignCenter, txt_prox_sub)
         
         # 3. Bottom Distance Indicator
         # Position: Bottom 64px.
@@ -1552,36 +1568,17 @@ class SoftwareRenderCamera(QWidget):
         painter.setBrush(dot_color)
         painter.drawEllipse(cx - 1, cy - 1, 2, 2)
         
-        # 3. Title Box: "鎖定目標" 
-        # Web: top-[35%], bg-black/90, border (dynamic color), rounded-sm, text-[10px]
+        # 3. Title: "鎖定目標" (no background box, text only)
         txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
-        painter.setFont(QFont("Arial", 10, QFont.Bold))
-        fm = painter.fontMetrics()
-        tw = fm.horizontalAdvance(txt_locked)
-        th = fm.height()
-        
-        # Create box with padding
-        padding_x = 6
-        padding_y = 3
-        box_width = tw + padding_x * 2
-        box_height = th + padding_y * 2
-        box_rect = QRect(cx - box_width // 2, cy - 80, box_width, box_height)
-        
-        # Draw background and border (border uses primary color)
-        title_bg = QColor(0, 0, 0, 230)  # black/90%
-        title_border = QColor(primary_hex)
-        painter.setBrush(title_bg)
-        painter.setPen(QPen(title_border, 1))
-        painter.drawRoundedRect(box_rect, 2, 2)
-        
-        # Draw text (also uses primary color)
-        text_color = QColor(primary_hex)
+        painter.setFont(QFont("Arial", 18, QFont.Bold))
+        text_color = QColor(255, 255, 255)
         painter.setPen(text_color)
-        painter.drawText(box_rect, Qt.AlignCenter, txt_locked)
+        text_rect_locked = QRect(0, cy - 90, self.width(), 30)
+        painter.drawText(text_rect_locked, Qt.AlignCenter, txt_locked)
         
-        # 4. Bottom Subtext: "[ 按下快門捕捉 ]" (Web: text-[10px] white)
+        # 4. Bottom Subtext: "[ 按下快門捕捉 ]" (no background box)
         painter.setFont(QFont("Arial", 10))
-        painter.setPen(Qt.white)  # Web shows white text, not themed
+        painter.setPen(Qt.white)
         text_rect_2 = QRect(0, cy + 120, self.width(), 30)
         txt_locked_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_locked_sub)
