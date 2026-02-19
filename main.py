@@ -31,6 +31,14 @@ except ImportError:
     print("⚠️ mpu6050 not available, gyroscope disabled")
     GYRO_AVAILABLE = False
 
+# Supabase Client for database logging
+try:
+    from supabase_client import log_history as supabase_log_history
+    SUPABASE_AVAILABLE = True
+except ImportError:
+    print("⚠️ supabase_client not available, database logging disabled")
+    SUPABASE_AVAILABLE = False
+
 import threading
 import sys
 import os
@@ -564,6 +572,7 @@ class SoftwareRenderCamera(QWidget):
         # [Phase 5] 分析結果
         self.analysis_result = {}
         self.script_page = 0  # Current page index for LISTEN state
+        self.session_id = 1   # Session counter for Supabase logging
         
         # [Audio] Initialize Audio Manager
         openai_key = os.environ.get("OPENAI_KEY", "")
@@ -748,7 +757,8 @@ class SoftwareRenderCamera(QWidget):
             self.analysis_result = {}
             self.pan_offset_x = 0
             self.pan_offset_y = 0
-            print("🔄 返回初始狀態")
+            self.session_id += 1  # New session for next cycle
+            print(f"🔄 返回初始狀態 (下一場次: S-{self.session_id})")
             self.update()
             return
     
@@ -987,6 +997,15 @@ class SoftwareRenderCamera(QWidget):
         # Reset to first page
         self.script_page = 0
         self.current_state = self.STATE_LISTEN
+        
+        # [Supabase] Log analysis result to database
+        if SUPABASE_AVAILABLE:
+            supabase_log_history(
+                result=result,
+                time_scale=self.time_scale,
+                history_scale=self.history_scale,
+                session_id=self.session_id
+            )
         
         # Play audio: ambience + TTS narration
         if self.audio_manager:
