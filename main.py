@@ -755,6 +755,11 @@ class SoftwareRenderCamera(QWidget):
         """Handle GPIO confirm button press - state-aware confirmation"""
         print("🔘 GPIO: Confirm button")
         
+        # Ignore during ANALYZING state
+        if self.current_state == self.STATE_ANALYZING:
+            print("⚠️ Ignoring confirm during analysis")
+            return
+        
         # Special handling for TUNING state - directly start analysis
         if self.current_state == self.STATE_TUNING:
             print("✅ GPIO: Confirming parameters")
@@ -863,6 +868,13 @@ class SoftwareRenderCamera(QWidget):
         if self.current_state == self.STATE_REVEAL:
             self.pan_offset_x += dx
             self.pan_offset_y += dy
+            
+            # Clamp pan offset so image stays within circle
+            # Image is scaled to 3.5x circle diameter, max pan = (3.5 - 1) * radius
+            max_pan = self.circle_radius * 2.5  # (3.5 - 1.0) * radius
+            self.pan_offset_x = max(-max_pan, min(max_pan, self.pan_offset_x))
+            self.pan_offset_y = max(-max_pan, min(max_pan, self.pan_offset_y))
+            
             self.update()
 
     def get_state_name(self):
