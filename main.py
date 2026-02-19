@@ -1084,8 +1084,11 @@ class SoftwareRenderCamera(QWidget):
                     painter.fillRect(self.rect(), QColor(255, 255, 0, 50))
 
                     
+            # (3) LISTEN state - solid black background for readability
+            elif self.current_state == self.STATE_LISTEN:
+                painter.fillRect(self.rect(), QColor(0, 0, 0, 255))
 
-            # (3) 實時相機 (Live Camera)
+            # (4) 實時相機 (Live Camera)
             else:
                 try:
                     if hasattr(self, 'camera') and self.camera: # 確保相機存在
