@@ -337,6 +337,13 @@ export default function AdminPage() {
                         <Palette className="w-4 h-4" />
                         UI 編輯器
                     </Link>
+                    <Link
+                        href="/admin/report"
+                        className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 text-sm font-medium transition-all flex items-center gap-2"
+                    >
+                        <PieIcon className="w-4 h-4" />
+                        展覽報告
+                    </Link>
                     <button
                         onClick={fetchData}
                         className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 text-sm font-medium transition-all flex items-center gap-2"

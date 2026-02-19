@@ -579,6 +579,11 @@ class SoftwareRenderCamera(QWidget):
         self.session_id = str(uuid.uuid4())[:8]  # e.g. "a1b2c3d4"
         print(f"📎 Session ID: {self.session_id}")
         
+        # [Analytics] Interaction tracking
+        self.interaction_count = 0        # How many analyses this boot
+        self.interaction_start_time = None  # When PROXIMITY started
+        self.listen_start_time = None       # When LISTEN started
+        
         # [Audio] Initialize Audio Manager
         openai_key = os.environ.get("OPENAI_KEY", "")
         if openai_key:
@@ -668,6 +673,10 @@ class SoftwareRenderCamera(QWidget):
         
         # 1. BOOT -> PROXIMITY -> LOCKED
         if self.current_state in [self.STATE_BOOT, self.STATE_PROXIMITY]:
+            # Record interaction start when entering PROXIMITY
+            if self.current_state == self.STATE_BOOT:
+                import time as _time
+                self.interaction_start_time = _time.time()
             self.current_state += 1
             print(f"🖱️ 狀態切換: {self.get_state_name()}")
             return
@@ -1001,6 +1010,16 @@ class SoftwareRenderCamera(QWidget):
         # Reset to first page
         self.script_page = 0
         self.current_state = self.STATE_LISTEN
+        self.interaction_count += 1
+        
+        # Record listen start time
+        import time as _time
+        self.listen_start_time = _time.time()
+        
+        # Calculate interaction duration
+        duration_seconds = None
+        if self.interaction_start_time:
+            duration_seconds = round(_time.time() - self.interaction_start_time)
         
         # [Supabase] Log analysis result to database
         if SUPABASE_AVAILABLE:
@@ -1008,7 +1027,10 @@ class SoftwareRenderCamera(QWidget):
                 result=result,
                 time_scale=self.time_scale,
                 history_scale=self.history_scale,
-                session_id=self.session_id
+                session_id=self.session_id,
+                duration_seconds=duration_seconds,
+                completed=True,
+                interaction_count=self.interaction_count
             )
         
         # Play audio: ambience + TTS narration

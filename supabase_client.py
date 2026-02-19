@@ -32,7 +32,9 @@ HEADERS = {
 }
 
 
-def log_history(result: dict, time_scale: int, history_scale: int, session_id: int = None):
+def log_history(result: dict, time_scale: int, history_scale: int, 
+                session_id: int = None, duration_seconds: int = None,
+                completed: bool = False, interaction_count: int = 0):
     """
     Log analysis result to history_logs table (non-blocking).
     Matches the web app's insert schema in app/api/history/route.ts
@@ -58,6 +60,11 @@ def log_history(result: dict, time_scale: int, history_scale: int, session_id: i
                 'script_prompt': result.get('scriptPrompt', ''),
                 'ambience_category': result.get('ambienceCategory', ''),
                 'image_strength': result.get('imageStrength', None),
+                
+                # Analytics fields
+                'duration_seconds': duration_seconds,
+                'completed': completed,
+                'interaction_count': interaction_count,
             }
 
             resp = requests.post(
