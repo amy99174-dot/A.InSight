@@ -1070,7 +1070,7 @@ class SoftwareRenderCamera(QWidget):
                 painter.drawPixmap(int(sx), int(sy), scaled)
 
             # (2) 靜態預覽 (STATE_ANALYZING, SUCCESS, FAIL, TUNING, LISTEN, FOCUSING)
-            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_TUNING, self.STATE_LISTEN, self.STATE_FOCUSING]:
+            elif self.captured_pixmap and self.current_state in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_TUNING, self.STATE_FOCUSING]:
                 scaled = self.captured_pixmap.scaled(
                     self.circle_radius * 2, self.circle_radius * 2,
                     Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
@@ -1452,28 +1452,12 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
         painter.drawLine(cx - 50, cy + 5, cx + 50, cy + 5)
         
-        # Text 2: "接近目標中" (10pt - matches LOCKED subtitle size) - Capsule/Pill shape
+        # Text 2: "接近目標中" (10pt - plain text, no background)
         painter.setFont(QFont("Arial", 10, QFont.Bold))
         txt_prox_sub = self.config_manager.get_text("proximitySubtext", "接近目標中")
-        fm = painter.fontMetrics()
-        sub_tw = fm.horizontalAdvance(txt_prox_sub)
-        sub_th = fm.height()
-        
-        # Capsule background - uses lighter bg to contrast against circle
-        capsule_pad_x = 14
-        capsule_pad_y = 5
-        capsule_w = sub_tw + capsule_pad_x * 2
-        capsule_h = sub_th + capsule_pad_y * 2
-        capsule_rect = QRect(cx - capsule_w // 2, cy + 12, capsule_w, capsule_h)
-        capsule_radius = capsule_h // 2  # Full round = pill shape
-        
-        painter.setPen(QPen(QColor(255, 255, 255, 100), 1))  # Visible white border
-        painter.setBrush(QColor(60, 60, 60, 220))  # Lighter gray to contrast dark circle
-        painter.drawRoundedRect(capsule_rect, capsule_radius, capsule_radius)
-        
-        # Draw subtitle text inside capsule
         painter.setPen(QColor(255, 255, 255, 200))
-        painter.drawText(capsule_rect, Qt.AlignCenter, txt_prox_sub)
+        text_rect_2 = QRect(0, cy + 12, self.width(), 20)
+        painter.drawText(text_rect_2, Qt.AlignCenter, txt_prox_sub)
         
         # 3. Bottom Distance Indicator
         # Position: Bottom 64px.
