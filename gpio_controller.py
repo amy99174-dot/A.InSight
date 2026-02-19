@@ -20,7 +20,7 @@ class GPIOController(QObject):
     encoder_rotated_cw = pyqtSignal()  # Clockwise
     encoder_rotated_ccw = pyqtSignal()  # Counter-clockwise
     
-    def __init__(self, confirm_pin=3, left_pin=19, right_pin=26, 
+    def __init__(self, confirm_pin=17, left_pin=19, right_pin=26, 
                  encoder_a=20, encoder_b=21):
         """
         Initialize GPIO Controller
