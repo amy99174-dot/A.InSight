@@ -233,6 +233,12 @@ body {
   z-index: 10;
 }
 
+/* 強制非 active 的 layer 及其所有子元素都無法接受點擊 */
+.state-layer:not(.active),
+.state-layer:not(.active) * {
+  pointer-events: none !important;
+}
+
 .state-layer.active {
   opacity: 1;
   pointer-events: auto;

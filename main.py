@@ -535,9 +535,10 @@ class SoftwareRenderCamera(QWidget):
         # --------------------------------------------------------
         pass
         
-        # 圆形直径
-        self.circle_diameter = 380
-        self.circle_radius = 190  # 380px / 2
+        # 圓形直徑 - 動態計算，填滿螢幕 95%
+        # 初始值會在 showEvent 或 resizeEvent 中根據視窗大小更新
+        self.circle_diameter = 380  # placeholder, will be recalculated
+        self.circle_radius = 190    # placeholder, will be recalculated
         
         # 掃描線動畫變數 (Phase 1)
         self.scan_line_y = 0
@@ -663,6 +664,26 @@ class SoftwareRenderCamera(QWidget):
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.update_frame)
         self.timer.start(33)
+
+    def _recalculate_circle_size(self):
+        """根據目前視窗大小，重新計算圓形尺寸（等比例填滿螢幕 95%）"""
+        w = self.width()
+        h = self.height()
+        if w > 0 and h > 0:
+            shorter_side = min(w, h)
+            self.circle_diameter = int(shorter_side * 0.95)
+            self.circle_radius = self.circle_diameter // 2
+            print(f"🔵 Circle resized: diameter={self.circle_diameter}px (screen {w}x{h})")
+
+    def resizeEvent(self, event):
+        """視窗大小改變時重新計算圓形尺寸"""
+        super().resizeEvent(event)
+        self._recalculate_circle_size()
+
+    def showEvent(self, event):
+        """視窗顯示時重新計算圓形尺寸（全螢幕後觸發）"""
+        super().showEvent(event)
+        self._recalculate_circle_size()
     
     def on_config_update(self, new_config):
         """Web 端的設定更新了，重新繪製 UI"""
@@ -1888,9 +1909,11 @@ class SoftwareRenderCamera(QWidget):
         name_width = fm.horizontalAdvance(name)
         text_height = fm.height()
         
-        # Position inside circle: cy - 130 (moved down from -150)
-        text_y = cy - 130
-        rect_name = QRect(cx - 130, text_y, 260, text_height)
+        # Position inside circle: 68% up from center (scales with circle size)
+        name_offset = int(self.circle_radius * 0.68)
+        text_y = cy - name_offset
+        half_w = int(self.circle_radius * 0.68)
+        rect_name = QRect(cx - half_w, text_y, half_w * 2, text_height)
         painter.drawText(rect_name, Qt.AlignHCenter | Qt.AlignTop, name)
         
         # Add underline as requested
@@ -1900,9 +1923,10 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(QPen(Qt.white, 1))
         painter.drawLine(underline_start_x, underline_y, underline_start_x + underline_width, underline_y)
         
-        # 3. Script Text (Center)
-        # Web: center-xy, w-[260px], text-sm (14px), leading-relaxed, opacity-90
-        rect_script = QRect(cx - 130, cy - 100, 260, 200)
+        # 3. Script Text (Center) - width scales with circle
+        script_half_w = int(self.circle_radius * 0.68)
+        script_h = int(self.circle_radius * 1.05)
+        rect_script = QRect(cx - script_half_w, cy - script_h // 2, script_half_w * 2, script_h)
         painter.setPen(QColor(255, 255, 255, 230)) # opacity-90
         font_script = QFont("Arial", 14) # text-sm = 14px
         painter.setFont(font_script)
