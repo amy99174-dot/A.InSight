@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import ScannerDisplay from '../../../../components/ScannerDisplayV2';
 import { DEFAULT_CONFIG, STEPS } from '../../../../lib/defaults';
@@ -15,7 +15,10 @@ export default function ScenarioBuilder() {
     const [selectedField, setSelectedField] = useState<string | null>(null);
     const [currentStep, setCurrentStep] = useState(STEPS.BOOT);
     const [isSaving, setIsSaving] = useState(false);
+    const [autoSaved, setAutoSaved] = useState(false);
     const [activeTab, setActiveTab] = useState<'visuals' | 'brain' | 'texts'>('visuals');
+    const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const isFirstRender = useRef(true);
 
     // Remote Monitoring State
     const [isMonitoring, setIsMonitoring] = useState(false);
@@ -47,6 +50,32 @@ export default function ScenarioBuilder() {
         };
         loadConfig();
     }, []);
+
+    // Auto-save: debounce 1.5s after any config change
+    useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
+        if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = setTimeout(async () => {
+            try {
+                const { error } = await supabase
+                    .from('scenario_config')
+                    .update({ config: config, updated_at: new Date() })
+                    .eq('id', 1);
+                if (!error) {
+                    setAutoSaved(true);
+                    setTimeout(() => setAutoSaved(false), 2000);
+                }
+            } catch (e) {
+                console.error('Auto-save failed:', e);
+            }
+        }, 1500);
+        return () => {
+            if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+        };
+    }, [config]);
 
     // PeerJS Monitoring Logic
     useEffect(() => {
@@ -265,7 +294,14 @@ export default function ScenarioBuilder() {
                         <Settings className="w-8 h-8 text-indigo-600" />
                         A.InSight UI 編輯器
                     </h1>
-                    <p className="text-gray-500 mt-1 ml-11">Scenario Builder &amp; Visual Designer</p>
+                    <p className="text-gray-500 mt-1 ml-11 flex items-center gap-2">
+                        Scenario Builder &amp; Visual Designer
+                        {autoSaved && (
+                            <span className="text-[10px] bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded-full font-medium animate-in fade-in duration-300">
+                                ✓ 已自動儲存
+                            </span>
+                        )}
+                    </p>
                 </div>
                 <div className="flex items-center gap-3">
                     <Link
