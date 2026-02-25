@@ -283,18 +283,16 @@ export default function ClassicSkinV2(props: ScannerSkinPropsV2) {
 
             {/* 6. LISTEN */}
             <div id="state-LISTEN" className={`state-layer bg-black/80 ${step === STEPS.LISTEN ? 'active' : ''}`}>
-                <div className="absolute top-12 left-1/2 -translate-x-1/2 w-32 h-1 bg-white/20 rounded-full"></div>
 
-                <div className="absolute top-16 w-full text-center text-white">
-                    <span className="text-xl font-bold border-b border-white pb-1">{artifactName}</span>
-                </div>
-
-                <div className="center-xy w-[260px] flex items-center justify-center text-center text-white">
+                {/* Center group: title + divider + content — all vertically grouped */}
+                <div className="center-xy w-[260px] flex flex-col items-center text-center text-white gap-4 px-2">
+                    <span className="text-xl font-bold border-b border-white/80 pb-2 w-full">{artifactName}</span>
                     <p className="text-sm leading-relaxed opacity-90 font-light">
                         {currentScriptPageText}
                     </p>
                 </div>
 
+                {/* Pagination dots */}
                 <div className="absolute bottom-16 left-1/2 -translate-x-1/2 flex gap-2">
                     {scriptPages.map((_, i) => (
                         <div key={i} className={`w-2 h-2 rounded-full ${i === scriptPage ? 'bg-white' : 'bg-white/30'}`}></div>
