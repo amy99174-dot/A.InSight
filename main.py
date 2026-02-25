@@ -1104,6 +1104,9 @@ class SoftwareRenderCamera(QWidget):
             h = self.height()
             center_x = w // 2
             center_y = h // 2
+
+            # 字體縮放比例 (原始設計基於 190px 半徑)
+            fs = self.circle_radius / 190.0
             
             # 定義圓形遮罩路徑 (視窗)
             path_window = QPainterPath()
@@ -1203,7 +1206,7 @@ class SoftwareRenderCamera(QWidget):
             painter.restore()
             
             # [Phase 4.3] Global HUD (Rings & Ticks) - Always visible
-            self.draw_global_hud(painter, center_x, center_y)
+            self.draw_global_hud(painter, center_x, center_y, fs)
 
             # -------------------------------------------------------------------------
             # C. 狀態特定 UI Overlays
@@ -1221,52 +1224,49 @@ class SoftwareRenderCamera(QWidget):
                 primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
                 text_color = QColor(primary_hex)
                 
-                # 1. Main Text: "正在探測歷史訊號" (25pt Bold)
+                # 1. Main Text: "正在探測歷史訊號"
                 painter.setPen(text_color)
-                painter.setFont(QFont("Arial", 25, QFont.Bold)) # Adjusted to 25pt
-                # User requested move down by 3px: -60 -> -57. Now another 4px: -53
-                text_rect_1 = QRect(0, center_y - 53, w, 50)
+                painter.setFont(QFont("Arial", int(25 * fs), QFont.Bold))
+                text_rect_1 = QRect(0, int(center_y - 53 * fs), w, int(50 * fs))
                 txt_main = self.config_manager.get_text("bootText", "正在探測歷史訊號")
                 painter.drawText(text_rect_1, Qt.AlignCenter, txt_main)
 
-                # 2. Sub Text: "尋找中..." (11pt Bold)
+                # 2. Sub Text: "尋找中..."
                 painter.setPen(text_color)
-                painter.setFont(QFont("Arial", 11, QFont.Bold)) # Adjusted to 11pt
-                # User requested move down by 3px: 0 -> +3. Now another 4px: +7
-                text_rect_2 = QRect(0, center_y + 7, w, 30)
+                painter.setFont(QFont("Arial", int(11 * fs), QFont.Bold))
+                text_rect_2 = QRect(0, int(center_y + 7 * fs), w, int(30 * fs))
                 txt_sub = self.config_manager.get_text("bootSubtext", "尋找中...")
                 painter.drawText(text_rect_2, Qt.AlignCenter, txt_sub)
 
-                # 3. Hint Text: "請在展區中隨意走動" (8pt opacity 0.6)
+                # 3. Hint Text: "請在展區中隨意走動" (opacity 0.6)
                 painter.save()
                 painter.setPen(text_color)
                 painter.setOpacity(0.6)
-                painter.setFont(QFont("Arial", 8)) # Adjusted to 8pt
-                # User requested move down by 3px: +40 -> +43. Now another 4px: +47
-                text_rect_3 = QRect(0, center_y + 47, w, 20)
+                painter.setFont(QFont("Arial", int(8 * fs)))
+                text_rect_3 = QRect(0, int(center_y + 47 * fs), w, int(20 * fs))
                 txt_hint = self.config_manager.get_text("bootHint", "請在展區中隨意走動")
                 painter.drawText(text_rect_3, Qt.AlignCenter, txt_hint)
                 painter.restore()
 
             # [Phase 4.4] STATE_PROXIMITY UI (Pulsing Ring + Text)
             if self.current_state == self.STATE_PROXIMITY:
-                self.draw_proximity_state(painter, center_x, center_y)
+                self.draw_proximity_state(painter, center_x, center_y, fs)
                 
             # [Phase 4.4] STATE_LOCKED UI (Brackets + Text)
             if self.current_state == self.STATE_LOCKED:
-                self.draw_locked_state(painter, center_x, center_y)
+                self.draw_locked_state(painter, center_x, center_y, fs)
             
             # [Phase 5A] STATE_ANALYZING UI (Dotted Circle Animation)
             if self.current_state == self.STATE_ANALYZING:
-                self.draw_analyzing_state(painter, center_x, center_y)
+                self.draw_analyzing_state(painter, center_x, center_y, fs)
             
             # [Phase 5B] STATE_FOCUSING UI (3 Concentric Blinking Circles)
             if self.current_state == self.STATE_FOCUSING:
-                self.draw_focusing_state(painter, center_x, center_y)
+                self.draw_focusing_state(painter, center_x, center_y, fs)
 
             # [Phase 6] STATE_LISTEN UI (Final Result)
             if self.current_state == self.STATE_LISTEN:
-                self.draw_listen_state(painter, center_x, center_y)
+                self.draw_listen_state(painter, center_x, center_y, fs)
             
             # --- End of Circular Clipping ---
             painter.setClipping(False)  # Remove clipping for overlay UI
@@ -1281,9 +1281,9 @@ class SoftwareRenderCamera(QWidget):
                 
                 # Bottom Hint (on top of overlay)
                 painter.setPen(QColor(255, 255, 255, 128))  # white/50
-                painter.setFont(QFont("Arial", 10))
-                hint_y = h - 60
-                rect_hint = QRect(0, hint_y, w, 30)
+                painter.setFont(QFont("Arial", int(10 * fs)))
+                hint_y = h - int(60 * fs)
+                rect_hint = QRect(0, hint_y, w, int(30 * fs))
                 painter.drawText(rect_hint, Qt.AlignCenter, "點擊畫面重新開始")
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
@@ -1300,57 +1300,51 @@ class SoftwareRenderCamera(QWidget):
                 # Semi-transparent black overlay (bg-black/60)
                 painter.fillRect(self.rect(), QColor(0, 0, 0, 153))
                 
-                # Container: 260px x 260px centered
-                container_size = 260
                 cx_tuning = center_x
                 cy_tuning = center_y
                 
                 painter.save()
                 painter.setRenderHint(QPainter.Antialiasing)
                 
-                # 1. Outer Ring (Time Scale 1-5) - 260px diameter
+                # 1. Outer Ring (Time Scale 1-5) - scales with circle
+                outer_r = int(130 * fs)
                 outer_alpha = 204 if selected == 0 else 50
                 
-                # Base circle border
                 base_border = QColor(theme_color)
-                base_border.setAlpha(51)  # 20% opacity
+                base_border.setAlpha(51)
                 painter.setPen(QPen(base_border, 1))
                 painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(cx_tuning - 130, cy_tuning - 130, 260, 260)
+                painter.drawEllipse(cx_tuning - outer_r, cy_tuning - outer_r, outer_r * 2, outer_r * 2)
                 
-                # Filled arc
-                fill_angle = self.time_scale * 72  # 1-5 maps to 72-360°
+                fill_angle = self.time_scale * 72
                 if fill_angle > 0:
                     fill_color = QColor(theme_color)
                     fill_color.setAlpha(outer_alpha)
-                    
-                    pen = QPen(fill_color, 30)
+                    pen = QPen(fill_color, int(30 * fs))
                     pen.setCapStyle(Qt.FlatCap)
                     painter.setPen(pen)
                     painter.setBrush(Qt.NoBrush)
-                    painter.drawArc(cx_tuning - 130, cy_tuning - 130, 260, 260, 90 * 16, -fill_angle * 16)
+                    painter.drawArc(cx_tuning - outer_r, cy_tuning - outer_r, outer_r * 2, outer_r * 2, 90 * 16, -fill_angle * 16)
                 
-                # 2. Inner Ring (History Scale 1-3) - 200px diameter
+                # 2. Inner Ring (History Scale 1-3)
+                inner_r = int(100 * fs)
                 inner_alpha = 128 if selected == 1 else 30
                 
-                # Base circle border
                 inner_border = QColor(theme_color)
-                inner_border.setAlpha(51)  # 20% opacity
+                inner_border.setAlpha(51)
                 painter.setPen(QPen(inner_border, 1))
                 painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(cx_tuning - 100, cy_tuning - 100, 200, 200)
+                painter.drawEllipse(cx_tuning - inner_r, cy_tuning - inner_r, inner_r * 2, inner_r * 2)
                 
-                # Filled arc
-                inner_fill_angle = self.history_scale * 120  # 1-3 maps to 120-360°
+                inner_fill_angle = self.history_scale * 120
                 if inner_fill_angle > 0:
                     inner_fill_color = QColor(theme_color)
                     inner_fill_color.setAlpha(inner_alpha)
-                    
-                    pen_inner = QPen(inner_fill_color, 30)
+                    pen_inner = QPen(inner_fill_color, int(30 * fs))
                     pen_inner.setCapStyle(Qt.FlatCap)
                     painter.setPen(pen_inner)
                     painter.setBrush(Qt.NoBrush)
-                    painter.drawArc(cx_tuning - 100, cy_tuning - 100, 200, 200, 90 * 16, -inner_fill_angle * 16)
+                    painter.drawArc(cx_tuning - inner_r, cy_tuning - inner_r, inner_r * 2, inner_r * 2, 90 * 16, -inner_fill_angle * 16)
                 
                 painter.restore()
                 
@@ -1358,52 +1352,50 @@ class SoftwareRenderCamera(QWidget):
                 painter.save()
                 painter.setRenderHint(QPainter.TextAntialiasing)
                 
-                # Time Scale Section (Top) - bright if selected, dim if not
+                # Time Scale Section (Top)
+                hl = int(50 * fs)  # half-label-width
+                lh = int(15 * fs)  # label height
+                vh = int(25 * fs)  # value height
                 time_text_alpha = 255 if selected == 0 else 80
                 txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
                 label_color = QColor(255, 255, 255, 153 if selected == 0 else 50)
                 painter.setPen(label_color)
-                painter.setFont(QFont("Arial", 8))
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 40, 100, 15), Qt.AlignCenter, txt_outer_label)
+                painter.setFont(QFont("Arial", int(8 * fs)))
+                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 40 * fs), hl * 2, lh), Qt.AlignCenter, txt_outer_label)
                 
-                # Time value "L-0X"
                 painter.setPen(QColor(255, 255, 255, time_text_alpha))
-                painter.setFont(QFont("Arial", 20, QFont.Bold))
+                painter.setFont(QFont("Arial", int(20 * fs), QFont.Bold))
                 time_value_text = f"L-0{self.time_scale}"
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning - 22, 100, 25), Qt.AlignCenter, time_value_text)
+                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 22 * fs), hl * 2, vh), Qt.AlignCenter, time_value_text)
                 
-                # Selection indicator for time
                 if selected == 0:
                     painter.setPen(QColor(255, 255, 255, 200))
-                    painter.setFont(QFont("Arial", 12))
-                    painter.drawText(QRect(cx_tuning - 80, cy_tuning - 22, 25, 25), Qt.AlignCenter, "◀")
+                    painter.setFont(QFont("Arial", int(12 * fs)))
+                    painter.drawText(QRect(int(cx_tuning - 80 * fs), int(cy_tuning - 22 * fs), int(25 * fs), vh), Qt.AlignCenter, "◀")
                 
-                # Divider line
-                divider_y = cy_tuning + 5
-                divider_color = QColor(255, 255, 255, 51)  # white/20
+                divider_y = int(cy_tuning + 5 * fs)
+                divider_color = QColor(255, 255, 255, 51)
                 painter.setPen(QPen(divider_color, 1))
-                painter.drawLine(cx_tuning - 40, divider_y, cx_tuning + 40, divider_y)
+                painter.drawLine(int(cx_tuning - 40 * fs), divider_y, int(cx_tuning + 40 * fs), divider_y)
                 
-                # History Scale Section (Bottom) - bright if selected, dim if not
+                # History Scale Section (Bottom)
                 hist_text_alpha = 255 if selected == 1 else 80
                 txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
                 label_color_h = QColor(255, 255, 255, 153 if selected == 1 else 50)
                 painter.setPen(label_color_h)
-                painter.setFont(QFont("Arial", 8))
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 10, 100, 15), Qt.AlignCenter, txt_inner_label)
+                painter.setFont(QFont("Arial", int(8 * fs)))
+                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 10 * fs), hl * 2, lh), Qt.AlignCenter, txt_inner_label)
                 
-                # History label
                 history_labels = {1: "低度", 2: "中度", 3: "高度"}
                 history_label = history_labels.get(self.history_scale, "低度")
                 painter.setPen(QColor(255, 255, 255, hist_text_alpha))
-                painter.setFont(QFont("Arial", 18, QFont.Bold))
-                painter.drawText(QRect(cx_tuning - 50, cy_tuning + 23, 100, 25), Qt.AlignCenter, history_label)
+                painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
+                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 23 * fs), hl * 2, vh), Qt.AlignCenter, history_label)
                 
-                # Selection indicator for history
                 if selected == 1:
                     painter.setPen(QColor(255, 255, 255, 200))
-                    painter.setFont(QFont("Arial", 12))
-                    painter.drawText(QRect(cx_tuning + 55, cy_tuning + 23, 25, 25), Qt.AlignCenter, "▶")
+                    painter.setFont(QFont("Arial", int(12 * fs)))
+                    painter.drawText(QRect(int(cx_tuning + 55 * fs), int(cy_tuning + 23 * fs), int(25 * fs), vh), Qt.AlignCenter, "▶")
                 
                 painter.restore()
 
@@ -1431,138 +1423,98 @@ class SoftwareRenderCamera(QWidget):
                 name = self.analysis_result.get("name", "")
                 era = self.analysis_result.get("era", "")
                 painter.setPen(status_color)
-                painter.setFont(QFont("Arial", 16, QFont.Bold))
-                painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, f"{name} | {era}")
+                painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
+                painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, f"{name} | {era}")
             
             elif self.current_state == self.STATE_ANALYZING:
                 painter.setPen(status_color)
-                painter.setFont(QFont("Arial", 16, QFont.Bold))
-                painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "AI 分析中...")
+                painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
+                painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, "AI 分析中...")
                 
             elif self.current_state == self.STATE_SUCCESS:
                 painter.setPen(status_color)
-                painter.setFont(QFont("Arial", 16, QFont.Bold))
-                painter.drawText(QRect(0, h - 80, w, 50), Qt.AlignCenter, "點擊畫面查看")
+                painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
+                painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, "點擊畫面查看")
             
-            # [狀態顯示 - 統一使用 get_state_name]
             elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_REVEAL]:
                  painter.setPen(status_color)
-                 painter.setFont(QFont("Arial", 14, QFont.Bold))
-                 # 簡單顯示狀態碼，取代掉之前的 label
+                 painter.setFont(QFont("Arial", int(14 * fs), QFont.Bold))
                  painter.drawText(10, h - 20, f"State: {state_text}")
 
-            # -------------------------------------------------------------------------
-            # [Phase 1 驗證標記] (Use dynamic color)
-            # -------------------------------------------------------------------------
             painter.setPen(status_color)
-            painter.setFont(QFont("Courier New", 12, QFont.Bold))
+            painter.setFont(QFont("Courier New", int(12 * fs), QFont.Bold))
             painter.drawText(10, 20, "[Phase 1 Verified]")
             
         except Exception as e:
             print("❌ paintEvent 發生嚴重錯誤:")
             traceback.print_exc()
 
-    def draw_proximity_state(self, painter, cx, cy):
+    def draw_proximity_state(self, painter, cx, cy, fs=1.0):
         """
         [Phase 4.4] 繪製 PROXIMITY 狀態 UI
-        包含：脈衝圓環、中心文字、底部距離數值
         """
         painter.save()
         
-        # 動畫與樣式參數
-        # Cycle: 3000ms. 0.1 -> 0.5 -> 1.0 -> 0.1
-        # Simplified breathing curve: sin wave moved to 0.1-1.0 range
         import time
         t = (time.time() * 1000) % 3000
-        # Manual stepped logic from CSS:
-        # 0% (0ms) -> 0.1
-        # 33% (1000ms) -> 0.5
-        # 66% (2000ms) -> 1.0
-        # 100% (3000ms) -> 0.1
-        # Linear interpolation between opacity points
         opacity = 0.1
         if t < 1000:
-            # 0.1 -> 0.5
             opacity = 0.1 + (t / 1000.0) * 0.4
         elif t < 2000:
-            # 0.5 -> 1.0
             opacity = 0.5 + ((t - 1000) / 1000.0) * 0.5
         else:
-            # 1.0 -> 0.1
             opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9
             
-        # 1. Pulsing Ring (180px)
+        # 1. Pulsing Ring (scales with circle)
+        ring_r = int(90 * fs)
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         ring_color = QColor(primary_hex)
         ring_color.setAlphaF(opacity)
         painter.setPen(QPen(ring_color, 1))
         painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(cx - 90, cy - 90, 180, 180)
+        painter.drawEllipse(cx - ring_r, cy - ring_r, ring_r * 2, ring_r * 2)
         
-        # 2. Center Content (Circle BG + Text)
-        # Web: bg-black/80, border-white/10, p-6
-        # Size? Content driven or fixed? Web says p-6 around content.
-        # Let's assume a roughly 140px-150px circle or just draw background for text area.
-        # Actually Web Structure: top div 180px ring. inner div (sibling?) center-xy ...
-        # Inner div looks like a contained circle. Let's make it 140px fixed.
-        bg_radius = 70
-        painter.setPen(QPen(QColor(255, 255, 255, 25), 1)) # Border white/10
-        painter.setBrush(QColor(0, 0, 0, 204)) # Black 80%
+        # 2. Center BG circle
+        bg_radius = int(70 * fs)
+        painter.setPen(QPen(QColor(255, 255, 255, 25), 1))
+        painter.setBrush(QColor(0, 0, 0, 204))
         painter.drawEllipse(cx - bg_radius, cy - bg_radius, bg_radius * 2, bg_radius * 2)
         
-        # Text 1: "訊號偵測" (18pt Bold - matches LOCKED title size)
+        # Text 1: title
         painter.setPen(Qt.white)
-        painter.setFont(QFont("Arial", 18, QFont.Bold))
-        text_rect_1 = QRect(0, cy - 35, self.width(), 35)
+        painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
+        text_rect_1 = QRect(0, int(cy - 35 * fs), self.width(), int(35 * fs))
         txt_prox_title = self.config_manager.get_text("proximityTitle", "訊號偵測")
         painter.drawText(text_rect_1, Qt.AlignCenter, txt_prox_title)
         
         # Separator Line
         painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
-        painter.drawLine(cx - 50, cy + 5, cx + 50, cy + 5)
+        painter.drawLine(int(cx - 50 * fs), int(cy + 5 * fs), int(cx + 50 * fs), int(cy + 5 * fs))
         
-        # Text 2: "接近目標中" (10pt - plain text, no background)
-        painter.setFont(QFont("Arial", 10, QFont.Bold))
+        # Text 2: subtext
+        painter.setFont(QFont("Arial", int(10 * fs), QFont.Bold))
         txt_prox_sub = self.config_manager.get_text("proximitySubtext", "接近目標中")
         painter.setPen(QColor(255, 255, 255, 200))
-        text_rect_2 = QRect(0, cy + 12, self.width(), 20)
+        text_rect_2 = QRect(0, int(cy + 12 * fs), self.width(), int(20 * fs))
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_prox_sub)
         
         # 3. Bottom Distance Indicator
-        # Position: Bottom 64px.
-        # "0.8" (25pt), "M" (8pt)
-        # Draw them together centered?
-        # Let's draw "0.8" then "M" next to it.
-        # Total width approx 60px?
-        # Let's draw "0.8" at center-left offset, "M" at center-right.
-        
-        bottom_y = self.height() - 64
-        
-        # "0.8"
-        painter.setFont(QFont("Arial", 25, QFont.Bold)) # Mono? Web says font-mono. Let's stick to Arial for consistency or Courier. User asked for 25pt.
-        # Let's use Arial 25pt.
-        painter.drawText(QRect(0, bottom_y - 40, self.width() - 30, 40), Qt.AlignRight | Qt.AlignVCenter, "0.8")
-        
-        # "M"
-        painter.setFont(QFont("Arial", 8))
-        painter.drawText(QRect(self.width() // 2 + 5, bottom_y - 25, 50, 25), Qt.AlignLeft | Qt.AlignBottom, "M")
+        bottom_y = self.height() - int(64 * fs)
+        painter.setFont(QFont("Arial", int(25 * fs), QFont.Bold))
+        painter.drawText(QRect(0, bottom_y - int(40 * fs), self.width() - int(30 * fs), int(40 * fs)), Qt.AlignRight | Qt.AlignVCenter, "0.8")
+        painter.setFont(QFont("Arial", int(8 * fs)))
+        painter.drawText(QRect(self.width() // 2 + int(5 * fs), bottom_y - int(25 * fs), int(50 * fs), int(25 * fs)), Qt.AlignLeft | Qt.AlignBottom, "M")
 
         painter.restore()
 
-    def draw_locked_state(self, painter, cx, cy):
+    def draw_locked_state(self, painter, cx, cy, fs=1.0):
         """
         [Phase 4.4] 繪製 LOCKED 狀態 UI
-        包含：四個角落括號 (Arc Segments)、中心點、上下文字
         """
         painter.save()
         
-        # 動畫與樣式參數
-        # Cycle: 3000ms. Stepped opacity: 0.1 -> 0.5 -> 1.0 -> 0.1
-        # Web CSS: animation: stepped-opacity 3s steps(1) infinite
         import time
-        t = time.time() % 3  # 3 second cycle
-        
-        # Stepped animation (instant transitions, not smooth)
+        t = time.time() % 3
         if t < 1:
             opacity = 0.1
         elif t < 2:
@@ -1574,142 +1526,88 @@ class SoftwareRenderCamera(QWidget):
         ring_color = QColor(primary_hex)
         ring_color.setAlphaF(opacity)
         
-        # 1. 括號/Arc Segments (200px square -> 100px radius)
-        # Web uses 4 divs with borders and clip-paths.
-        # Implies a ring where segments are visible. 
-        # Let's draw 4 arcs of 90 degrees? Or 4 corner brackets 'L' shapes?
-        # Web clip-paths suggest segments of a circle (rounded-full divs).
-        # Top div: clipPath inset(0 20% 80% 20%) -> Top part of ring.
-        # Let's draw 4 arcs, each maybe 60 degrees, leaving gaps?
-        # Or just 4 corners. 
-        # Let's simple draw a circle with dashed line? Or 4 drawArc calls.
-        
-        # Radius 100px (200px diameter)
-        r = 100
-        
+        # Arc segments (radius scales with circle)
+        r = int(100 * fs)
         painter.setPen(QPen(ring_color, 2))
         painter.setBrush(Qt.NoBrush)
+        span_angle = 60 * 16
+        painter.drawArc(cx - r, cy - r, r * 2, r * 2, 60 * 16, span_angle)
+        painter.drawArc(cx - r, cy - r, r * 2, r * 2, 240 * 16, span_angle)
+        painter.drawArc(cx - r, cy - r, r * 2, r * 2, 150 * 16, span_angle)
+        painter.drawArc(cx - r, cy - r, r * 2, r * 2, -30 * 16, span_angle)
         
-        # Top Arc (Top-Center approx)
-        # Web: clip-path inset(0 20% 80% 20%) -> Keeps top 20% of box. 
-        # This yields an arc at the very top.
-        # Let's draw 4 arcs at cardinal directions (Top, Bottom, Left, Right) based on Web div structure.
-        # Div 1: border-t-2 (Top)
-        # Div 2: border-b-2 (Bottom)
-        # Div 3: border-l-2 (Left)
-        # Div 4: border-r-2 (Right)
-        
-        span_angle = 60 * 16 # 60 degrees in 1/16th degrees
-        # Top (90 deg) -> Start at 60, span 60?
-        # Qt angles: 0 is 3 o'clock. 90 is 12 o'clock.
-        # Top arc: 90 +/- 30 -> 60 to 120. Start angle 60? 
-        # drawArc(rect, startAngle, spanAngle)
-        # startAngle 60*16, span 60*16.
-        
-        # Top
-        painter.drawArc(cx - r, cy - r, 200, 200, 60 * 16, 60 * 16)
-        # Bottom (270 deg)
-        painter.drawArc(cx - r, cy - r, 200, 200, 240 * 16, 60 * 16)
-        # Left (180 deg)
-        painter.drawArc(cx - r, cy - r, 200, 200, 150 * 16, 60 * 16)
-        # Right (0 deg)
-        painter.drawArc(cx - r, cy - r, 200, 200, -30 * 16, 60 * 16)
-        
-        # 2. Center Dot (2px, same color as brackets)
+        # Center dot
         dot_color = QColor(primary_hex)
         painter.setPen(Qt.NoPen)
         painter.setBrush(dot_color)
         painter.drawEllipse(cx - 1, cy - 1, 2, 2)
         
-        # 3. Title: "鎖定目標" (no background box, text only)
+        # Title text
         txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
-        painter.setFont(QFont("Arial", 18, QFont.Bold))
+        painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
         text_color = QColor(255, 255, 255)
         painter.setPen(text_color)
-        text_rect_locked = QRect(0, cy - 45, self.width(), 30)
-        painter.drawText(text_rect_locked, Qt.AlignCenter, txt_locked)
+        painter.drawText(QRect(0, int(cy - 45 * fs), self.width(), int(30 * fs)), Qt.AlignCenter, txt_locked)
         
-        # 4. Bottom Subtext: "[ 按下快門捕捉 ]" inside bracket area
-        painter.setFont(QFont("Arial", 10))
+        # Bottom subtext
+        painter.setFont(QFont("Arial", int(10 * fs)))
         painter.setPen(Qt.white)
-        text_rect_2 = QRect(0, cy + 30, self.width(), 30)
-        txt_locked_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
-        painter.drawText(text_rect_2, Qt.AlignCenter, txt_locked_sub)
+        painter.drawText(QRect(0, int(cy + 30 * fs), self.width(), int(30 * fs)), Qt.AlignCenter,
+                         self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]"))
         
         painter.restore()
 
-    def draw_global_hud(self, painter, cx, cy):
+    def draw_global_hud(self, painter, cx, cy, fs=1.0):
         """
         [Phase 4.3] 繪製全域 HUD 裝飾 (外圈圓環 + 刻度)
-        對應 ClassicSkinV2 的 Layer 1
         """
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # 1. External Decoration Ring (370px)
-        # Web: border-white/10 (unless REVEAL)
-        # Native Refinement: 80% Opacity (204/255) as requested by User
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         base_color = QColor(primary_hex)
         
         ring_color = QColor(base_color)
-        ring_color.setAlpha(204) # 80%
+        ring_color.setAlpha(204)
         
         if self.current_state == self.STATE_REVEAL:
-            ring_color = QColor(255, 255, 255, 255) # Full white in REVEAL
+            ring_color = QColor(255, 255, 255, 255)
             
-        # Native Refinement: 80% Opacity (204/255) as requested by User
-        # ring_color = QColor(255, 255, 255, 204) 
-        
         painter.setPen(QPen(ring_color, 1))
         painter.setBrush(Qt.NoBrush)
-        # 370px diameter = 185px radius
-        painter.drawEllipse(cx - 185, cy - 185, 370, 370)
+        # Outer decoration ring: 185/190 of circle_radius
+        outer_r = int(self.circle_radius * 0.97)
+        painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
         
-        # 2. Scale Ring Ticks (350px)
-        # Web: 12 ticks, 30 degrees each.
-        # Radius = 175px (half of 350)
-        # Ticks: Longer at 0, 90, 180, 270.
+        # Tick marks
+        tick_color = QColor(base_color)
+        tick_color.setAlpha(204)
         
-        tick_color = QColor(base_color)  # Use theme color
-        tick_color.setAlpha(204)  # 80% opacity
-        
-        radius = 175
+        radius = outer_r
         for i in range(12):
-            angle_deg = (i * 30) - 90 # Start from top
+            angle_deg = (i * 30) - 90
             angle_rad = math.radians(angle_deg)
             
-            # Tick length
-            is_cardinal = (i % 3 == 0) # 0, 3, 6, 9
-            tick_len = 12 if is_cardinal else 8
+            is_cardinal = (i % 3 == 0)
+            tick_len = int(12 * fs) if is_cardinal else int(8 * fs)
             tick_width = 2 if is_cardinal else 1
             
-            # Calculate start and end points
-            # Start logic from Web: transform: translateY(-radius)
-            # This means the tick is at the circle edge pointing inwards? 
-            # Web: height: tickLength. 
-            # visual: The tick is ON the circle circumference.
-            
-            # Line start (at circle edge)
             p1_x = cx + radius * math.cos(angle_rad)
             p1_y = cy + radius * math.sin(angle_rad)
-            
-            # Line end (inwards)
             p2_x = cx + (radius - tick_len) * math.cos(angle_rad)
             p2_y = cy + (radius - tick_len) * math.sin(angle_rad)
             
             painter.setPen(QPen(tick_color, tick_width))
             painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
             
-        # 3. Top Label "A.InSight" (9pt)
-        # Position: Cy - 190 (Top of container) + 24 + 4px (User request)
+        # Top Label "A.InSight"
         title_text = self.config_manager.get_text("title", "A.InSight")
-        title_color = QColor(base_color)  # Use theme color
-        title_color.setAlpha(200)  # 80% opacity
+        title_color = QColor(base_color)
+        title_color.setAlpha(200)
         painter.setPen(title_color)
-        painter.setFont(QFont("Arial", 9)) # Modified to 9pt
-        text_y = int(cy - 190 + 28)
-        painter.drawText(QRect(0, text_y, self.width(), 20), Qt.AlignCenter, title_text)
+        painter.setFont(QFont("Arial", int(9 * fs)))
+        text_y = int(cy - self.circle_radius * 0.97 + 28 * fs)
+        painter.drawText(QRect(0, text_y, self.width(), int(20 * fs)), Qt.AlignCenter, title_text)
 
         painter.restore()
 
@@ -1770,12 +1668,11 @@ class SoftwareRenderCamera(QWidget):
             print("✨ 對焦完成！進入 REVEAL 狀態")
             self.update()
     
-    def draw_analyzing_state(self, painter, cx, cy):
+    def draw_analyzing_state(self, painter, cx, cy, fs=1.0):
         """[Phase 5A] ANALYZING state with dotted circle animation"""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
         
-        # Black transparent overlay at bottom layer (bg-black/80)
         painter.fillRect(self.rect(), QColor(0, 0, 0, 204))
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         theme_color = QColor(primary_hex)
@@ -1783,90 +1680,86 @@ class SoftwareRenderCamera(QWidget):
         outer_border.setAlpha(26)
         painter.setPen(QPen(outer_border, 1))
         painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(cx - 140, cy - 140, 280, 280)
+        outer_r = int(140 * fs)
+        painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
         import time
         t = time.time() % 2
         opacity = 0.2 if t < 0.67 else (0.6 if t < 1.33 else 1.0)
         dotted_color = QColor(theme_color)
-        dotted_color.setAlphaF(opacity)  # Apply opacity animation
-        # Create dotted pen (3px dash, 6px space - denser)
+        dotted_color.setAlphaF(opacity)
         dotted_pen = QPen(dotted_color, 2)
         dotted_pen.setDashPattern([3, 6])
         painter.setPen(dotted_pen)
-        painter.setBrush(Qt.NoBrush) # Ensure no fill
-        painter.drawEllipse(cx - 100, cy - 100, 200, 200)
+        painter.setBrush(Qt.NoBrush)
+        dot_r = int(100 * fs)
+        painter.drawEllipse(cx - dot_r, cy - dot_r, dot_r * 2, dot_r * 2)
         painter.setPen(Qt.white)
         txt_title = self.config_manager.get_text("analyzingTitle", "解析中")
-        painter.setFont(QFont("Arial", 14, QFont.Bold))
-        painter.drawText(QRect(cx - 60, cy - 20, 120, 20), Qt.AlignCenter, txt_title)
+        painter.setFont(QFont("Arial", int(14 * fs), QFont.Bold))
+        painter.drawText(QRect(cx - int(60 * fs), int(cy - 20 * fs), int(120 * fs), int(20 * fs)), Qt.AlignCenter, txt_title)
         txt_analysis = self.config_manager.get_text("analyzingText", "正在分析歷史資料")
         label_color = QColor(255, 255, 255, 179)
         painter.setPen(label_color)
-        painter.setFont(QFont("Arial", 9))
-        painter.drawText(QRect(cx - 80, cy + 5, 160, 20), Qt.AlignCenter, txt_analysis)
+        painter.setFont(QFont("Arial", int(9 * fs)))
+        painter.drawText(QRect(cx - int(80 * fs), int(cy + 5 * fs), int(160 * fs), int(20 * fs)), Qt.AlignCenter, txt_analysis)
         painter.restore()
 
-    def draw_focusing_state(self, painter, cx, cy):
-        """[Phase 5B] FOCUSING state with 3 concentric blinking circles and result image with progressive blur"""
+    def draw_focusing_state(self, painter, cx, cy, fs=1.0):
+        """[Phase 5B] FOCUSING state with 3 concentric blinking circles and result image"""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
         
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         theme_color = QColor(primary_hex)
         
-        # 1. Draw Result Image with Progressive Blur (User Request)
-        # Add circular clipping to keep image inside circle
+        # 1. Draw Result Image with progressive blur (scales with circle)
         if self.generated_pixmap:
             painter.save()
-            
-            # Create circular clipping path
             clip_path = QPainterPath()
-            clip_path.addEllipse(cx - 190, cy - 190, 380, 380)
+            clip_path.addEllipse(cx - self.circle_radius, cy - self.circle_radius,
+                                 self.circle_radius * 2, self.circle_radius * 2)
             painter.setClipPath(clip_path)
-            
-            # Progressive opacity (simulates blur-to-clarity)
-            opacity = self.focus_percentage / 100.0  # 0.0 to 1.0
-            painter.setOpacity(0.3 + (opacity * 0.7))  # Range: 0.3 to 1.0
-            
-            # Draw result image centered in circle
+            opacity = self.focus_percentage / 100.0
+            painter.setOpacity(0.3 + (opacity * 0.7))
+            d = self.circle_radius * 2
             scaled_pixmap = self.generated_pixmap.scaled(
-                380, 380, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
+                d, d, Qt.KeepAspectRatioByExpanding, Qt.SmoothTransformation
             )
-            offset_x = (scaled_pixmap.width() - 380) // 2
-            offset_y = (scaled_pixmap.height() - 380) // 2
-            painter.drawPixmap(
-                cx - 190, cy - 190,
-                scaled_pixmap,
-                offset_x, offset_y, 380, 380
-            )
-            
-            painter.restore()  # Remove clipping and reset opacity
+            offset_x = (scaled_pixmap.width() - d) // 2
+            offset_y = (scaled_pixmap.height() - d) // 2
+            painter.drawPixmap(cx - self.circle_radius, cy - self.circle_radius,
+                               scaled_pixmap, offset_x, offset_y, d, d)
+            painter.restore()
         
         # 2. Outer Circle Border
+        outer_r = int(140 * fs)
         outer_border = QColor(theme_color)
         outer_border.setAlpha(51)
         painter.setPen(QPen(outer_border, 1))
         painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(cx - 140, cy - 140, 280, 280)
+        painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
+        
         import time
         t = time.time() % 3
-        circles = [(120, 240), (90, 180), (60, 120)]
-        for i, (radius, diameter) in enumerate(circles):
+        radii = [int(120 * fs), int(90 * fs), int(60 * fs)]
+        for i, r in enumerate(radii):
             opacity = 0.8 if int(t) == i else 0.2
             circle_color = QColor(theme_color)
             circle_color.setAlpha(int(opacity * 255))
             painter.setPen(QPen(circle_color, 2))
             painter.setBrush(Qt.NoBrush)
-            painter.drawEllipse(cx - radius, cy - radius, diameter, diameter)
+            painter.drawEllipse(cx - r, cy - r, r * 2, r * 2)
+        
+        center_r = int(50 * fs)
         center_bg = QColor(0, 0, 0, 230)
         painter.setBrush(center_bg)
         painter.setPen(QPen(theme_color, 1))
-        painter.drawEllipse(cx - 50, cy - 50, 100, 100)
+        painter.drawEllipse(cx - center_r, cy - center_r, center_r * 2, center_r * 2)
         txt_title = self.config_manager.get_text("focusingTitle", "對焦")
         painter.setPen(Qt.white)
-        painter.setFont(QFont("Arial", 12, QFont.Bold))
-        painter.drawText(QRect(cx - 40, cy - 15, 80, 20), Qt.AlignCenter, txt_title)
-        painter.setFont(QFont("Arial", 16, QFont.Bold))
+        painter.setFont(QFont("Arial", int(12 * fs), QFont.Bold))
+        painter.drawText(QRect(cx - center_r, int(cy - 15 * fs), center_r * 2, int(20 * fs)), Qt.AlignCenter, txt_title)
+        painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
         focus_text = f"{self.focus_percentage}%"
         painter.drawText(QRect(cx - 40, cy + 5, 80, 20), Qt.AlignCenter, focus_text)
         txt_hint = self.config_manager.get_text("focusingHint", "[ 旋轉對焦 ]")
@@ -1876,7 +1769,7 @@ class SoftwareRenderCamera(QWidget):
         painter.drawText(QRect(cx - 80, cy + 160, 160, 20), Qt.AlignCenter, txt_hint)
         painter.restore()
 
-    def draw_listen_state(self, painter, cx, cy):
+    def draw_listen_state(self, painter, cx, cy, fs=1.0):
         """
         [Phase 6] LISTEN state UI matching Web format
         """
@@ -1902,7 +1795,7 @@ class SoftwareRenderCamera(QWidget):
         # 2. Artifact Name (Inside Circle)
         # User requested: Move down one line and add underline
         painter.setPen(Qt.white)
-        font_name = QFont("Arial", 18, QFont.Bold)
+        font_name = QFont("Arial", int(18 * fs), QFont.Bold)
         painter.setFont(font_name)
         
         fm = QFontMetrics(font_name)
@@ -1916,7 +1809,7 @@ class SoftwareRenderCamera(QWidget):
         rect_name = QRect(cx - half_w, text_y, half_w * 2, text_height)
         painter.drawText(rect_name, Qt.AlignHCenter | Qt.AlignTop, name)
         
-        # Add underline as requested
+        # Add underline
         underline_y = text_y + text_height + 2
         underline_start_x = cx - (name_width // 2)
         underline_width = name_width
@@ -1927,8 +1820,8 @@ class SoftwareRenderCamera(QWidget):
         script_half_w = int(self.circle_radius * 0.68)
         script_h = int(self.circle_radius * 1.05)
         rect_script = QRect(cx - script_half_w, cy - script_h // 2, script_half_w * 2, script_h)
-        painter.setPen(QColor(255, 255, 255, 230)) # opacity-90
-        font_script = QFont("Arial", 14) # text-sm = 14px
+        painter.setPen(QColor(255, 255, 255, 230))
+        font_script = QFont("Arial", int(14 * fs))
         painter.setFont(font_script)
         
         # Draw with word wrap
