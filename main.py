@@ -1279,18 +1279,7 @@ class SoftwareRenderCamera(QWidget):
                 bottom_overlay_rect = QRect(0, h - 100, w, 100)
                 painter.fillRect(bottom_overlay_rect, QColor(0, 0, 0, 51))
                 
-                # Bottom Hint: show '下一頁' if more pages remain, else '進入對焦'
-                script_text = self.analysis_result.get("scriptPrompt", "") if self.analysis_result else ""
-                pages_count = len(self.split_text_into_pages(script_text, max_chars=55))
-                if self.script_page < pages_count - 1:
-                    hint_text = f"點擊下一頁  ({self.script_page + 1}/{pages_count})"
-                else:
-                    hint_text = "點擊繼續 →"
-                painter.setPen(QColor(255, 255, 255, 128))
-                painter.setFont(QFont("Arial", int(10 * fs)))
-                hint_y = h - int(60 * fs)
-                rect_hint = QRect(0, hint_y, w, int(30 * fs))
-                painter.drawText(rect_hint, Qt.AlignCenter, hint_text)
+                # Bottom hint text removed — dots inside circle are sufficient
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             # 2. [Phase 5A] TUNING State - Circular Conic Gradients
@@ -1426,14 +1415,10 @@ class SoftwareRenderCamera(QWidget):
             status_color = QColor(primary_hex_bottom)
             
             # REVEAL state: no bottom title shown (image speaks for itself)
-            if self.current_state == self.STATE_ANALYZING:
+            # ANALYZING state: no bottom text
+            if self.current_state == self.STATE_SUCCESS:
                 painter.setPen(status_color)
-                painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
-                painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, "AI 分析中...")
-                
-            elif self.current_state == self.STATE_SUCCESS:
-                painter.setPen(status_color)
-                painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
+                painter.setFont(QFont("Arial", int(10 * fs)))
                 painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, "點擊畫面查看")
             
             elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_REVEAL]:
@@ -1553,11 +1538,9 @@ class SoftwareRenderCamera(QWidget):
         painter.setPen(QColor(primary_hex))
         painter.drawText(QRect(0, int(cy - 45 * fs), self.width(), int(30 * fs)), Qt.AlignCenter, txt_locked)
         
-        # Bottom subtext — follow primary_color
+        # Bottom subtext — fixed white
         painter.setFont(QFont("Arial", int(10 * fs)))
-        sub_color = QColor(primary_hex)
-        sub_color.setAlpha(180)
-        painter.setPen(sub_color)
+        painter.setPen(QColor(255, 255, 255, 200))
         painter.drawText(QRect(0, int(cy + 30 * fs), self.width(), int(30 * fs)), Qt.AlignCenter,
                          self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]"))
         
