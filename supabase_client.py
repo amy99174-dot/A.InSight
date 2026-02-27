@@ -26,7 +26,7 @@ def log_history(result: dict, time_scale: int, history_scale: int,
 
             payload = {
                 'result': log_result,
-                'session_id': session_id if isinstance(session_id, int) else None,
+                'session_id': None,  # FK constraint: only valid session IDs allowed; null is safe
                 'time_scale': time_scale,
                 'history_scale': history_scale,
             }
