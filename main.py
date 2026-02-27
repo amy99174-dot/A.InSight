@@ -652,7 +652,7 @@ class SoftwareRenderCamera(QWidget):
         
         # [Phase 4.4] Config Manager - Sync with Web Editor
         # Read API host from environment variable or default to Mac IP
-        api_host = os.environ.get('API_HOST', '192.168.1.118')
+        api_host = os.environ.get('API_HOST', '10.130.205.184')
         api_url = f"http://{api_host}:3000/api/config"
         print(f"🌐 Config API: {api_url}")
         
@@ -1279,12 +1279,18 @@ class SoftwareRenderCamera(QWidget):
                 bottom_overlay_rect = QRect(0, h - 100, w, 100)
                 painter.fillRect(bottom_overlay_rect, QColor(0, 0, 0, 51))
                 
-                # Bottom Hint (on top of overlay)
-                painter.setPen(QColor(255, 255, 255, 128))  # white/50
+                # Bottom Hint: show '下一頁' if more pages remain, else '進入對焦'
+                script_text = self.analysis_result.get("scriptPrompt", "") if self.analysis_result else ""
+                pages_count = len(self.split_text_into_pages(script_text, max_chars=55))
+                if self.script_page < pages_count - 1:
+                    hint_text = f"點擊下一頁  ({self.script_page + 1}/{pages_count})"
+                else:
+                    hint_text = "點擊繼續 →"
+                painter.setPen(QColor(255, 255, 255, 128))
                 painter.setFont(QFont("Arial", int(10 * fs)))
                 hint_y = h - int(60 * fs)
                 rect_hint = QRect(0, hint_y, w, int(30 * fs))
-                painter.drawText(rect_hint, Qt.AlignCenter, "點擊畫面重新開始")
+                painter.drawText(rect_hint, Qt.AlignCenter, hint_text)
             
             # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
             # 2. [Phase 5A] TUNING State - Circular Conic Gradients
@@ -1419,14 +1425,8 @@ class SoftwareRenderCamera(QWidget):
             primary_hex_bottom = self.config_manager.get_color("primary_color", "#ffffff")
             status_color = QColor(primary_hex_bottom)
             
-            if self.current_state == self.STATE_REVEAL and self.analysis_result:
-                name = self.analysis_result.get("name", "")
-                era = self.analysis_result.get("era", "")
-                painter.setPen(status_color)
-                painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
-                painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, f"{name} | {era}")
-            
-            elif self.current_state == self.STATE_ANALYZING:
+            # REVEAL state: no bottom title shown (image speaks for itself)
+            if self.current_state == self.STATE_ANALYZING:
                 painter.setPen(status_color)
                 painter.setFont(QFont("Arial", int(16 * fs), QFont.Bold))
                 painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, "AI 分析中...")
@@ -1665,6 +1665,12 @@ class SoftwareRenderCamera(QWidget):
         """Helper to transition from FOCUSING to REVEAL state"""
         if self.focus_percentage >= 100:
             self.current_state = self.STATE_REVEAL
+            # Reset pan so image starts centered
+            self.pan_offset_x = 0
+            self.pan_offset_y = 0
+            # Activate gyroscope for panning
+            if hasattr(self, 'gyro_controller') and self.gyro_controller:
+                self.gyro_controller.set_active(True)
             print("✨ 對焦完成！進入 REVEAL 狀態")
             self.update()
     
