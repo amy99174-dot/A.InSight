@@ -63,11 +63,6 @@ def log_history(result: dict, time_scale: int, history_scale: int,
                 'script_prompt': result.get('scriptPrompt', ''),
                 'ambience_category': result.get('ambienceCategory', ''),
                 'image_strength': result.get('imageStrength', None),
-                
-                # Analytics fields
-                'duration_seconds': duration_seconds,
-                'completed': completed,
-                'interaction_count': interaction_count,
             }
 
             resp = requests.post(
