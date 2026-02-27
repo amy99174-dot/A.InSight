@@ -1228,8 +1228,12 @@ class SoftwareRenderCamera(QWidget):
                 painter.fillRect(0, y, w, 2, QColor(0, 0, 0, 128)) # Semi-transparent black lines
             painter.restore()
             
-            # [Phase 4.3] Global HUD (Rings & Ticks) - Always visible
-            self.draw_global_hud(painter, center_x, center_y, fs)
+            # [Phase 4.3] Global HUD — skin-aware
+            skin = self.config_manager.get_theme_value("layout_mode", "classic")
+            if skin == "industrial":
+                self.draw_industrial_hud(painter, center_x, center_y, fs)
+            else:
+                self.draw_global_hud(painter, center_x, center_y, fs)
 
             # -------------------------------------------------------------------------
             # C. 狀態特定 UI Overlays
@@ -1275,9 +1279,12 @@ class SoftwareRenderCamera(QWidget):
             if self.current_state == self.STATE_PROXIMITY:
                 self.draw_proximity_state(painter, center_x, center_y, fs)
                 
-            # [Phase 4.4] STATE_LOCKED UI (Brackets + Text)
+            # [Phase 4.4] STATE_LOCKED UI
             if self.current_state == self.STATE_LOCKED:
-                self.draw_locked_state(painter, center_x, center_y, fs)
+                if skin == "industrial":
+                    self.draw_industrial_locked(painter, center_x, center_y, fs)
+                else:
+                    self.draw_locked_state(painter, center_x, center_y, fs)
             
             # [Phase 5A] STATE_ANALYZING UI (Dotted Circle Animation)
             if self.current_state == self.STATE_ANALYZING:
@@ -1287,9 +1294,12 @@ class SoftwareRenderCamera(QWidget):
             if self.current_state == self.STATE_FOCUSING:
                 self.draw_focusing_state(painter, center_x, center_y, fs)
 
-            # [Phase 6] STATE_LISTEN UI (Final Result)
+            # [Phase 6] STATE_LISTEN UI (Final Result) — skin-aware
             if self.current_state == self.STATE_LISTEN:
-                self.draw_listen_state(painter, center_x, center_y, fs)
+                if skin == "industrial":
+                    self.draw_industrial_listen(painter, center_x, center_y, fs)
+                else:
+                    self.draw_listen_state(painter, center_x, center_y, fs)
             
             # --- End of Circular Clipping ---
             painter.setClipping(False)  # Remove clipping for overlay UI
@@ -1304,118 +1314,73 @@ class SoftwareRenderCamera(QWidget):
                 
                 # Bottom hint text removed — dots inside circle are sufficient
             
-            # 2. [Phase 3] 參數調整頁面 UI (Overlay Layer - Unclipped)
-            # 2. [Phase 5A] TUNING State - Circular Conic Gradients
-            # Matching Web: ClassicSkinV2.tsx lines 220-254
+            # [Phase 5A] STATE_TUNING UI — skin-aware
             if self.current_state == self.STATE_TUNING:
-                # Get dynamic primary color
-                primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
-                theme_color = QColor(primary_hex)
-                
-                # Dim effect: unselected parameter is dimmed
-                selected = self.tuning_selected_param  # 0=time, 1=history
-                
-                # Semi-transparent black overlay (bg-black/60)
-                painter.fillRect(self.rect(), QColor(0, 0, 0, 153))
-                
-                cx_tuning = center_x
-                cy_tuning = center_y
-                
-                painter.save()
-                painter.setRenderHint(QPainter.Antialiasing)
-                
-                # 1. Outer Ring (Time Scale 1-5) - scales with circle
-                outer_r = int(130 * fs)
-                outer_alpha = 204 if selected == 0 else 50
-                
-                base_border = QColor(theme_color)
-                base_border.setAlpha(51)
-                painter.setPen(QPen(base_border, 1))
-                painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(cx_tuning - outer_r, cy_tuning - outer_r, outer_r * 2, outer_r * 2)
-                
-                fill_angle = self.time_scale * 72
-                if fill_angle > 0:
-                    fill_color = QColor(theme_color)
-                    fill_color.setAlpha(outer_alpha)
-                    pen = QPen(fill_color, int(30 * fs))
-                    pen.setCapStyle(Qt.FlatCap)
-                    painter.setPen(pen)
-                    painter.setBrush(Qt.NoBrush)
-                    painter.drawArc(cx_tuning - outer_r, cy_tuning - outer_r, outer_r * 2, outer_r * 2, 90 * 16, -fill_angle * 16)
-                
-                # 2. Inner Ring (History Scale 1-3)
-                inner_r = int(100 * fs)
-                inner_alpha = 128 if selected == 1 else 30
-                
-                inner_border = QColor(theme_color)
-                inner_border.setAlpha(51)
-                painter.setPen(QPen(inner_border, 1))
-                painter.setBrush(Qt.NoBrush)
-                painter.drawEllipse(cx_tuning - inner_r, cy_tuning - inner_r, inner_r * 2, inner_r * 2)
-                
-                inner_fill_angle = self.history_scale * 120
-                if inner_fill_angle > 0:
-                    inner_fill_color = QColor(theme_color)
-                    inner_fill_color.setAlpha(inner_alpha)
-                    pen_inner = QPen(inner_fill_color, int(30 * fs))
-                    pen_inner.setCapStyle(Qt.FlatCap)
-                    painter.setPen(pen_inner)
-                    painter.setBrush(Qt.NoBrush)
-                    painter.drawArc(cx_tuning - inner_r, cy_tuning - inner_r, inner_r * 2, inner_r * 2, 90 * 16, -inner_fill_angle * 16)
-                
-                painter.restore()
-                
-                # 3. Center Display - Labels and Values
-                painter.save()
-                painter.setRenderHint(QPainter.TextAntialiasing)
-                
-                # Time Scale Section (Top)
-                hl = int(50 * fs)  # half-label-width
-                lh = int(15 * fs)  # label height
-                vh = int(25 * fs)  # value height
-                time_text_alpha = 255 if selected == 0 else 80
-                txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
-                label_color = QColor(255, 255, 255, 153 if selected == 0 else 50)
-                painter.setPen(label_color)
-                painter.setFont(QFont("Arial", int(8 * fs)))
-                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 40 * fs), hl * 2, lh), Qt.AlignCenter, txt_outer_label)
-                
-                painter.setPen(QColor(255, 255, 255, time_text_alpha))
-                painter.setFont(QFont("Arial", int(20 * fs), QFont.Bold))
-                time_value_text = f"L-0{self.time_scale}"
-                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 22 * fs), hl * 2, vh), Qt.AlignCenter, time_value_text)
-                
-                if selected == 0:
-                    painter.setPen(QColor(255, 255, 255, 200))
-                    painter.setFont(QFont("Arial", int(12 * fs)))
-                    painter.drawText(QRect(int(cx_tuning - 80 * fs), int(cy_tuning - 22 * fs), int(25 * fs), vh), Qt.AlignCenter, "◀")
-                
-                divider_y = int(cy_tuning + 5 * fs)
-                divider_color = QColor(255, 255, 255, 51)
-                painter.setPen(QPen(divider_color, 1))
-                painter.drawLine(int(cx_tuning - 40 * fs), divider_y, int(cx_tuning + 40 * fs), divider_y)
-                
-                # History Scale Section (Bottom)
-                hist_text_alpha = 255 if selected == 1 else 80
-                txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
-                label_color_h = QColor(255, 255, 255, 153 if selected == 1 else 50)
-                painter.setPen(label_color_h)
-                painter.setFont(QFont("Arial", int(8 * fs)))
-                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 10 * fs), hl * 2, lh), Qt.AlignCenter, txt_inner_label)
-                
-                history_labels = {1: "低度", 2: "中度", 3: "高度"}
-                history_label = history_labels.get(self.history_scale, "低度")
-                painter.setPen(QColor(255, 255, 255, hist_text_alpha))
-                painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
-                painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 23 * fs), hl * 2, vh), Qt.AlignCenter, history_label)
-                
-                if selected == 1:
-                    painter.setPen(QColor(255, 255, 255, 200))
-                    painter.setFont(QFont("Arial", int(12 * fs)))
-                    painter.drawText(QRect(int(cx_tuning + 55 * fs), int(cy_tuning + 23 * fs), int(25 * fs), vh), Qt.AlignCenter, "▶")
-                
-                painter.restore()
+                if skin == "industrial":
+                    self.draw_industrial_tuning(painter, center_x, center_y, fs)
+                else:
+                    primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+                    theme_color = QColor(primary_hex)
+                    selected = self.tuning_selected_param
+                    painter.fillRect(self.rect(), QColor(0, 0, 0, 153))
+                    cx_tuning = center_x
+                    cy_tuning = center_y
+                    painter.save()
+                    painter.setRenderHint(QPainter.Antialiasing)
+                    outer_r = int(130 * fs)
+                    outer_alpha = 204 if selected == 0 else 50
+                    base_border = QColor(theme_color); base_border.setAlpha(51)
+                    painter.setPen(QPen(base_border, 1)); painter.setBrush(Qt.NoBrush)
+                    painter.drawEllipse(cx_tuning - outer_r, cy_tuning - outer_r, outer_r * 2, outer_r * 2)
+                    fill_angle = self.time_scale * 72
+                    if fill_angle > 0:
+                        fill_color = QColor(theme_color); fill_color.setAlpha(outer_alpha)
+                        pen = QPen(fill_color, int(30 * fs)); pen.setCapStyle(Qt.FlatCap)
+                        painter.setPen(pen); painter.setBrush(Qt.NoBrush)
+                        painter.drawArc(cx_tuning - outer_r, cy_tuning - outer_r, outer_r * 2, outer_r * 2, 90 * 16, -fill_angle * 16)
+                    inner_r = int(100 * fs)
+                    inner_alpha = 128 if selected == 1 else 30
+                    inner_border = QColor(theme_color); inner_border.setAlpha(51)
+                    painter.setPen(QPen(inner_border, 1)); painter.setBrush(Qt.NoBrush)
+                    painter.drawEllipse(cx_tuning - inner_r, cy_tuning - inner_r, inner_r * 2, inner_r * 2)
+                    inner_fill_angle = self.history_scale * 120
+                    if inner_fill_angle > 0:
+                        inner_fill_color = QColor(theme_color); inner_fill_color.setAlpha(inner_alpha)
+                        pen_inner = QPen(inner_fill_color, int(30 * fs)); pen_inner.setCapStyle(Qt.FlatCap)
+                        painter.setPen(pen_inner); painter.setBrush(Qt.NoBrush)
+                        painter.drawArc(cx_tuning - inner_r, cy_tuning - inner_r, inner_r * 2, inner_r * 2, 90 * 16, -inner_fill_angle * 16)
+                    painter.restore()
+                    painter.save()
+                    painter.setRenderHint(QPainter.TextAntialiasing)
+                    hl = int(50 * fs); lh = int(15 * fs); vh = int(25 * fs)
+                    time_text_alpha = 255 if selected == 0 else 80
+                    txt_outer_label = self.config_manager.get_text("tuningRingOuter", "時間軸")
+                    painter.setPen(QColor(255, 255, 255, 153 if selected == 0 else 50))
+                    painter.setFont(QFont("Arial", int(8 * fs)))
+                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 40 * fs), hl * 2, lh), Qt.AlignCenter, txt_outer_label)
+                    painter.setPen(QColor(255, 255, 255, time_text_alpha))
+                    painter.setFont(QFont("Arial", int(20 * fs), QFont.Bold))
+                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 22 * fs), hl * 2, vh), Qt.AlignCenter, f"L-0{self.time_scale}")
+                    if selected == 0:
+                        painter.setPen(QColor(255, 255, 255, 200))
+                        painter.setFont(QFont("Arial", int(12 * fs)))
+                        painter.drawText(QRect(int(cx_tuning - 80 * fs), int(cy_tuning - 22 * fs), int(25 * fs), vh), Qt.AlignCenter, "◀")
+                    painter.setPen(QPen(QColor(255, 255, 255, 51), 1))
+                    painter.drawLine(int(cx_tuning - 40 * fs), int(cy_tuning + 5 * fs), int(cx_tuning + 40 * fs), int(cy_tuning + 5 * fs))
+                    hist_text_alpha = 255 if selected == 1 else 80
+                    txt_inner_label = self.config_manager.get_text("tuningRingInner", "史實度")
+                    painter.setPen(QColor(255, 255, 255, 153 if selected == 1 else 50))
+                    painter.setFont(QFont("Arial", int(8 * fs)))
+                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 10 * fs), hl * 2, lh), Qt.AlignCenter, txt_inner_label)
+                    history_labels = {1: "低度", 2: "中度", 3: "高度"}
+                    painter.setPen(QColor(255, 255, 255, hist_text_alpha))
+                    painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
+                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 23 * fs), hl * 2, vh), Qt.AlignCenter, history_labels.get(self.history_scale, "低度"))
+                    if selected == 1:
+                        painter.setPen(QColor(255, 255, 255, 200))
+                        painter.setFont(QFont("Arial", int(12 * fs)))
+                        painter.drawText(QRect(int(cx_tuning + 55 * fs), int(cy_tuning + 23 * fs), int(25 * fs), vh), Qt.AlignCenter, "▶")
+                    painter.restore()
 
             
             # 恢復舊的 P1, P2, P3 狀態文字邏輯 (對應 current_state)
@@ -1858,7 +1823,269 @@ class SoftwareRenderCamera(QWidget):
                 painter.drawEllipse(dot_x, dot_y - dot_r, dot_r * 2, dot_r * 2)
         
         painter.restore()
-    
+
+    # =========================================================================
+    # INDUSTRIAL SKIN — Draw Functions
+    # =========================================================================
+
+    def draw_industrial_hud(self, painter, cx, cy, fs):
+        """
+        Industrial HUD: outer ring + tick marks (same as classic)
+        + central Gemini four-petal star (background element)
+        + 8 blinking mini-stars (4 corners + 4 cardinals)
+        + top status bar (Activity icon + title)
+        """
+        import time
+        import math
+        primary_hex = self.config_manager.get_color("primary_color", "#00ff41")
+        pc = QColor(primary_hex)
+
+        # --- 1. Outer ring + ticks (reuse classic logic) ---
+        ring_color = QColor(pc)
+        ring_color.setAlpha(204)
+        painter.setPen(QPen(ring_color, 1))
+        painter.setBrush(Qt.NoBrush)
+        outer_r = int(self.circle_radius * 0.97)
+        painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
+
+        tick_color = QColor(pc); tick_color.setAlpha(204)
+        for i in range(12):
+            angle_deg = (i * 30) - 90
+            angle_rad = math.radians(angle_deg)
+            is_cardinal = (i % 3 == 0)
+            tick_len = int(10 * fs) if is_cardinal else int(5 * fs)
+            x_out = cx + outer_r * math.cos(angle_rad)
+            y_out = cy + outer_r * math.sin(angle_rad)
+            x_in  = cx + (outer_r - tick_len) * math.cos(angle_rad)
+            y_in  = cy + (outer_r - tick_len) * math.sin(angle_rad)
+            painter.setPen(QPen(tick_color, 2 if is_cardinal else 1))
+            painter.drawLine(int(x_in), int(y_in), int(x_out), int(y_out))
+
+        # --- 2. Central Gemini star background (20% opacity) ---
+        star_size = int(self.circle_radius * 1.2)
+        star_c = QColor(pc); star_c.setAlpha(51)  # 20%
+        painter.setPen(Qt.NoPen)
+        painter.setBrush(star_c)
+        # Gemini 4-petal diamond path:  M50,0 C50,25 25,50 0,50 C25,50 50,75 50,100 ...
+        star_path = QPainterPath()
+        s = star_size
+        x0, y0 = cx - s // 2, cy - s // 2
+        star_path.moveTo(x0 + s * 0.50, y0)
+        star_path.cubicTo(x0 + s * 0.50, y0 + s * 0.25,
+                          x0 + s * 0.25, y0 + s * 0.50,
+                          x0,            y0 + s * 0.50)
+        star_path.cubicTo(x0 + s * 0.25, y0 + s * 0.50,
+                          x0 + s * 0.50, y0 + s * 0.75,
+                          x0 + s * 0.50, y0 + s)
+        star_path.cubicTo(x0 + s * 0.50, y0 + s * 0.75,
+                          x0 + s * 0.75, y0 + s * 0.50,
+                          x0 + s,        y0 + s * 0.50)
+        star_path.cubicTo(x0 + s * 0.75, y0 + s * 0.50,
+                          x0 + s * 0.50, y0 + s * 0.25,
+                          x0 + s * 0.50, y0)
+        painter.drawPath(star_path)
+
+        # --- 3. 8 blinking mini-stars (corner + cardinal) ---
+        t = time.time()
+        # Mini star diamond helper
+        def draw_mini_star(mx, my, size, alpha):
+            c = QColor(pc); c.setAlpha(alpha)
+            painter.setPen(Qt.NoPen); painter.setBrush(c)
+            p = QPainterPath()
+            p.moveTo(mx, my - size)
+            p.lineTo(mx + size * 0.4, my)
+            p.lineTo(mx, my + size)
+            p.lineTo(mx - size * 0.4, my)
+            p.closeSubpath()
+            painter.drawPath(p)
+
+        def blink_alpha(offset):
+            # 3s stepped cycle: 0.1→0.3→0.6→0.1
+            phase = (t + offset) % 3.0
+            if phase < 1.0:   return int(0.1 * 255)
+            elif phase < 2.0: return int(0.3 * 255)
+            else:             return int(0.6 * 255)
+
+        r = self.circle_radius
+        msz = int(6 * fs)
+        off = int(r * 0.53)  # ~corner offset from center
+
+        # 4 corner mini-stars (±off, ±off)
+        draw_mini_star(cx - off, cy - off, msz, blink_alpha(2.625))
+        draw_mini_star(cx + off, cy - off, msz, blink_alpha(0.375))
+        draw_mini_star(cx - off, cy + off, msz, blink_alpha(1.875))
+        draw_mini_star(cx + off, cy + off, msz, blink_alpha(1.125))
+
+        # 4 cardinal mini-stars (on circle edge)
+        draw_mini_star(cx,          cy - r, msz, blink_alpha(0.0))
+        draw_mini_star(cx,          cy + r, msz, blink_alpha(1.5))
+        draw_mini_star(cx - r,      cy,     msz, blink_alpha(2.25))
+        draw_mini_star(cx + r,      cy,     msz, blink_alpha(0.75))
+
+        # --- 4. Top status bar: ⚡ A.InSight ---
+        title_text = self.config_manager.get_text("title", "A.InSight")
+        bar_c = QColor(pc); bar_c.setAlpha(204)
+        painter.setPen(bar_c)
+        painter.setFont(QFont("Arial", int(9 * fs)))
+        painter.drawText(QRect(0, int(cy - r + int(18 * fs)), self.width(), int(18 * fs)),
+                         Qt.AlignCenter, f"⚡ {title_text}")
+
+    def draw_industrial_locked(self, painter, cx, cy, fs):
+        """
+        Industrial LOCKED: border-box title + white subtext at 30% from bottom.
+        """
+        primary_hex = self.config_manager.get_color("primary_color", "#00ff41")
+        pc = QColor(primary_hex)
+
+        txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
+        font = QFont("Arial", int(18 * fs), QFont.Bold)
+        painter.setFont(font)
+        fm = painter.fontMetrics()
+        text_w = fm.horizontalAdvance(txt_locked) + int(20 * fs)
+        text_h = int(30 * fs)
+
+        # Border box background
+        box_rect = QRect(cx - text_w // 2, int(cy - text_h * 0.65),
+                         text_w, text_h)
+        painter.save()
+        bg = QColor(0, 0, 0, 230)
+        painter.setPen(QPen(pc, max(1, int(1.5 * fs))))
+        painter.setBrush(bg)
+        painter.drawRect(box_rect)
+
+        # Title inside box
+        painter.setPen(pc)
+        painter.drawText(box_rect, Qt.AlignCenter, txt_locked)
+        painter.restore()
+
+        # Subtext (white, 30% from bottom)
+        sub_y = int(cy + (self.circle_radius * 0.70) - int(15 * fs))
+        painter.setPen(QColor(255, 255, 255, 200))
+        painter.setFont(QFont("Arial", int(10 * fs)))
+        painter.drawText(QRect(0, sub_y, self.width(), int(22 * fs)), Qt.AlignCenter,
+                         self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]"))
+
+    def draw_industrial_tuning(self, painter, cx, cy, fs):
+        """
+        Industrial TUNING: two vertical bar sliders (TIME / DATA) side by side.
+        """
+        primary_hex = self.config_manager.get_color("primary_color", "#00ff41")
+        pc = QColor(primary_hex)
+
+        # Black overlay
+        painter.fillRect(self.rect(), QColor(0, 0, 0, 230))
+
+        bar_w   = int(32 * fs)
+        bar_h   = int(128 * fs)
+        gap     = int(56 * fs)
+        bar_y   = cy - bar_h // 2
+
+        selected = self.tuning_selected_param  # 0=time, 1=history
+
+        for idx, (label, value, max_v, fmt) in enumerate([
+            (self.config_manager.get_text("tuningRingOuter", "TIME"), self.time_scale, 9,
+             lambda v: f"0{v}" if v < 10 else str(v)),
+            (self.config_manager.get_text("tuningRingInner", "DATA"), self.history_scale, 3,
+             lambda v: {1: "LO", 2: "MID", 3: "HI"}.get(v, "?")),
+        ]):
+            bar_x = cx + (idx * 2 - 1) * (gap // 2 + bar_w // 2)  # left or right of center
+            fill_ratio = value / max_v
+
+            # Fade inactive slider
+            alpha_mul = 1.0 if idx == selected else 0.3
+
+            # Border rect
+            border_c = QColor(pc); border_c.setAlpha(int(80 * alpha_mul))
+            painter.setPen(QPen(border_c, 1)); painter.setBrush(Qt.NoBrush)
+            painter.drawRect(bar_x - bar_w // 2, bar_y, bar_w, bar_h)
+
+            # Fill (left half 10% opacity, right half 40% opacity)
+            fill_h = int(bar_h * fill_ratio)
+            fill_y = bar_y + bar_h - fill_h
+            fill_l = QColor(pc); fill_l.setAlpha(int(26 * alpha_mul))   # 10%
+            fill_r = QColor(pc); fill_r.setAlpha(int(102 * alpha_mul))  # 40%
+            painter.setPen(Qt.NoPen)
+            if fill_h > 0:
+                painter.setBrush(fill_l)
+                painter.drawRect(bar_x - bar_w // 2, fill_y, bar_w // 2, fill_h)
+                painter.setBrush(fill_r)
+                painter.drawRect(bar_x, fill_y, bar_w // 2, fill_h)
+
+            # Indicator line at fill level
+            line_c = QColor(pc); line_c.setAlpha(int(230 * alpha_mul))
+            painter.setPen(QPen(line_c, max(1, int(2 * fs))))
+            painter.drawLine(bar_x - bar_w // 2, fill_y, bar_x + bar_w // 2, fill_y)
+
+            # Label above bar
+            label_c = QColor(pc); label_c.setAlpha(int(180 * alpha_mul))
+            painter.setPen(label_c)
+            painter.setFont(QFont("Arial", int(8 * fs)))
+            painter.drawText(QRect(bar_x - bar_w, bar_y - int(20 * fs), bar_w * 2, int(16 * fs)),
+                             Qt.AlignCenter, label)
+
+            # Value below bar
+            val_c = QColor(pc); val_c.setAlpha(int(255 * alpha_mul))
+            painter.setPen(val_c)
+            painter.setFont(QFont("Courier New", int(20 * fs), QFont.Bold))
+            painter.drawText(QRect(bar_x - bar_w, bar_y + bar_h + int(8 * fs), bar_w * 2, int(28 * fs)),
+                             Qt.AlignCenter, fmt(value))
+
+    def draw_industrial_listen(self, painter, cx, cy, fs):
+        """
+        Industrial LISTEN: same layout as Classic but with square pagination dots.
+        """
+        if not self.analysis_result:
+            return
+        painter.save()
+
+        r = self.circle_radius
+        w = self.width()
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        pc = QColor(primary_hex)
+
+        # Black background
+        painter.fillRect(self.rect(), QColor(0, 0, 0, 220))
+
+        # Artifact name + underline
+        artifact_name = self.analysis_result.get("name", "")
+        painter.setPen(pc)
+        painter.setFont(QFont("Arial", int(20 * fs), QFont.Bold))
+        title_y = int(cy - r * 0.62)
+        painter.drawText(QRect(0, title_y, w, int(32 * fs)), Qt.AlignCenter, artifact_name)
+        line_y = title_y + int(34 * fs)
+        painter.setPen(QPen(pc, 1))
+        painter.drawLine(int(cx - r * 0.55), line_y, int(cx + r * 0.55), line_y)
+
+        # Script text
+        script_text = self.analysis_result.get("scriptPrompt", "")
+        pages = self.split_text_into_pages(script_text, max_chars=55)
+        n_pages = len(pages)
+        page_text = pages[min(self.script_page, n_pages - 1)] if pages else "..."
+
+        painter.setPen(QColor(255, 255, 255, 230))
+        painter.setFont(QFont("Arial", int(12 * fs)))
+        text_rect = QRect(int(cx - r * 0.78), line_y + int(12 * fs),
+                          int(r * 1.56), int(r * 0.95))
+        painter.drawText(text_rect, Qt.AlignCenter | Qt.TextWordWrap, page_text)
+
+        # Square pagination dots
+        if n_pages > 1:
+            dot_sz = int(4 * fs)       # square side length
+            gap = int(6 * fs)
+            total_w = n_pages * dot_sz + (n_pages - 1) * gap
+            dot_y = int(cy + r * 0.72) - dot_sz // 2
+            for i in range(n_pages):
+                dot_x = cx - total_w // 2 + i * (dot_sz + gap)
+                if i == self.script_page:
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(QColor(255, 255, 255))
+                else:
+                    c = QColor(pc); c.setAlpha(80)
+                    painter.setPen(Qt.NoPen); painter.setBrush(c)
+                painter.drawRect(dot_x, dot_y, dot_sz, dot_sz)
+
+        painter.restore()
+
     def split_text_into_pages(self, text, max_chars=55):
         """
         Split text into pages (max 55 chars per page, matching Web)
