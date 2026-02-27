@@ -1417,18 +1417,13 @@ class SoftwareRenderCamera(QWidget):
             # REVEAL state: no bottom title shown (image speaks for itself)
             # ANALYZING state: no bottom text
             if self.current_state == self.STATE_SUCCESS:
-                painter.setPen(status_color)
+                painter.setPen(QColor(255, 255, 255))  # fixed white
                 painter.setFont(QFont("Arial", int(10 * fs)))
                 painter.drawText(QRect(0, int(h - 80 * fs), w, int(50 * fs)), Qt.AlignCenter, "點擊畫面查看")
             
-            elif self.current_state not in [self.STATE_ANALYZING, self.STATE_SUCCESS, self.STATE_FAIL, self.STATE_REVEAL]:
-                 painter.setPen(status_color)
-                 painter.setFont(QFont("Arial", int(14 * fs), QFont.Bold))
-                 painter.drawText(10, h - 20, f"State: {state_text}")
-
-            painter.setPen(status_color)
-            painter.setFont(QFont("Courier New", int(12 * fs), QFont.Bold))
-            painter.drawText(10, 20, "[Phase 1 Verified]")
+            # Corner debug labels hidden
+            # painter.drawText(10, 20, "[Phase 1 Verified]")
+            # painter.drawText(10, h - 20, f"State: {state_text}")
             
         except Exception as e:
             print("❌ paintEvent 發生嚴重錯誤:")
@@ -1488,12 +1483,7 @@ class SoftwareRenderCamera(QWidget):
         text_rect_2 = QRect(0, int(cy + 12 * fs), self.width(), int(20 * fs))
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_prox_sub)
         
-        # 3. Bottom Distance Indicator
-        bottom_y = self.height() - int(64 * fs)
-        painter.setFont(QFont("Arial", int(25 * fs), QFont.Bold))
-        painter.drawText(QRect(0, bottom_y - int(40 * fs), self.width() - int(30 * fs), int(40 * fs)), Qt.AlignRight | Qt.AlignVCenter, "0.8")
-        painter.setFont(QFont("Arial", int(8 * fs)))
-        painter.drawText(QRect(self.width() // 2 + int(5 * fs), bottom_y - int(25 * fs), int(50 * fs), int(25 * fs)), Qt.AlignLeft | Qt.AlignBottom, "M")
+        # Distance indicator removed
 
         painter.restore()
 
