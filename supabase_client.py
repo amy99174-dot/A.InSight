@@ -41,8 +41,11 @@ def log_history(result: dict, time_scale: int, history_scale: int,
     """
     def _insert():
         try:
+            # Ensure session_id is int or None (Supabase column is bigint)
+            safe_session_id = session_id if isinstance(session_id, int) else None
+
             insert_data = {
-                'session_id': session_id,
+                'session_id': safe_session_id,
                 'input_settings': {
                     'historyScale': history_scale,
                     'timeScale': time_scale

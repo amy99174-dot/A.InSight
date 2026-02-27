@@ -576,8 +576,8 @@ class SoftwareRenderCamera(QWidget):
         self.script_page = 0  # Current page index for LISTEN state
         
         # [Supabase] Session ID: UUID generated once per app startup
-        import uuid
-        self.session_id = str(uuid.uuid4())[:8]  # e.g. "a1b2c3d4"
+        import random
+        self.session_id = random.randint(100000, 999999)  # bigint-compatible
         print(f"📎 Session ID: {self.session_id}")
         
         # [Analytics] Interaction tracking
