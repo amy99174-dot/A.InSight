@@ -1845,41 +1845,56 @@ class SoftwareRenderCamera(QWidget):
         outer_r = int(self.circle_radius * 0.97)
         painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
 
-        # --- 2. Central Gemini star background (20% opacity, larger) ---
-        star_size = int(self.circle_radius * 1.9)
-        star_c = QColor(pc); star_c.setAlpha(51)  # 20%
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(star_c)
-        # Gemini 4-petal diamond path:  M50,0 C50,25 25,50 0,50 C25,50 50,75 50,100 ...
-        star_path = QPainterPath()
-        s = star_size
-        x0, y0 = cx - s // 2, cy - s // 2
-        star_path.moveTo(x0 + s * 0.50, y0)
-        star_path.cubicTo(x0 + s * 0.50, y0 + s * 0.25,
-                          x0 + s * 0.25, y0 + s * 0.50,
-                          x0,            y0 + s * 0.50)
-        star_path.cubicTo(x0 + s * 0.25, y0 + s * 0.50,
-                          x0 + s * 0.50, y0 + s * 0.75,
-                          x0 + s * 0.50, y0 + s)
-        star_path.cubicTo(x0 + s * 0.50, y0 + s * 0.75,
-                          x0 + s * 0.75, y0 + s * 0.50,
-                          x0 + s,        y0 + s * 0.50)
-        star_path.cubicTo(x0 + s * 0.75, y0 + s * 0.50,
-                          x0 + s * 0.50, y0 + s * 0.25,
-                          x0 + s * 0.50, y0)
-        painter.drawPath(star_path)
+        # --- 2. Central Gemini star background (20% opacity, hidden in SUCCESS/LISTEN/REVEAL) ---
+        hide_star_states = [self.STATE_SUCCESS, self.STATE_LISTEN, self.STATE_REVEAL,
+                            self.STATE_ANALYZING, self.STATE_FOCUSING]
+        if self.current_state not in hide_star_states:
+            star_size = int(self.circle_radius * 1.9)
+            star_c = QColor(pc); star_c.setAlpha(51)  # 20%
+            painter.setPen(Qt.NoPen)
+            painter.setBrush(star_c)
+            star_path = QPainterPath()
+            s = star_size
+            x0, y0 = cx - s // 2, cy - s // 2
+            star_path.moveTo(x0 + s * 0.50, y0)
+            star_path.cubicTo(x0 + s * 0.50, y0 + s * 0.25,
+                              x0 + s * 0.25, y0 + s * 0.50,
+                              x0,            y0 + s * 0.50)
+            star_path.cubicTo(x0 + s * 0.25, y0 + s * 0.50,
+                              x0 + s * 0.50, y0 + s * 0.75,
+                              x0 + s * 0.50, y0 + s)
+            star_path.cubicTo(x0 + s * 0.50, y0 + s * 0.75,
+                              x0 + s * 0.75, y0 + s * 0.50,
+                              x0 + s,        y0 + s * 0.50)
+            star_path.cubicTo(x0 + s * 0.75, y0 + s * 0.50,
+                              x0 + s * 0.50, y0 + s * 0.25,
+                              x0 + s * 0.50, y0)
+            painter.drawPath(star_path)
 
-        # --- 3. 12 blinking mini-stars at tick positions (every 30° on outer ring) ---
+        # --- 3. 8 blinking mini-stars at 45° intervals (same diamond shape as background) ---
         t = time.time()
-        def draw_mini_star(mx, my, size, alpha):
+        r = self.circle_radius
+        msz = int(8 * fs)  # mini-star size
+
+        def draw_mini_gemini(mx, my, size, alpha):
+            """Same 4-petal diamond path as the central Gemini star, scaled small."""
             c = QColor(pc); c.setAlpha(alpha)
             painter.setPen(Qt.NoPen); painter.setBrush(c)
             p = QPainterPath()
-            p.moveTo(mx, my - size)
-            p.lineTo(mx + size * 0.4, my)
-            p.lineTo(mx, my + size)
-            p.lineTo(mx - size * 0.4, my)
-            p.closeSubpath()
+            # Draw centered at (mx, my)
+            p.moveTo(mx,          my - size)
+            p.cubicTo(mx,         my - size * 0.5,
+                      mx - size * 0.5, my,
+                      mx - size,  my)
+            p.cubicTo(mx - size * 0.5, my,
+                      mx,          my + size * 0.5,
+                      mx,          my + size)
+            p.cubicTo(mx,          my + size * 0.5,
+                      mx + size * 0.5, my,
+                      mx + size,   my)
+            p.cubicTo(mx + size * 0.5, my,
+                      mx,          my - size * 0.5,
+                      mx,          my - size)
             painter.drawPath(p)
 
         def blink_alpha(offset):
@@ -1888,14 +1903,13 @@ class SoftwareRenderCamera(QWidget):
             elif phase < 2.0: return int(0.3 * 255)
             else:             return int(0.6 * 255)
 
-        r = self.circle_radius
-        msz = int(6 * fs)
-        for i in range(12):
-            angle_deg = (i * 30) - 90
+        # 8 stars at 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315°
+        for i in range(8):
+            angle_deg = i * 45  # 0, 45, 90 ... 315
             angle_rad = math.radians(angle_deg)
             sx = cx + outer_r * math.cos(angle_rad)
             sy = cy + outer_r * math.sin(angle_rad)
-            draw_mini_star(int(sx), int(sy), msz, blink_alpha(i * (3.0 / 12.0)))
+            draw_mini_gemini(int(sx), int(sy), msz, blink_alpha(i * (3.0 / 8.0)))
 
 
         # --- 4. Top status bar: ⚡ A.InSight ---
@@ -1908,37 +1922,26 @@ class SoftwareRenderCamera(QWidget):
 
     def draw_industrial_locked(self, painter, cx, cy, fs):
         """
-        Industrial LOCKED: border-box title + white subtext at 30% from bottom.
+        Industrial LOCKED: just text — title + subtext, both centered, no box.
         """
         primary_hex = self.config_manager.get_color("primary_color", "#00ff41")
         pc = QColor(primary_hex)
 
+        # Title: "鎖定目標" centered at cy - 12px (just above center)
         txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
-        font = QFont("Arial", int(18 * fs), QFont.Bold)
-        painter.setFont(font)
-        fm = painter.fontMetrics()
-        text_w = fm.horizontalAdvance(txt_locked) + int(20 * fs)
-        text_h = int(30 * fs)
-
-        # Border box — no fill, only border
-        box_rect = QRect(cx - text_w // 2, int(cy - text_h * 0.65),
-                         text_w, text_h)
         painter.save()
-        painter.setPen(QPen(pc, max(1, int(1.5 * fs))))
-        painter.setBrush(Qt.NoBrush)  # no fill
-        painter.drawRect(box_rect)
-
-        # Title inside box
         painter.setPen(pc)
-        painter.drawText(box_rect, Qt.AlignCenter, txt_locked)
-        painter.restore()
+        painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
+        painter.drawText(QRect(0, int(cy - int(28 * fs)), self.width(), int(30 * fs)),
+                         Qt.AlignCenter, txt_locked)
 
-        # Subtext (white, 30% from bottom)
-        sub_y = int(cy + (self.circle_radius * 0.70) - int(15 * fs))
+        # Subtext: "[ 按下快門捕捉 ]" just below title
+        txt_sub = self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]")
         painter.setPen(QColor(255, 255, 255, 200))
         painter.setFont(QFont("Arial", int(10 * fs)))
-        painter.drawText(QRect(0, sub_y, self.width(), int(22 * fs)), Qt.AlignCenter,
-                         self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]"))
+        painter.drawText(QRect(0, int(cy + int(8 * fs)), self.width(), int(22 * fs)),
+                         Qt.AlignCenter, txt_sub)
+        painter.restore()
 
     def draw_industrial_tuning(self, painter, cx, cy, fs):
         """
@@ -1974,19 +1977,24 @@ class SoftwareRenderCamera(QWidget):
             painter.setPen(QPen(border_c, 1)); painter.setBrush(Qt.NoBrush)
             painter.drawRect(bar_x - bar_w // 2, bar_y, bar_w, bar_h)
 
-            # Fill — unified single color (40% opacity)
-            fill_h = int(bar_h * fill_ratio)
-            fill_y = bar_y + bar_h - fill_h
-            fill_c = QColor(pc); fill_c.setAlpha(int(102 * alpha_mul))  # 40%
+            # Fill — segmented blocks (N equal slices, fill value segments)
+            seg_h = bar_h // max_v  # height per segment
+            gap_px = max(1, int(2 * fs))  # gap between segments
+            fill_c = QColor(pc); fill_c.setAlpha(int(153 * alpha_mul))  # 60% opacity
+            empty_c = QColor(pc); empty_c.setAlpha(int(20 * alpha_mul))  # dim empty
             painter.setPen(Qt.NoPen)
-            if fill_h > 0:
-                painter.setBrush(fill_c)
-                painter.drawRect(bar_x - bar_w // 2, fill_y, bar_w, fill_h)
+            for seg in range(max_v):
+                # Segments drawn bottom-up: seg=0 is bottom
+                seg_y = bar_y + bar_h - (seg + 1) * seg_h + gap_px // 2
+                seg_rect_h = seg_h - gap_px
+                if seg_rect_h < 1: seg_rect_h = 1
+                if seg < value:
+                    painter.setBrush(fill_c)
+                else:
+                    painter.setBrush(empty_c)
+                painter.drawRect(bar_x - bar_w // 2 + 1, seg_y, bar_w - 2, seg_rect_h)
 
-            # Indicator line at fill level
-            line_c = QColor(pc); line_c.setAlpha(int(230 * alpha_mul))
-            painter.setPen(QPen(line_c, max(1, int(2 * fs))))
-            painter.drawLine(bar_x - bar_w // 2, fill_y, bar_x + bar_w // 2, fill_y)
+            # Indicator line removed (segmented fills make it redundant)
 
             # Label above bar
             label_c = QColor(pc); label_c.setAlpha(int(180 * alpha_mul))
