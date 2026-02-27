@@ -11,6 +11,7 @@ from picamera2 import Picamera2
 import requests
 import json
 import base64
+import numpy as np
 
 # Audio Manager for TTS
 from audio_manager import AudioManager
@@ -1176,8 +1177,23 @@ class SoftwareRenderCamera(QWidget):
                             if should_log:
                                 print(f"[DEBUG] Camera Image Shape: {image.shape}")
                             
+                            # [Camera Filter] Apply real-time filter from UI editor config
+                            cam_filter = self.config_manager.get_theme_value("camera_filter", "none")
+                            if cam_filter == "grayscale":
+                                gray = np.mean(image, axis=2, keepdims=True).astype(np.uint8)
+                                image = np.repeat(gray, 3, axis=2)
+                            elif cam_filter == "sepia":
+                                b = image[:, :, 0].astype(np.float32)
+                                g = image[:, :, 1].astype(np.float32)
+                                r = image[:, :, 2].astype(np.float32)
+                                new_b = np.clip(b * 0.131 + g * 0.534 + r * 0.272, 0, 255)
+                                new_g = np.clip(b * 0.168 + g * 0.686 + r * 0.349, 0, 255)
+                                new_r = np.clip(b * 0.189 + g * 0.769 + r * 0.393, 0, 255)
+                                image = np.stack([new_b, new_g, new_r], axis=2).astype(np.uint8)
+                            elif cam_filter == "contrast":
+                                image = np.clip((image.astype(np.float32) - 128) * 1.5 + 128, 0, 255).astype(np.uint8)
+
                             # [Phase 2 Fix] 修正顏色對調問題 (BGR -> RGB)
-                            # Picamera2 預設回傳 BGR 格式，使用 Format_BGR888 讓 Qt 正確解讀
                             h_img, w_img, ch = image.shape
                             bytes_per_line = ch * w_img
                             qimg = QImage(image.data, w_img, h_img, bytes_per_line, QImage.Format_BGR888)
