@@ -1294,12 +1294,9 @@ class SoftwareRenderCamera(QWidget):
             if self.current_state == self.STATE_FOCUSING:
                 self.draw_focusing_state(painter, center_x, center_y, fs)
 
-            # [Phase 6] STATE_LISTEN UI (Final Result) — skin-aware
+            # [Phase 6] STATE_LISTEN UI — always classic layout
             if self.current_state == self.STATE_LISTEN:
-                if skin == "industrial":
-                    self.draw_industrial_listen(painter, center_x, center_y, fs)
-                else:
-                    self.draw_listen_state(painter, center_x, center_y, fs)
+                self.draw_listen_state(painter, center_x, center_y, fs)
             
             # --- End of Circular Clipping ---
             painter.setClipping(False)  # Remove clipping for overlay UI
@@ -1433,20 +1430,20 @@ class SoftwareRenderCamera(QWidget):
         else:
             opacity = 1.0 - ((t - 2000) / 1000.0) * 0.9
             
-        # 1. Pulsing Ring (scales with circle)
-        ring_r = int(90 * fs)
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
-        ring_color = QColor(primary_hex)
-        ring_color.setAlphaF(opacity)
-        painter.setPen(QPen(ring_color, 1))
-        painter.setBrush(Qt.NoBrush)
-        painter.drawEllipse(cx - ring_r, cy - ring_r, ring_r * 2, ring_r * 2)
-        
-        # 2. Center BG circle
-        bg_radius = int(70 * fs)
-        painter.setPen(QPen(QColor(255, 255, 255, 25), 1))
-        painter.setBrush(QColor(0, 0, 0, 204))
-        painter.drawEllipse(cx - bg_radius, cy - bg_radius, bg_radius * 2, bg_radius * 2)
+        skin = self.config_manager.get_theme_value("layout_mode", "classic")
+
+        if skin != "industrial":
+            # 1. Pulsing Ring
+            ring_r = int(90 * fs)
+            ring_color = QColor(primary_hex); ring_color.setAlphaF(opacity)
+            painter.setPen(QPen(ring_color, 1)); painter.setBrush(Qt.NoBrush)
+            painter.drawEllipse(cx - ring_r, cy - ring_r, ring_r * 2, ring_r * 2)
+            # 2. Center BG circle
+            bg_radius = int(70 * fs)
+            painter.setPen(QPen(QColor(255, 255, 255, 25), 1))
+            painter.setBrush(QColor(0, 0, 0, 204))
+            painter.drawEllipse(cx - bg_radius, cy - bg_radius, bg_radius * 2, bg_radius * 2)
         
         # Text 1: title — follow primary_color
         primary_color_obj = QColor(primary_hex)
@@ -1840,7 +1837,7 @@ class SoftwareRenderCamera(QWidget):
         primary_hex = self.config_manager.get_color("primary_color", "#00ff41")
         pc = QColor(primary_hex)
 
-        # --- 1. Outer ring + ticks (reuse classic logic) ---
+        # --- 1. Outer ring only (no ticks — replaced by blinking stars below) ---
         ring_color = QColor(pc)
         ring_color.setAlpha(204)
         painter.setPen(QPen(ring_color, 1))
@@ -1848,21 +1845,8 @@ class SoftwareRenderCamera(QWidget):
         outer_r = int(self.circle_radius * 0.97)
         painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
 
-        tick_color = QColor(pc); tick_color.setAlpha(204)
-        for i in range(12):
-            angle_deg = (i * 30) - 90
-            angle_rad = math.radians(angle_deg)
-            is_cardinal = (i % 3 == 0)
-            tick_len = int(10 * fs) if is_cardinal else int(5 * fs)
-            x_out = cx + outer_r * math.cos(angle_rad)
-            y_out = cy + outer_r * math.sin(angle_rad)
-            x_in  = cx + (outer_r - tick_len) * math.cos(angle_rad)
-            y_in  = cy + (outer_r - tick_len) * math.sin(angle_rad)
-            painter.setPen(QPen(tick_color, 2 if is_cardinal else 1))
-            painter.drawLine(int(x_in), int(y_in), int(x_out), int(y_out))
-
-        # --- 2. Central Gemini star background (20% opacity) ---
-        star_size = int(self.circle_radius * 1.2)
+        # --- 2. Central Gemini star background (20% opacity, larger) ---
+        star_size = int(self.circle_radius * 1.9)
         star_c = QColor(pc); star_c.setAlpha(51)  # 20%
         painter.setPen(Qt.NoPen)
         painter.setBrush(star_c)
@@ -1885,9 +1869,8 @@ class SoftwareRenderCamera(QWidget):
                           x0 + s * 0.50, y0)
         painter.drawPath(star_path)
 
-        # --- 3. 8 blinking mini-stars (corner + cardinal) ---
+        # --- 3. 12 blinking mini-stars at tick positions (every 30° on outer ring) ---
         t = time.time()
-        # Mini star diamond helper
         def draw_mini_star(mx, my, size, alpha):
             c = QColor(pc); c.setAlpha(alpha)
             painter.setPen(Qt.NoPen); painter.setBrush(c)
@@ -1900,7 +1883,6 @@ class SoftwareRenderCamera(QWidget):
             painter.drawPath(p)
 
         def blink_alpha(offset):
-            # 3s stepped cycle: 0.1→0.3→0.6→0.1
             phase = (t + offset) % 3.0
             if phase < 1.0:   return int(0.1 * 255)
             elif phase < 2.0: return int(0.3 * 255)
@@ -1908,19 +1890,13 @@ class SoftwareRenderCamera(QWidget):
 
         r = self.circle_radius
         msz = int(6 * fs)
-        off = int(r * 0.53)  # ~corner offset from center
+        for i in range(12):
+            angle_deg = (i * 30) - 90
+            angle_rad = math.radians(angle_deg)
+            sx = cx + outer_r * math.cos(angle_rad)
+            sy = cy + outer_r * math.sin(angle_rad)
+            draw_mini_star(int(sx), int(sy), msz, blink_alpha(i * (3.0 / 12.0)))
 
-        # 4 corner mini-stars (±off, ±off)
-        draw_mini_star(cx - off, cy - off, msz, blink_alpha(2.625))
-        draw_mini_star(cx + off, cy - off, msz, blink_alpha(0.375))
-        draw_mini_star(cx - off, cy + off, msz, blink_alpha(1.875))
-        draw_mini_star(cx + off, cy + off, msz, blink_alpha(1.125))
-
-        # 4 cardinal mini-stars (on circle edge)
-        draw_mini_star(cx,          cy - r, msz, blink_alpha(0.0))
-        draw_mini_star(cx,          cy + r, msz, blink_alpha(1.5))
-        draw_mini_star(cx - r,      cy,     msz, blink_alpha(2.25))
-        draw_mini_star(cx + r,      cy,     msz, blink_alpha(0.75))
 
         # --- 4. Top status bar: ⚡ A.InSight ---
         title_text = self.config_manager.get_text("title", "A.InSight")
@@ -1944,13 +1920,12 @@ class SoftwareRenderCamera(QWidget):
         text_w = fm.horizontalAdvance(txt_locked) + int(20 * fs)
         text_h = int(30 * fs)
 
-        # Border box background
+        # Border box — no fill, only border
         box_rect = QRect(cx - text_w // 2, int(cy - text_h * 0.65),
                          text_w, text_h)
         painter.save()
-        bg = QColor(0, 0, 0, 230)
         painter.setPen(QPen(pc, max(1, int(1.5 * fs))))
-        painter.setBrush(bg)
+        painter.setBrush(Qt.NoBrush)  # no fill
         painter.drawRect(box_rect)
 
         # Title inside box
@@ -1999,17 +1974,14 @@ class SoftwareRenderCamera(QWidget):
             painter.setPen(QPen(border_c, 1)); painter.setBrush(Qt.NoBrush)
             painter.drawRect(bar_x - bar_w // 2, bar_y, bar_w, bar_h)
 
-            # Fill (left half 10% opacity, right half 40% opacity)
+            # Fill — unified single color (40% opacity)
             fill_h = int(bar_h * fill_ratio)
             fill_y = bar_y + bar_h - fill_h
-            fill_l = QColor(pc); fill_l.setAlpha(int(26 * alpha_mul))   # 10%
-            fill_r = QColor(pc); fill_r.setAlpha(int(102 * alpha_mul))  # 40%
+            fill_c = QColor(pc); fill_c.setAlpha(int(102 * alpha_mul))  # 40%
             painter.setPen(Qt.NoPen)
             if fill_h > 0:
-                painter.setBrush(fill_l)
-                painter.drawRect(bar_x - bar_w // 2, fill_y, bar_w // 2, fill_h)
-                painter.setBrush(fill_r)
-                painter.drawRect(bar_x, fill_y, bar_w // 2, fill_h)
+                painter.setBrush(fill_c)
+                painter.drawRect(bar_x - bar_w // 2, fill_y, bar_w, fill_h)
 
             # Indicator line at fill level
             line_c = QColor(pc); line_c.setAlpha(int(230 * alpha_mul))
