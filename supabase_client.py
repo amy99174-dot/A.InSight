@@ -21,8 +21,11 @@ def log_history(result: dict, time_scale: int, history_scale: int,
     """
     def _insert():
         try:
+            # Strip large binary fields to keep payload small
+            log_result = {k: v for k, v in result.items() if k != 'generated_image'}
+
             payload = {
-                'result': result,
+                'result': log_result,
                 'session_id': session_id if isinstance(session_id, int) else None,
                 'time_scale': time_scale,
                 'history_scale': history_scale,
