@@ -1480,21 +1480,26 @@ class SoftwareRenderCamera(QWidget):
         painter.setBrush(QColor(0, 0, 0, 204))
         painter.drawEllipse(cx - bg_radius, cy - bg_radius, bg_radius * 2, bg_radius * 2)
         
-        # Text 1: title
-        painter.setPen(Qt.white)
+        # Text 1: title — follow primary_color
+        primary_color_obj = QColor(primary_hex)
+        painter.setPen(primary_color_obj)
         painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
         text_rect_1 = QRect(0, int(cy - 35 * fs), self.width(), int(35 * fs))
         txt_prox_title = self.config_manager.get_text("proximityTitle", "訊號偵測")
         painter.drawText(text_rect_1, Qt.AlignCenter, txt_prox_title)
         
         # Separator Line
-        painter.setPen(QPen(QColor(255, 255, 255, 128), 1))
+        sep_color = QColor(primary_hex)
+        sep_color.setAlpha(128)
+        painter.setPen(QPen(sep_color, 1))
         painter.drawLine(int(cx - 50 * fs), int(cy + 5 * fs), int(cx + 50 * fs), int(cy + 5 * fs))
         
-        # Text 2: subtext
+        # Text 2: subtext — follow primary_color
         painter.setFont(QFont("Arial", int(10 * fs), QFont.Bold))
         txt_prox_sub = self.config_manager.get_text("proximitySubtext", "接近目標中")
-        painter.setPen(QColor(255, 255, 255, 200))
+        sub_color = QColor(primary_hex)
+        sub_color.setAlpha(200)
+        painter.setPen(sub_color)
         text_rect_2 = QRect(0, int(cy + 12 * fs), self.width(), int(20 * fs))
         painter.drawText(text_rect_2, Qt.AlignCenter, txt_prox_sub)
         
@@ -1542,16 +1547,17 @@ class SoftwareRenderCamera(QWidget):
         painter.setBrush(dot_color)
         painter.drawEllipse(cx - 1, cy - 1, 2, 2)
         
-        # Title text
+        # Title text — follow primary_color
         txt_locked = self.config_manager.get_text("lockedTitle", "鎖定目標")
         painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
-        text_color = QColor(255, 255, 255)
-        painter.setPen(text_color)
+        painter.setPen(QColor(primary_hex))
         painter.drawText(QRect(0, int(cy - 45 * fs), self.width(), int(30 * fs)), Qt.AlignCenter, txt_locked)
         
-        # Bottom subtext
+        # Bottom subtext — follow primary_color
         painter.setFont(QFont("Arial", int(10 * fs)))
-        painter.setPen(Qt.white)
+        sub_color = QColor(primary_hex)
+        sub_color.setAlpha(180)
+        painter.setPen(sub_color)
         painter.drawText(QRect(0, int(cy + 30 * fs), self.width(), int(30 * fs)), Qt.AlignCenter,
                          self.config_manager.get_text("lockedSubtext", "[ 按下快門捕捉 ]"))
         
@@ -1600,10 +1606,9 @@ class SoftwareRenderCamera(QWidget):
             painter.setPen(QPen(tick_color, tick_width))
             painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
             
-        # Top Label "A.InSight"
+        # Top Label "A.InSight" — always white regardless of theme
         title_text = self.config_manager.get_text("title", "A.InSight")
-        title_color = QColor(base_color)
-        title_color.setAlpha(200)
+        title_color = QColor(255, 255, 255, 200)  # Fixed white
         painter.setPen(title_color)
         painter.setFont(QFont("Arial", int(9 * fs)))
         text_y = int(cy - self.circle_radius * 0.97 + 28 * fs)
@@ -1833,7 +1838,28 @@ class SoftwareRenderCamera(QWidget):
         # Draw with word wrap
         painter.drawText(rect_script, Qt.AlignCenter | Qt.TextWordWrap, current_page)
         
-        # Note: Bottom overlay and hint moved to paintEvent (outside circular clip)
+        # 4. Dot pagination (like web version)
+        n_pages = len(pages)
+        if n_pages > 1:
+            primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+            dot_r = int(5 * fs)
+            dot_gap = int(14 * fs)
+            total_dot_w = n_pages * dot_r * 2 + (n_pages - 1) * (dot_gap - dot_r * 2)
+            dot_start_x = cx - total_dot_w // 2
+            dot_y = cy + int(self.circle_radius * 0.72)
+            for i in range(n_pages):
+                dot_x = dot_start_x + i * dot_gap
+                if i == self.script_page:
+                    # Active dot: filled white
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(QColor(255, 255, 255, 230))
+                else:
+                    # Inactive dot: primary_color at 35% opacity
+                    inactive = QColor(primary_hex)
+                    inactive.setAlpha(90)
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(inactive)
+                painter.drawEllipse(dot_x, dot_y - dot_r, dot_r * 2, dot_r * 2)
         
         painter.restore()
     
