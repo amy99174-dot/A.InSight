@@ -1097,6 +1097,13 @@ class SoftwareRenderCamera(QWidget):
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
 
+            # 180° rotation (for upside-down mounted screen)
+            # Controlled by ROTATE_180 env variable: set to "0" to disable
+            if os.environ.get('ROTATE_180', '1') != '0':
+                painter.translate(self.width() / 2, self.height() / 2)
+                painter.rotate(180)
+                painter.translate(-self.width() / 2, -self.height() / 2)
+
             # 1. 繪製背景 (全黑)
             painter.fillRect(self.rect(), Qt.black)
 
