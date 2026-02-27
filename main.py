@@ -1960,10 +1960,10 @@ class SoftwareRenderCamera(QWidget):
 
         selected = self.tuning_selected_param  # 0=time, 1=history
 
-        for idx, (label, value, max_v, fmt) in enumerate([
-            (self.config_manager.get_text("tuningRingOuter", "TIME"), self.time_scale, 9,
+        for idx, (label, value, max_v, display_segs, fmt) in enumerate([
+            (self.config_manager.get_text("tuningRingOuter", "TIME"), self.time_scale, 9, 5,
              lambda v: f"0{v}" if v < 10 else str(v)),
-            (self.config_manager.get_text("tuningRingInner", "DATA"), self.history_scale, 3,
+            (self.config_manager.get_text("tuningRingInner", "DATA"), self.history_scale, 3, 3,
              lambda v: {1: "LO", 2: "MID", 3: "HI"}.get(v, "?")),
         ]):
             bar_x = cx + (idx * 2 - 1) * (gap // 2 + bar_w // 2)  # left or right of center
@@ -1977,21 +1977,18 @@ class SoftwareRenderCamera(QWidget):
             painter.setPen(QPen(border_c, 1)); painter.setBrush(Qt.NoBrush)
             painter.drawRect(bar_x - bar_w // 2, bar_y, bar_w, bar_h)
 
-            # Fill — segmented blocks (N equal slices, fill value segments)
-            seg_h = bar_h // max_v  # height per segment
-            gap_px = max(1, int(2 * fs))  # gap between segments
-            fill_c = QColor(pc); fill_c.setAlpha(int(153 * alpha_mul))  # 60% opacity
-            empty_c = QColor(pc); empty_c.setAlpha(int(20 * alpha_mul))  # dim empty
+            # Fill — segmented blocks (display_segs equal visual cells)
+            seg_h = bar_h // display_segs
+            gap_px = max(1, int(2 * fs))
+            fill_c = QColor(pc); fill_c.setAlpha(int(153 * alpha_mul))  # 60%
+            empty_c = QColor(pc); empty_c.setAlpha(int(20 * alpha_mul))  # dim
+            filled_segs = round(value / max_v * display_segs)
             painter.setPen(Qt.NoPen)
-            for seg in range(max_v):
-                # Segments drawn bottom-up: seg=0 is bottom
+            for seg in range(display_segs):
                 seg_y = bar_y + bar_h - (seg + 1) * seg_h + gap_px // 2
                 seg_rect_h = seg_h - gap_px
                 if seg_rect_h < 1: seg_rect_h = 1
-                if seg < value:
-                    painter.setBrush(fill_c)
-                else:
-                    painter.setBrush(empty_c)
+                painter.setBrush(fill_c if seg < filled_segs else empty_c)
                 painter.drawRect(bar_x - bar_w // 2 + 1, seg_y, bar_w - 2, seg_rect_h)
 
             # Indicator line removed (segmented fills make it redundant)
