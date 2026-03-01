@@ -20,17 +20,22 @@ class GPIOController(QObject):
     encoder_rotated_cw = pyqtSignal()  # Clockwise
     encoder_rotated_ccw = pyqtSignal()  # Counter-clockwise
     
-    def __init__(self, confirm_pin=17, left_pin=19, right_pin=26, 
-                 encoder_a=20, encoder_b=21):
+    def __init__(self, confirm_pin=17, left_pin=4, right_pin=26,
+                 encoder_a=20, encoder_b=27):
         """
         Initialize GPIO Controller
-        
-        Args:
-            confirm_pin: GPIO pin for confirm button
-            left_pin: GPIO pin for left button
-            right_pin: GPIO pin for right button
-            encoder_a: GPIO pin for rotary encoder A (CLK)
-            encoder_b: GPIO pin for rotary encoder B (DT)
+
+        Pin assignments (Physical → BCM):
+            confirm_pin : GPIO17  → Pin 11
+            left_pin    : GPIO4   → Pin 7  (was Pin 35/GPIO19, freed for I2S LRC)
+            right_pin   : GPIO26  → Pin 37
+            encoder_a   : GPIO20  → Pin 38
+            encoder_b   : GPIO27  → Pin 13 (was Pin 40/GPIO21, freed for I2S DIN)
+
+        MAX98357A I2S audio (do NOT use these as GPIO):
+            BCK  → GPIO18 / Pin 12
+            LRC  → GPIO19 / Pin 35
+            DIN  → GPIO21 / Pin 40
         """
         super().__init__()
         
