@@ -1,73 +1,87 @@
 #!/usr/bin/env python3
 """
-GPIO 按钮测试脚本
-测试三个按钮的输入是否正常
+GPIO Button & Encoder Test Script
+===================================
+Pin assignments (BCM → Physical):
+    Confirm button : GPIO17 → Pin 11
+    Left button    : GPIO4  → Pin 7
+    Right button   : GPIO26 → Pin 37
+    Encoder A(CLK) : GPIO20 → Pin 38
+    Encoder B(DT)  : GPIO27 → Pin 13
+
+Usage:
+    python3 test_gpio.py
+Press Ctrl+C to exit.
 """
 
-from gpiozero import Button
-from signal import pause
-import sys
+import time
+from gpiozero import Button, RotaryEncoder
 
-print("🎮 GPIO 按钮测试")
-print("=" * 50)
-print("请告诉我你接了哪三个按钮的 GPIO 引脚编号")
-print("例如: 22 23 24")
+# ── Pin definitions ────────────────────────────────────────────────────────
+CONFIRM_PIN = 17   # Pin 11
+LEFT_PIN    = 4    # Pin 7  (was Pin 35)
+RIGHT_PIN   = 26   # Pin 37
+ENCODER_A   = 20   # Pin 38
+ENCODER_B   = 27   # Pin 13 (was Pin 40)
+
+print("=" * 45)
+print("  GPIO Button & Encoder Test")
+print("=" * 45)
+print(f"  Confirm : GPIO{CONFIRM_PIN} (Pin 11)")
+print(f"  Left    : GPIO{LEFT_PIN}  (Pin 7)")
+print(f"  Right   : GPIO{RIGHT_PIN} (Pin 37)")
+print(f"  Encoder : GPIO{ENCODER_A}/{ENCODER_B} (Pin 38/13)")
+print("=" * 45)
+print("  Press buttons or turn encoder...")
+print("  Ctrl+C to exit\n")
+
+# ── Button setup ──────────────────────────────────────────────────────────
+try:
+    confirm = Button(CONFIRM_PIN, bounce_time=0.3)
+    left    = Button(LEFT_PIN,    bounce_time=0.2)
+    right   = Button(RIGHT_PIN,   bounce_time=0.2)
+    print(f"✅ Buttons initialized")
+except Exception as e:
+    print(f"❌ Button init failed: {e}")
+    confirm = left = right = None
+
+# ── Encoder setup ─────────────────────────────────────────────────────────
+try:
+    encoder = RotaryEncoder(a=ENCODER_A, b=ENCODER_B, wrap=False, max_steps=100)
+    last_val = encoder.value
+    print(f"✅ Encoder initialized")
+except Exception as e:
+    print(f"❌ Encoder init failed: {e}")
+    encoder = None
+    last_val = 0
+
 print()
 
-# 获取GPIO引脚
+# ── Callbacks ────────────────────────────────────────────────────────────
+if confirm:
+    confirm.when_pressed = lambda: print("🔘 CONFIRM button pressed  (GPIO17 / Pin 11)")
+if left:
+    left.when_pressed    = lambda: print("⬅️  LEFT button pressed     (GPIO4  / Pin 7)")
+if right:
+    right.when_pressed   = lambda: print("➡️  RIGHT button pressed    (GPIO26 / Pin 37)")
+
+# ── Main loop (encoder polling) ──────────────────────────────────────────
 try:
-    pins_input = input("输入三个GPIO引脚号（空格分隔）: ").strip()
-    pins = [int(p) for p in pins_input.split()]
-    
-    if len(pins) != 3:
-        print("❌ 需要输入3个引脚号")
-        sys.exit(1)
-    
-    print(f"\n✅ 测试引脚: {pins}")
-    print("=" * 50)
-    
-except ValueError:
-    print("❌ 请输入有效的数字")
-    sys.exit(1)
+    while True:
+        if encoder:
+            val = encoder.value
+            if val > last_val:
+                print(f"🔄 Encoder CW  ↑  (value: {val})")
+            elif val < last_val:
+                print(f"🔄 Encoder CCW ↓  (value: {val})")
+            last_val = val
+        time.sleep(0.05)
 
-# 创建按钮对象（默认上拉配置）
-buttons = []
-for i, pin in enumerate(pins):
-    try:
-        btn = Button(pin)
-        buttons.append(btn)
-        print(f"✅ 按钮 {i+1} (GPIO {pin}) 已初始化")
-    except Exception as e:
-        print(f"❌ 按钮 {i+1} (GPIO {pin}) 初始化失败: {e}")
-        sys.exit(1)
-
-print("\n" + "=" * 50)
-print("📋 测试说明:")
-print("  - 按下任意按钮会显示消息")
-print("  - 释放按钮也会显示消息")
-print("  - 按 Ctrl+C 停止测试")
-print("=" * 50 + "\n")
-
-# 设置回调
-def make_press_handler(num, pin):
-    def handler():
-        print(f"✅ 按钮 {num} (GPIO {pin}) 被按下")
-    return handler
-
-def make_release_handler(num, pin):
-    def handler():
-        print(f"↩️ 按钮 {num} (GPIO {pin}) 被释放")
-    return handler
-
-for i, (btn, pin) in enumerate(zip(buttons, pins)):
-    btn.when_pressed = make_press_handler(i+1, pin)
-    btn.when_released = make_release_handler(i+1, pin)
-
-print("🎯 开始监听按钮事件...")
-print("   请按下按钮测试...\n")
-
-try:
-    pause()
 except KeyboardInterrupt:
-    print("\n\n⏹️ 测试停止")
-    print("=" * 50)
+    print("\n\n👋 Test ended.")
+finally:
+    for dev in [confirm, left, right, encoder]:
+        if dev:
+            try: dev.close()
+            except: pass
+    print("🧹 GPIO cleaned up.")
