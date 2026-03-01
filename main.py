@@ -740,6 +740,12 @@ class SoftwareRenderCamera(QWidget):
         )
         self.camera.configure(config)
         self.camera.start()
+        # Enable continuous autofocus (Camera Module 3+ only; silently skipped if unsupported)
+        try:
+            self.camera.set_controls({"AfMode": 2, "AfSpeed": 1})  # 2=Continuous, 1=Fast
+            print("✅ 自動對焦已啟用 (Continuous AF)")
+        except Exception as af_err:
+            print(f"⚠️ 此鏡頭不支援自動對焦（固定焦距）: {af_err}")
         print("✅ 摄像头已启动")
         
         # [Phase 4.4] Config Manager - Sync with Web Editor
