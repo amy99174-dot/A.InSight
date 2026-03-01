@@ -1961,7 +1961,7 @@ class SoftwareRenderCamera(QWidget):
         selected = self.tuning_selected_param  # 0=time, 1=history
 
         for idx, (label, value, max_v, display_segs, fmt) in enumerate([
-            (self.config_manager.get_text("tuningRingOuter", "TIME"), self.time_scale, 9, 5,
+            (self.config_manager.get_text("tuningRingOuter", "TIME"), self.time_scale, 5, 5,
              lambda v: f"0{v}" if v < 10 else str(v)),
             (self.config_manager.get_text("tuningRingInner", "DATA"), self.history_scale, 3, 3,
              lambda v: {1: "LO", 2: "MID", 3: "HI"}.get(v, "?")),
