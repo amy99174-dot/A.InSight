@@ -736,7 +736,7 @@ class SoftwareRenderCamera(QWidget):
         print("📷 初始化摄像头（软件渲染）...")
         self.camera = Picamera2()
         config = self.camera.create_video_configuration(
-            main={"size": (640, 480), "format": "RGB888"}
+            main={"size": (1280, 720), "format": "RGB888"}
         )
         self.camera.configure(config)
         self.camera.start()
