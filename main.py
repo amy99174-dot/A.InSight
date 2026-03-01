@@ -695,10 +695,10 @@ class SoftwareRenderCamera(QWidget):
             try:
                 self.gpio_controller = GPIOController(
                     confirm_pin=17,  # GPIO17 → Pin 11
-                    left_pin=4,      # GPIO4  → Pin 7  (was Pin 35)
-                    right_pin=26,    # GPIO26 → Pin 37
+                    left_pin=26,     # GPIO26 → Pin 37 (swapped)
+                    right_pin=4,     # GPIO4  → Pin 7  (swapped)
                     encoder_a=20,    # GPIO20 → Pin 38
-                    encoder_b=27     # GPIO27 → Pin 13 (was Pin 40)
+                    encoder_b=27     # GPIO27 → Pin 13
                 )
                 # Connect GPIO signals to handlers
                 self.gpio_controller.confirm_pressed.connect(self.on_gpio_confirm)
