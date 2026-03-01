@@ -22,7 +22,7 @@ export SDL_AUDIODRIVER=alsa
 export SDL_AUDIODEVICE=plughw:1,0
 
 # ── OpenAI TTS Key (fill in your key for narration audio) ──────────────────
-# export OPENAI_KEY="sk-..."   # Uncomment and paste your key to enable TTS
+# export OPENAI_KEY="sk-..."   # ← 不要把 key 放這裡，在 Pi 上設定（見下方說明）
 
 # 3. 启动应用
 echo "启动应用..."

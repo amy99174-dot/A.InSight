@@ -51,42 +51,52 @@ class GyroController(QObject):
             print(f"❌ Gyroscope init failed: {e}")
     
     def _calibrate(self):
-        """Calibrate sensor by reading current position as zero"""
+        """Calibrate sensor by reading current position as zero.
+        
+        Physical axis layout (as installed in device):
+            X axis → up / down   (used for vertical   pan, dy)
+            Y axis → front / back (unused)
+            Z axis → left / right (used for horizontal pan, dx)
+        """
         if not self.sensor:
             return
-        
         try:
             accel = self.sensor.get_accel_data()
-            self.x_offset = accel['x']
-            self.y_offset = accel['y']
-            print(f"✅ Gyro calibrated (X={self.x_offset:.2f}, Y={self.y_offset:.2f})")
+            self.x_offset = accel['z']  # horizontal zero  (Z = left/right)
+            self.y_offset = accel['x']  # vertical zero    (X = up/down)
+            print(f"✅ Gyro calibrated (Z={self.x_offset:.2f}, X={self.y_offset:.2f})")
         except Exception as e:
             print(f"⚠️ Gyro calibration failed: {e}")
-    
+
     def _read_sensor(self):
-        """Read sensor data and emit pan signal"""
+        """Read sensor data and emit pan signal.
+
+        Axis remap (physical install):
+            dx (horizontal) ← accel['z']  (left/right tilt)
+            dy (vertical)   ← accel['x']  (up/down tilt)
+        Negate a value here if pan direction is inverted.
+        """
         if not self.sensor:
             return
-        
         try:
             accel = self.sensor.get_accel_data()
-            
-            # Calculate relative tilt from calibrated zero
-            x_tilt = accel['x'] - self.x_offset
-            y_tilt = accel['y'] - self.y_offset
-            
+
+            # Remap: Z → horizontal, X → vertical
+            x_tilt = accel['z'] - self.x_offset   # left/right
+            y_tilt = accel['x'] - self.y_offset   # up/down
+
             # Apply dead zone
             if abs(x_tilt) < self.dead_zone:
                 x_tilt = 0
             if abs(y_tilt) < self.dead_zone:
                 y_tilt = 0
-            
+
             # Only emit if there's actual movement
             if x_tilt != 0 or y_tilt != 0:
                 dx = x_tilt * self.sensitivity
                 dy = y_tilt * self.sensitivity
                 self.pan_update.emit(dx, dy)
-                
+
         except Exception:
             pass  # Silently ignore read errors
     
