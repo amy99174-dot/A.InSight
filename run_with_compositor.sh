@@ -17,6 +17,13 @@ DISPLAY=:0 xrandr --output HDMI-A-1 --rotate inverted 2>/dev/null || \
 DISPLAY=:0 xrandr --output HDMI-1-1 --rotate inverted 2>/dev/null || \
 echo "⚠️  xrandr 旋轉失敗，請手動確認輸出名稱 (xrandr 列表)"
 
+# ── Audio: Route to MAX98357A (hifiberry, card 1) ──────────────────────────
+export SDL_AUDIODRIVER=alsa
+export SDL_AUDIODEVICE=plughw:1,0
+
+# ── OpenAI TTS Key (fill in your key for narration audio) ──────────────────
+# export OPENAI_KEY="sk-..."   # Uncomment and paste your key to enable TTS
+
 # 3. 启动应用
 echo "启动应用..."
 python3 main.py

@@ -13,18 +13,21 @@ from typing import Optional
 class AudioManager:
     """Manages TTS audio generation and playback using OpenAI API"""
     
-    def __init__(self, openai_api_key: str):
-        """
-        Initialize AudioManager with OpenAI API key
-        
-        Args:
-            openai_api_key: OpenAI API key for TTS service
-        """
+    def __init__(self, openai_api_key: str = ""):
         self.api_key = openai_api_key
-        
-        # Initialize pygame mixer for audio playback with multiple channels
-        pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
-        pygame.mixer.set_num_channels(10)  # Support up to 10 simultaneous sounds
+        if not self.api_key:
+            print("⚠️  AudioManager: no OPENAI_KEY — TTS disabled, ambience still plays")
+
+        # Route pygame/SDL to hifiberry (card 1) if not already set
+        import os as _os
+        if not _os.environ.get("SDL_AUDIODEVICE"):
+            _os.environ["SDL_AUDIODEVICE"] = "plughw:1,0"  # MAX98357A via hifiberry
+        if not _os.environ.get("SDL_AUDIODRIVER"):
+            _os.environ["SDL_AUDIODRIVER"] = "alsa"
+
+        # Initialize pygame mixer
+        pygame.mixer.init(frequency=44100, size=-16, channels=2, buffer=1024)
+        pygame.mixer.set_num_channels(10)
         
         # TTS playback (using mixer.music)
         self.current_audio_path = None
@@ -49,39 +52,25 @@ class AudioManager:
         print("🔊 AudioManager initialized with ambience support")
     
     def generate_and_play_audio(self, script_text: str) -> bool:
-        """
-        Generate audio from text using OpenAI TTS and play it
-        
-        Args:
-            script_text: Text to convert to speech
-            
-        Returns:
-            True if successful, False otherwise
-        """
+        if not self.api_key:
+            print("⚠️  TTS skipped: no OPENAI_KEY")
+            return False
         try:
-            print(f"🎙️ Generating TTS for: {script_text[:50]}...")
-            
-            # 1. Generate audio via OpenAI API
+            print(f"🎙️ Generating TTS: {script_text[:50]}...")
             audio_data = self._generate_audio(script_text)
             if not audio_data:
-                print("❌ Failed to generate audio data")
+                print("❌ Failed to generate audio")
                 return False
-            
-            # 2. Save to temporary file
             temp_path = self._save_to_temp(audio_data)
             if not temp_path:
-                print("❌ Failed to save audio file")
+                print("❌ Failed to save audio")
                 return False
-            
-            # 3. Play audio
             self._play_audio(temp_path)
             self.current_audio_path = temp_path
-            
-            print("✅ Audio playback started")
+            print("✅ TTS playback started")
             return True
-            
         except Exception as e:
-            print(f"❌ Audio generation failed: {e}")
+            print(f"❌ TTS failed: {e}")
             return False
     
     def _generate_audio(self, text: str) -> Optional[bytes]:

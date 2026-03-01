@@ -677,17 +677,13 @@ class SoftwareRenderCamera(QWidget):
         self.interaction_start_time = None  # When PROXIMITY started
         self.listen_start_time = None       # When LISTEN started
         
-        # [Audio] Initialize Audio Manager
+        # [Audio] Initialize Audio Manager (ambience always on; TTS needs OPENAI_KEY)
         openai_key = os.environ.get("OPENAI_KEY", "")
-        if openai_key:
-            try:
-                self.audio_manager = AudioManager(openai_key)
-                print("🔊 Audio Manager initialized")
-            except Exception as e:
-                print(f"⚠️ Audio Manager init failed: {e}")
-                self.audio_manager = None
-        else:
-            print("⚠️ OPENAI_KEY not set, audio disabled")
+        try:
+            self.audio_manager = AudioManager(openai_key)
+            print(f"🔊 Audio Manager initialized (TTS {'enabled' if openai_key else 'disabled — set OPENAI_KEY to enable'})")
+        except Exception as e:
+            print(f"⚠️ Audio Manager init failed: {e}")
             self.audio_manager = None
         
         # [GPIO] Initialize GPIO Controller
