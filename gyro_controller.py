@@ -93,7 +93,7 @@ class GyroController(QObject):
 
             # Only emit if there's actual movement
             if x_tilt != 0 or y_tilt != 0:
-                dx = x_tilt * self.sensitivity
+                dx = -x_tilt * self.sensitivity   # negated: reverse left/right
                 dy = y_tilt * self.sensitivity
                 self.pan_update.emit(dx, dy)
 
