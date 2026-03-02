@@ -52,19 +52,19 @@ class GyroController(QObject):
     
     def _calibrate(self):
         """Calibrate sensor by reading current position as zero.
-        
+
         Physical axis layout (as installed in device):
-            X axis → up / down   (used for vertical   pan, dy)
+            X axis → left / right (used for horizontal pan, dx)
             Y axis → front / back (unused)
-            Z axis → left / right (used for horizontal pan, dx)
+            Z axis → up / down   (used for vertical   pan, dy)
         """
         if not self.sensor:
             return
         try:
             accel = self.sensor.get_accel_data()
-            self.x_offset = accel['z']  # horizontal zero  (Z = left/right)
-            self.y_offset = accel['x']  # vertical zero    (X = up/down)
-            print(f"✅ Gyro calibrated (Z={self.x_offset:.2f}, X={self.y_offset:.2f})")
+            self.x_offset = accel['x']  # horizontal zero  (X = left/right)
+            self.y_offset = accel['z']  # vertical zero    (Z = up/down)
+            print(f"✅ Gyro calibrated (X={self.x_offset:.2f}, Z={self.y_offset:.2f})")
         except Exception as e:
             print(f"⚠️ Gyro calibration failed: {e}")
 
@@ -72,8 +72,8 @@ class GyroController(QObject):
         """Read sensor data and emit pan signal.
 
         Axis remap (physical install):
-            dx (horizontal) ← accel['z']  (left/right tilt)
-            dy (vertical)   ← accel['x']  (up/down tilt)
+            dx (horizontal) ← accel['x']  (left/right tilt)
+            dy (vertical)   ← accel['z']  (up/down tilt)
         Negate a value here if pan direction is inverted.
         """
         if not self.sensor:
@@ -81,9 +81,9 @@ class GyroController(QObject):
         try:
             accel = self.sensor.get_accel_data()
 
-            # Remap: Z → horizontal, X → vertical
-            x_tilt = accel['z'] - self.x_offset   # left/right
-            y_tilt = accel['x'] - self.y_offset   # up/down
+            # Remap: X → horizontal, Z → vertical
+            x_tilt = accel['x'] - self.x_offset   # left/right
+            y_tilt = accel['z'] - self.y_offset   # up/down
 
             # Apply dead zone
             if abs(x_tilt) < self.dead_zone:
