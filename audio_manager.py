@@ -142,6 +142,7 @@ class AudioManager:
         """
         try:
             pygame.mixer.music.load(file_path)
+            pygame.mixer.music.set_volume(0.9)  # 90% for narration
             pygame.mixer.music.play()
             print("▶️ Audio playback started")
         except Exception as e:
@@ -190,7 +191,7 @@ class AudioManager:
                 try:
                     # Load sound
                     sound = pygame.mixer.Sound(sound_path)
-                    sound.set_volume(0.6)  # 60% volume for background
+                    sound.set_volume(0.25)  # 25% for background ambience
                     
                     # Get available channel (start from channel 1, 0 reserved for music)
                     channel = pygame.mixer.Channel(i + 1)
