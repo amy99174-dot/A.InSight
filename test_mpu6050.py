@@ -1,95 +1,92 @@
 #!/usr/bin/env python3
 """
-MPU6050 陀螺仪测试脚本
-测试加速度计和陀螺仪数据读取
+MPU6050 陀螺儀測試腳本
+實際軸映射（依硬體安裝方向）:
+    X 軸 → 上下傾斜   (用於垂直平移 dy)
+    Y 軸 → 前後傾斜   (未使用)
+    Z 軸 → 左右傾斜   (用於水平平移 dx)
+
+按 Enter 重新校準，按 Ctrl+C 結束。
 """
 
 import time
 import sys
+import threading
 
 try:
     from mpu6050 import mpu6050
 except ImportError:
-    print("❌ 需要安装 mpu6050 库")
-    print("   运行: sudo pip3 install mpu6050-raspberrypi")
+    print("❌ 需要安裝 mpu6050 庫")
+    print("   運行: pip3 install mpu6050-raspberrypi --break-system-packages")
     sys.exit(1)
 
-print("🔄 MPU6050 陀螺仪测试")
+print("🔄 MPU6050 陀螺儀測試")
 print("=" * 60)
-print("I2C 配置:")
-print("  SDA: GPIO 2 (物理Pin 3)")
-print("  SCL: GPIO 3 (物理Pin 5)")
-print("  地址: 0x68 (默认)")
+print("I2C 配置:  SDA→GPIO2(Pin3)  SCL→GPIO3(Pin5)  addr=0x68")
+print("軸映射:    Z→左右(dx)   X→上下(dy)   Y→前後(未用)")
+print("操作:      按 Enter 重新校準  |  Ctrl+C 結束")
 print("=" * 60)
+
+sensor = mpu6050(0x68)
+print("✅ MPU6050 已初始化\n")
+
+# ── 校準 ─────────────────────────────────────────────────────────────────────
+z_offset = 0.0
+x_offset = 0.0
+
+def calibrate():
+    global z_offset, x_offset
+    print("\n⏳ 校準中... 保持裝置靜止")
+    time.sleep(0.8)
+    accel = sensor.get_accel_data()
+    z_offset = accel['z']   # 左右水平零點
+    x_offset = accel['x']   # 上下垂直零點
+    print(f"✅ 校準完成  Z偏移={z_offset:+.3f}  X偏移={x_offset:+.3f}")
+    print("   開始實時監測（留意左右傾斜 → Z 變化 / 上下傾斜 → X 變化）")
+    print("-" * 60)
+
+calibrate()
+
+# ── Enter 鍵監聽（背景執行緒）────────────────────────────────────────────────
+def wait_for_enter():
+    while True:
+        try:
+            input()   # 等待 Enter
+            calibrate()
+        except EOFError:
+            break
+
+t = threading.Thread(target=wait_for_enter, daemon=True)
+t.start()
+
+# ── 主迴圈 ────────────────────────────────────────────────────────────────────
+DEAD_ZONE = 0.15
 
 try:
-    # 初始化 MPU6050 (默认I2C地址 0x68)
-    sensor = mpu6050(0x68)
-    print("✅ MPU6050 已初始化\n")
-    
-    print("=" * 60)
-    print("📋 测试说明:")
-    print("  - 倾斜设备左右 → X轴变化 (控制水平移动)")
-    print("  - 倾斜设备前后 → Y轴变化 (控制垂直移动)")
-    print("  - 数值范围: -1.0 到 +1.0 (重力加速度)")
-    print("  - 按 Ctrl+C 停止测试")
-    print("=" * 60 + "\n")
-    
-    print("🎯 开始读取数据...\n")
-    
-    # 读取初始数据校准
-    print("⏳ 校准中... 请保持设备水平静止")
-    time.sleep(1)
-    
-    accel_data = sensor.get_accel_data()
-    x_offset = accel_data['x']
-    y_offset = accel_data['y']
-    print(f"✅ 校准完成 (X偏移: {x_offset:.3f}, Y偏移: {y_offset:.3f})\n")
-    
-    print("开始实时监测 (每秒更新 10 次):")
-    print("-" * 60)
-    
     while True:
-        # 读取加速度计数据 (单位: g)
-        accel_data = sensor.get_accel_data()
-        
-        # 读取陀螺仪数据 (单位: deg/s)
-        gyro_data = sensor.get_gyro_data()
-        
-        # 读取温度
-        temp = sensor.get_temp()
-        
-        # 计算相对于校准位置的偏移
-        x_accel = accel_data['x'] - x_offset
-        y_accel = accel_data['y'] - y_offset
-        z_accel = accel_data['z']
-        
-        # 归一化到 -1.0 到 +1.0 范围
-        x_normalized = max(-1.0, min(1.0, x_accel))
-        y_normalized = max(-1.0, min(1.0, y_accel))
-        
-        # 显示数据
-        print(f"\r加速度 X: {x_normalized:+.3f} | Y: {y_normalized:+.3f} | Z: {z_accel:+.3f} | "
-              f"温度: {temp:.1f}°C", end='', flush=True)
-        
-        time.sleep(0.1)  # 10Hz 更新频率
-        
+        accel = sensor.get_accel_data()
+        temp  = sensor.get_temp()
+
+        # 相對於校準零點的偏移
+        z_tilt = accel['z'] - z_offset   # 左右
+        x_tilt = accel['x'] - x_offset   # 上下
+
+        # 套用 dead zone
+        z_disp = 0.0 if abs(z_tilt) < DEAD_ZONE else z_tilt
+        x_disp = 0.0 if abs(x_tilt) < DEAD_ZONE else x_tilt
+
+        # 方向指示符
+        z_arrow = ("←" if z_disp < 0 else "→") if z_disp != 0 else " "
+        x_arrow = ("↑" if x_disp < 0 else "↓") if x_disp != 0 else " "
+
+        print(
+            f"\r  Z(左右) {z_arrow} {z_tilt:+.3f}  │  "
+            f"X(上下) {x_arrow} {x_tilt:+.3f}  │  "
+            f"Y(前後) {accel['y']:+.3f}  │  {temp:.1f}°C      ",
+            end='', flush=True
+        )
+        time.sleep(0.1)
+
 except KeyboardInterrupt:
-    print("\n\n⏹️ 测试停止")
-    print("=" * 60)
-    print("\n💡 提示:")
-    print("  - 如果数值稳定变化，说明传感器工作正常")
-    print("  - X/Y 数值将用于控制结果页面的图片移动")
-    print("  - 倾斜角度越大，移动速度越快")
-    
-except Exception as e:
-    print(f"\n❌ 错误: {e}")
-    print("\n🔧 故障排查:")
-    print("  1. 检查I2C是否启用: sudo raspi-config → Interface Options → I2C")
-    print("  2. 检查设备连接: i2cdetect -y 1")
-    print("  3. 检查接线:")
-    print("     - VCC → 5V (物理Pin 2/4)")
-    print("     - GND → GND (物理Pin 6/9/14...)")
-    print("     - SDA → GPIO 2 (物理Pin 3)")
-    print("     - SCL → GPIO 3 (物理Pin 5)")
-    sys.exit(1)
+    print("\n\n⏹️ 測試結束")
+    print("  若方向相反，在 gyro_controller.py 的對應軸加負號即可")
