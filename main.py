@@ -637,6 +637,7 @@ class SoftwareRenderCamera(QWidget):
         self.scan_direction = 1
         
         # 状態常量 (Align with Web App STEPS)
+        self.STATE_SLEEP = 0         # [New] 關機休眠狀態
         self.STATE_BOOT = 1
         self.STATE_PROXIMITY = 2
         self.STATE_LOCKED = 3        # 原 P3_CAPTURE
@@ -902,21 +903,50 @@ class SoftwareRenderCamera(QWidget):
     # ========== GPIO Button Handlers ==========
     
     def on_gpio_shutdown(self):
-        """Long-press 5s: quit the application (launcher.py will wait for restart)."""
-        print("⏻ Long-press shutdown triggered — exiting app")
-        from PyQt5.QtWidgets import QApplication
-        # Brief visual feedback before quit
-        self.current_state = self.STATE_BOOT   # blank screen
+        """Long-press 5s: Enter SLEEP state (instant 'power off' feel)."""
+        print("⏻ Long-press shutdown triggered — entering SLEEP mode")
+        self.current_state = self.STATE_SLEEP
+        
+        # Stop camera to save power
+        if hasattr(self, 'camera') and self.camera:
+            try:
+                self.camera.stop()
+            except Exception:
+                pass
+                
+        # Pause all audio
+        if hasattr(self, 'audio_manager') and self.audio_manager:
+            try:
+                import pygame
+                pygame.mixer.pause()
+                pygame.mixer.music.pause()
+            except Exception:
+                pass
+                
         self.update()
-        QApplication.instance().processEvents()
-
-        import time as _t
-        _t.sleep(1.0)
-        QApplication.instance().quit()
 
     def on_gpio_confirm(self):
         """Handle GPIO confirm button press - state-aware confirmation"""
         print("🔘 GPIO: Confirm button")
+        
+        # Wake up from sleep
+        if self.current_state == self.STATE_SLEEP:
+            print("☀️ Waking up from sleep...")
+            if hasattr(self, 'camera') and self.camera:
+                try:
+                    self.camera.start()
+                except Exception:
+                    pass
+            if hasattr(self, 'audio_manager') and self.audio_manager:
+                try:
+                    import pygame
+                    pygame.mixer.unpause()
+                    pygame.mixer.music.unpause()
+                except Exception:
+                    pass
+            self.current_state = self.STATE_BOOT
+            self.update()
+            return
         
         # Ignore during ANALYZING state
         if self.current_state == self.STATE_ANALYZING:
@@ -1250,6 +1280,11 @@ class SoftwareRenderCamera(QWidget):
 
             # 1. 繪製背景 (全黑)
             painter.fillRect(self.rect(), Qt.black)
+
+            # [休眠狀態] 畫完黑底就直接返回，不畫其他東西
+            if self.current_state == self.STATE_SLEEP:
+                painter.end()
+                return
 
             w = self.width()
             h = self.height()
