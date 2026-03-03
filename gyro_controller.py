@@ -105,13 +105,11 @@ class GyroController(QObject):
             pass
     
     def set_active(self, active):
-        """Enable/disable sensor polling"""
+        """Enable/disable sensor polling (calibration only happens at startup)."""
         if not self.sensor:
             return
-        
         if active:
             if not self.timer.isActive():
-                self._calibrate()  # Re-calibrate when activating
                 self.timer.start()
                 print("🔄 Gyro active")
         else:
