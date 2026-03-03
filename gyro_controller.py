@@ -53,52 +53,56 @@ class GyroController(QObject):
     def _calibrate(self):
         """Calibrate sensor by reading current position as zero.
 
-        Physical axis layout (as installed in device):
-            X axis → left / right (used for horizontal pan, dx)
-            Y axis → front / back (unused)
-            Z axis → up / down   (used for vertical   pan, dy)
+        Physical axis layout (face-up, flat on bottom of device):
+            X axis → left / right  (linear when tilting L/R  → dx)
+            Y axis → front / back  (linear when tilting U/D  → dy) ← USE THIS
+            Z axis → up / down     (starts at 1g when flat, cosθ change = WEAK, unused)
+
+        Root cause of weak Z: flat sensor has Z=1g already.
+        Small tilts change Z by cos(θ)-1 ≈ -θ²/2 (second order).
+        Y changes by sin(θ) ≈ θ (first order, 10× stronger at 10°).
         """
         if not self.sensor:
             return
         try:
             accel = self.sensor.get_accel_data()
             self.x_offset = accel['x']  # horizontal zero  (X = left/right)
-            self.y_offset = accel['z']  # vertical zero    (Z = up/down)
-            print(f"✅ Gyro calibrated (X={self.x_offset:.2f}, Z={self.y_offset:.2f})")
+            self.y_offset = accel['y']  # vertical zero    (Y = front/back = pitch)
+            print(f"✅ Gyro calibrated (X={self.x_offset:.2f}, Y={self.y_offset:.2f})")
         except Exception as e:
             print(f"⚠️ Gyro calibration failed: {e}")
 
     def _read_sensor(self):
         """Read sensor data and emit pan signal.
 
-        Axis remap (physical install):
-            dx (horizontal) ← accel['x']  (left/right tilt)
-            dy (vertical)   ← accel['z']  (up/down tilt)
-        Negate a value here if pan direction is inverted.
+        Axis remap (face-up, flat install):
+            dx (horizontal) ← accel['x']  (left/right tilt  = sinθ, linear)
+            dy (vertical)   ← accel['y']  (forward/back tilt = sinθ, linear)
+
+        NOTE: accel['z'] (up/down axis) is NOT used for vertical pan because
+        it starts at 1g when flat, and changes only as cos(θ) for small tilts
+        — extremely weak signal (~100× weaker than Y at small angles).
         """
         if not self.sensor:
             return
         try:
             accel = self.sensor.get_accel_data()
 
-            # Remap: X → horizontal, Z → vertical
             x_tilt = accel['x'] - self.x_offset   # left/right
-            y_tilt = accel['z'] - self.y_offset   # up/down
+            y_tilt = accel['y'] - self.y_offset   # up/down tilt (pitch via Y)
 
-            # Apply dead zone
             if abs(x_tilt) < self.dead_zone:
                 x_tilt = 0
             if abs(y_tilt) < self.dead_zone:
                 y_tilt = 0
 
-            # Only emit if there's actual movement
             if x_tilt != 0 or y_tilt != 0:
-                dx = -x_tilt * self.sensitivity   # negated: reverse left/right
+                dx = -x_tilt * self.sensitivity
                 dy = y_tilt * self.sensitivity
                 self.pan_update.emit(dx, dy)
 
         except Exception:
-            pass  # Silently ignore read errors
+            pass
     
     def set_active(self, active):
         """Enable/disable sensor polling"""
