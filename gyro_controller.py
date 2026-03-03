@@ -97,7 +97,7 @@ class GyroController(QObject):
 
             if x_tilt != 0 or y_tilt != 0:
                 dx = -x_tilt * self.sensitivity
-                dy = y_tilt * self.sensitivity
+                dy = -y_tilt * self.sensitivity
                 self.pan_update.emit(dx, dy)
 
         except Exception:
