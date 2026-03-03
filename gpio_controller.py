@@ -12,7 +12,8 @@ class GPIOController(QObject):
     """Manages GPIO button inputs and rotary encoder, emits Qt signals"""
     
     # Qt signals for button events
-    confirm_pressed = pyqtSignal()
+    confirm_pressed = pyqtSignal()         # Short press
+    confirm_held    = pyqtSignal()         # Long press (5 s) → shutdown
     left_pressed = pyqtSignal()
     right_pressed = pyqtSignal()
     
@@ -40,14 +41,15 @@ class GPIOController(QObject):
         super().__init__()
         
         try:
-            # Create button objects (default pull-up configuration)
-            self.confirm_btn = Button(confirm_pin, bounce_time=0.3)  # 300ms debounce
+            # Confirm: short press AND 5-second long press
+            self.confirm_btn = Button(confirm_pin, bounce_time=0.05, hold_time=5)
+            self.confirm_btn.when_pressed  = self._on_confirm_press
+            self.confirm_btn.when_held     = self._on_confirm_held
             self.left_btn = Button(left_pin, bounce_time=0.2)
             self.right_btn = Button(right_pin, bounce_time=0.2)
-            
+
             # Connect button events to handlers
-            self.confirm_btn.when_pressed = self._on_confirm_press
-            self.left_btn.when_pressed = self._on_left_press
+            self.left_btn.when_pressed  = self._on_left_press
             self.right_btn.when_pressed = self._on_right_press
             
             print(f"🎮 GPIO Controller initialized:")
@@ -80,9 +82,14 @@ class GPIOController(QObject):
             self.encoder = None
     
     def _on_confirm_press(self):
-        """Handle confirm button press"""
+        """Short press: normal confirm"""
         print("🔘 Confirm button pressed")
         self.confirm_pressed.emit()
+
+    def _on_confirm_held(self):
+        """Long press 5 s: shutdown signal"""
+        print("⏳ Confirm held 5s → shutdown")
+        self.confirm_held.emit()
     
     def _on_left_press(self):
         """Handle left button press"""

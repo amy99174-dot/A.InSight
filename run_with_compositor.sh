@@ -20,7 +20,7 @@ export SDL_AUDIODEVICE=plughw:1,0
 
 # 3. 启动应用
 echo "启动应用..."
-python3 main.py
+python3 launcher.py
 
 # 3. 清理
 echo "关闭 Compositor..."
