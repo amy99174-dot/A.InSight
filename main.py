@@ -1535,7 +1535,8 @@ class SoftwareRenderCamera(QWidget):
                     painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 40 * fs), hl * 2, lh), Qt.AlignCenter, txt_outer_label)
                     painter.setPen(QColor(255, 255, 255, time_text_alpha))
                     painter.setFont(QFont("Arial", int(20 * fs), QFont.Bold))
-                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 22 * fs), hl * 2, vh), Qt.AlignCenter, f"L-0{self.time_scale}")
+                    time_labels = {1: "誕生前", 2: "誕生", 3: "全盛", 4: "出土", 5: "未來"}
+                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning - 22 * fs), hl * 2, vh), Qt.AlignCenter, time_labels.get(self.time_scale, ""))
                     if selected == 0:
                         painter.setPen(QColor(255, 255, 255, 200))
                         painter.setFont(QFont("Arial", int(12 * fs)))
@@ -1547,10 +1548,10 @@ class SoftwareRenderCamera(QWidget):
                     painter.setPen(QColor(255, 255, 255, 153 if selected == 1 else 50))
                     painter.setFont(QFont("Arial", int(8 * fs)))
                     painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 10 * fs), hl * 2, lh), Qt.AlignCenter, txt_inner_label)
-                    history_labels = {1: "低度", 2: "中度", 3: "高度"}
+                    history_labels = {1: "傳說", 2: "野史", 3: "正史"}
                     painter.setPen(QColor(255, 255, 255, hist_text_alpha))
                     painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
-                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 23 * fs), hl * 2, vh), Qt.AlignCenter, history_labels.get(self.history_scale, "低度"))
+                    painter.drawText(QRect(cx_tuning - hl, int(cy_tuning + 23 * fs), hl * 2, vh), Qt.AlignCenter, history_labels.get(self.history_scale, ""))
                     if selected == 1:
                         painter.setPen(QColor(255, 255, 255, 200))
                         painter.setFont(QFont("Arial", int(12 * fs)))
