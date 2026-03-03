@@ -9,13 +9,7 @@ killall xcompmgr 2>/dev/null  # 如果已运行，先关闭
 xcompmgr -c &  # -c 启用阴影效果
 sleep 1
 
-# 2. 螢幕旋轉 180°（因外殼線路需上下顛倒安裝）
-echo "旋轉螢幕 180°..."
-# 嘗試常見的輸出名稱; 若失敗可改為 HDMI-A-1 或 HDMI-1-1
-DISPLAY=:0 xrandr --output HDMI-1 --rotate inverted 2>/dev/null || \
-DISPLAY=:0 xrandr --output HDMI-A-1 --rotate inverted 2>/dev/null || \
-DISPLAY=:0 xrandr --output HDMI-1-1 --rotate inverted 2>/dev/null || \
-echo "⚠️  xrandr 旋轉失敗，請手動確認輸出名稱 (xrandr 列表)"
+# 螢幕旋轉由 /boot/firmware/config.txt 的 display_rotate=2 處理（GPU 層），不需要 xrandr
 
 # ── Audio: Route to MAX98357A (hifiberry, card 1) ──────────────────────────
 export SDL_AUDIODRIVER=alsa
