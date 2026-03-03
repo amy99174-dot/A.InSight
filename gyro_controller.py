@@ -24,32 +24,31 @@ class GyroController(QObject):
             poll_ms: Polling interval in milliseconds
         """
         super().__init__()
-        
+
         self.sensitivity = sensitivity
         self.dead_zone = dead_zone
         self.sensor = None
-        self.x_offset = 0
-        self.y_offset = 0
-        
+        # Fixed zero offsets — device is permanently installed horizontally.
+        # X and Y start near 0g when flat, so no runtime calibration needed.
+        self.x_offset = 0.0
+        self.y_offset = 0.0
+
         try:
             from mpu6050 import mpu6050
             self.sensor = mpu6050(address)
-            
-            # Calibrate: read initial position as zero reference
-            self._calibrate()
-            
-            # Start polling timer
+
+            # Start polling timer immediately (no calibration step)
             self.timer = QTimer(self)
             self.timer.timeout.connect(self._read_sensor)
             self.timer.start(poll_ms)
-            
-            print(f"🔄 GyroController initialized (addr=0x{address:02x}, sens={sensitivity})")
-            
+
+            print(f"🔄 GyroController initialized (addr=0x{address:02x}, sens={sensitivity}, fixed offsets)")
+
         except ImportError:
             print("⚠️ mpu6050 library not available, gyroscope disabled")
         except Exception as e:
             print(f"❌ Gyroscope init failed: {e}")
-    
+
     def _calibrate(self):
         """Calibrate sensor by reading current position as zero.
 
