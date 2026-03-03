@@ -704,7 +704,6 @@ class SoftwareRenderCamera(QWidget):
                 )
                 # Connect GPIO signals to handlers
                 self.gpio_controller.confirm_pressed.connect(self.on_gpio_confirm)
-                self.gpio_controller.confirm_held.connect(self.on_gpio_shutdown)
                 self.gpio_controller.left_pressed.connect(self.on_gpio_left)
                 self.gpio_controller.right_pressed.connect(self.on_gpio_right)
                 self.gpio_controller.encoder_rotated_cw.connect(self.on_encoder_cw)
@@ -901,19 +900,6 @@ class SoftwareRenderCamera(QWidget):
     
     # ========== GPIO Button Handlers ==========
     
-    def on_gpio_shutdown(self):
-        """Long-press 5s: quit the application (launcher.py will wait for restart)."""
-        print("⏻ Long-press shutdown triggered — exiting app")
-        from PyQt5.QtWidgets import QApplication
-        # Brief visual feedback before quit
-        self.current_state = self.STATE_BOOT   # blank screen
-        self.update()
-        QApplication.instance().processEvents()
-
-        import time as _t
-        _t.sleep(1.5)
-        QApplication.instance().quit()
-
     def on_gpio_confirm(self):
         """Handle GPIO confirm button press - state-aware confirmation"""
         print("🔘 GPIO: Confirm button")
