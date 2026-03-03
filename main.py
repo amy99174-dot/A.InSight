@@ -654,10 +654,16 @@ class SoftwareRenderCamera(QWidget):
         self.time_scale = 3     # 1-5
         self.history_scale = 2  # 1-3
         self.tuning_selected_param = 0  # 0 = time_scale, 1 = history_scale
-        
+
+        # [Digital Zoom] via rotary encoder in PROXIMITY/LOCKED states
+        self.digital_zoom = 1.0   # 1.0x–4.0x, step 0.1
+        self.ZOOM_MIN = 1.0
+        self.ZOOM_MAX = 4.0
+        self.ZOOM_STEP = 0.1
+
         # [Phase 5B] FOCUSING 參數
         self.focus_percentage = 0  # 0-100
-        
+
         # [Phase 2] 滑鼠互動
         self.setMouseTracking(True)
         self.pan_offset_x = 0
@@ -960,12 +966,35 @@ class SoftwareRenderCamera(QWidget):
                 print(f"📄 下一頁: {self.script_page + 1}/{len(pages)}")
                 self.update()
     
+    def _apply_digital_zoom(self):
+        """Apply digital zoom via picamera2 ScalerCrop."""
+        if not hasattr(self, 'camera') or not self.camera:
+            return
+        try:
+            props = self.camera.camera_properties
+            full_w, full_h = props['PixelArraySize']
+            crop_w = int(full_w / self.digital_zoom)
+            crop_h = int(full_h / self.digital_zoom)
+            crop_x = (full_w - crop_w) // 2
+            crop_y = (full_h - crop_h) // 2
+            self.camera.set_controls({"ScalerCrop": (crop_x, crop_y, crop_w, crop_h)})
+            print(f"🔍 Digital zoom: {self.digital_zoom:.1f}x  crop=({crop_x},{crop_y},{crop_w},{crop_h})")
+        except Exception as e:
+            print(f"⚠️ Zoom apply failed: {e}")
+
     def on_encoder_cw(self):
         """Handle rotary encoder clockwise rotation"""
         print("🔄 GPIO: Encoder CW")
-        
+
+        # PROXIMITY / LOCKED: zoom in
+        if self.current_state in (self.STATE_PROXIMITY, self.STATE_LOCKED):
+            if self.digital_zoom < self.ZOOM_MAX:
+                self.digital_zoom = round(min(self.ZOOM_MAX, self.digital_zoom + self.ZOOM_STEP), 1)
+                self._apply_digital_zoom()
+                self.update()
+
         # In TUNING state: increase selected parameter
-        if self.current_state == self.STATE_TUNING:
+        elif self.current_state == self.STATE_TUNING:
             if self.tuning_selected_param == 0:
                 if self.time_scale < 5:
                     self.time_scale += 1
@@ -976,27 +1005,33 @@ class SoftwareRenderCamera(QWidget):
                     self.history_scale += 1
                     print(f"⬆️ History Scale: {self.history_scale}/3")
                     self.update()
-        
+
         # In FOCUSING state: increase focus percentage
         elif self.current_state == self.STATE_FOCUSING:
             if self.focus_percentage < 100:
                 self.focus_percentage = min(100, self.focus_percentage + 5)
                 print(f"🔍 Focus: {self.focus_percentage}%")
                 self.update()
-                
+
                 # Auto-transition to REVEAL when reaching 100%
                 if self.focus_percentage >= 100:
                     self.current_state = self.STATE_REVEAL
                     if hasattr(self, 'gyro_controller') and self.gyro_controller:
                         self.gyro_controller.set_active(True)
                     print("✨ 進入 REVEAL 模式 (結果展示)")
-    
     def on_encoder_ccw(self):
         """Handle rotary encoder counter-clockwise rotation"""
         print("🔄 GPIO: Encoder CCW")
-        
+
+        # PROXIMITY / LOCKED: zoom out
+        if self.current_state in (self.STATE_PROXIMITY, self.STATE_LOCKED):
+            if self.digital_zoom > self.ZOOM_MIN:
+                self.digital_zoom = round(max(self.ZOOM_MIN, self.digital_zoom - self.ZOOM_STEP), 1)
+                self._apply_digital_zoom()
+                self.update()
+
         # In TUNING state: decrease selected parameter
-        if self.current_state == self.STATE_TUNING:
+        elif self.current_state == self.STATE_TUNING:
             if self.tuning_selected_param == 0:
                 if self.time_scale > 1:
                     self.time_scale -= 1
@@ -1007,14 +1042,13 @@ class SoftwareRenderCamera(QWidget):
                     self.history_scale -= 1
                     print(f"⬇️ History Scale: {self.history_scale}/3")
                     self.update()
-        
+
         # In FOCUSING state: decrease focus percentage
         elif self.current_state == self.STATE_FOCUSING:
             if self.focus_percentage > 0:
                 self.focus_percentage = max(0, self.focus_percentage - 5)
                 print(f"🔍 Focus: {self.focus_percentage}%")
                 self.update()
-
 
     def on_gyro_pan(self, dx, dy):
         """Handle gyroscope pan update - move image in REVEAL state"""
