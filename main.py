@@ -1540,7 +1540,8 @@ class SoftwareRenderCamera(QWidget):
                     if selected == 0:
                         painter.setPen(QColor(255, 255, 255, 200))
                         painter.setFont(QFont("Arial", int(12 * fs)))
-                        painter.drawText(QRect(int(cx_tuning - 80 * fs), int(cy_tuning - 22 * fs), int(25 * fs), vh), Qt.AlignCenter, "◀")
+                        # 提示可切換至另一項（按右鍵切換史實度）
+                        painter.drawText(QRect(int(cx_tuning + 55 * fs), int(cy_tuning - 22 * fs), int(25 * fs), vh), Qt.AlignCenter, "▶")
                     painter.setPen(QPen(QColor(255, 255, 255, 51), 1))
                     painter.drawLine(int(cx_tuning - 40 * fs), int(cy_tuning + 5 * fs), int(cx_tuning + 40 * fs), int(cy_tuning + 5 * fs))
                     hist_text_alpha = 255 if selected == 1 else 80
@@ -1555,7 +1556,8 @@ class SoftwareRenderCamera(QWidget):
                     if selected == 1:
                         painter.setPen(QColor(255, 255, 255, 200))
                         painter.setFont(QFont("Arial", int(12 * fs)))
-                        painter.drawText(QRect(int(cx_tuning + 55 * fs), int(cy_tuning + 23 * fs), int(25 * fs), vh), Qt.AlignCenter, "▶")
+                        # 提示可切換至另一項（按左鍵切換時間軸）
+                        painter.drawText(QRect(int(cx_tuning - 80 * fs), int(cy_tuning + 23 * fs), int(25 * fs), vh), Qt.AlignCenter, "◀")
                     painter.restore()
 
             
