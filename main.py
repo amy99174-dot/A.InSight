@@ -1648,8 +1648,8 @@ class SoftwareRenderCamera(QWidget):
         gap = int(12 * fs)      # Gap between icons
         total_h = icon_sz * 3 + gap * 2
 
-        # Position the icons 8px inside the circle's right edge
-        ix = cx + int(self.circle_radius * 0.72)
+        # Position the icons further to the right edge of the circle
+        ix = cx + int(self.circle_radius * 0.82)
         iy = cy - total_h // 2
 
         painter.save()
@@ -1892,6 +1892,9 @@ class SoftwareRenderCamera(QWidget):
             p2_x = cx + (radius - tick_len) * math.cos(angle_rad)
             p2_y = cy + (radius - tick_len) * math.sin(angle_rad)
             
+            # Skip the top tick (i==0, 12 o'clock position) to avoid overlapping the title text
+            if i == 0:
+                continue
             painter.setPen(QPen(tick_color, tick_width))
             painter.drawLine(int(p1_x), int(p1_y), int(p2_x), int(p2_y))
             
