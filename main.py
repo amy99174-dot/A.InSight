@@ -474,7 +474,7 @@ Combine the results from all agents into this exact JSON structure:
             final_result = {}
             
             # 1. 呼叫分析 API
-            print(f"🤖 [1/2] 正在分析圖片內容 (TimeScale={{self.time_scale}}, HistoryScale={{self.history_scale}})...")
+            print(f"🤖 [1/2] 正在分析圖片內容 (TimeScale={self.time_scale}, HistoryScale={self.history_scale})...")
             response = requests.post(analyze_url, headers=headers, json=data)
             
             if response.status_code != 200:
