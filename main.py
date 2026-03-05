@@ -177,17 +177,44 @@ class AudioWorker(QThread):
         self.script_text = script_text
 
     def run(self):
+        import threading as _threading
         try:
+            threads = []
             if self.ambience_category:
-                print(f"🎵 [AudioWorker] Starting ambience: {self.ambience_category}")
-                self.audio_manager.play_ambience(self.ambience_category)
+                t = _threading.Thread(
+                    target=self._play_ambience_safe,
+                    daemon=True
+                )
+                threads.append(t)
             if self.script_text:
-                print("🔊 [AudioWorker] Generating TTS narration...")
-                success = self.audio_manager.generate_and_play_audio(self.script_text)
-                if not success:
-                    print("❌ [AudioWorker] TTS failed")
+                t = _threading.Thread(
+                    target=self._play_tts_safe,
+                    daemon=True
+                )
+                threads.append(t)
+            for t in threads:
+                t.start()
+            for t in threads:
+                t.join()
         except Exception as e:
             print(f"❌ [AudioWorker] Error: {e}")
+
+    def _play_ambience_safe(self):
+        try:
+            print(f"🎵 [AudioWorker] Starting ambience: {self.ambience_category}")
+            self.audio_manager.play_ambience(self.ambience_category)
+        except Exception as e:
+            print(f"❌ [AudioWorker] Ambience error: {e}")
+
+    def _play_tts_safe(self):
+        try:
+            print("🔊 [AudioWorker] Generating TTS narration...")
+            success = self.audio_manager.generate_and_play_audio(self.script_text)
+            if not success:
+                print("❌ [AudioWorker] TTS failed")
+        except Exception as e:
+            print(f"❌ [AudioWorker] TTS error: {e}")
+
 
 
 class GeminiWorker(QThread):
