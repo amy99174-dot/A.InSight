@@ -1262,26 +1262,29 @@ class SoftwareRenderCamera(QWidget):
         self.current_state = self.STATE_LISTEN
         self.interaction_count += 1
 
-        # Record listen start time
         import time as _time
         self.listen_start_time = _time.time()
-
-        # Calculate interaction duration
         duration_seconds = None
         if self.interaction_start_time:
             duration_seconds = round(_time.time() - self.interaction_start_time)
 
-        # [Supabase] Log analysis result to database
+        # ⚡ Redraw IMMEDIATELY — before any network calls
+        self.update()
+
+        # Supabase logging in background so it never blocks UI
         if SUPABASE_AVAILABLE:
-            supabase_log_history(
-                result=result,
-                time_scale=self.time_scale,
-                history_scale=self.history_scale,
-                session_id=self.session_id,
-                duration_seconds=duration_seconds,
-                completed=True,
-                interaction_count=self.interaction_count
-            )
+            import threading as _thr
+            def _log():
+                supabase_log_history(
+                    result=result,
+                    time_scale=self.time_scale,
+                    history_scale=self.history_scale,
+                    session_id=self.session_id,
+                    duration_seconds=duration_seconds,
+                    completed=True,
+                    interaction_count=self.interaction_count
+                )
+            _thr.Thread(target=_log, daemon=True).start()
 
         # Launch audio in background thread — NEVER block the UI thread
         if self.audio_manager:
@@ -1290,8 +1293,6 @@ class SoftwareRenderCamera(QWidget):
             print("🚀 Launching AudioWorker in background (non-blocking)...")
             self.audio_worker = AudioWorker(self.audio_manager, ambience_category, script_text)
             self.audio_worker.start()
-
-        self.update()  # UI switches to LISTEN state IMMEDIATELY
 
     def on_analysis_finished(self, result):
         """

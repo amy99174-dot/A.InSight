@@ -79,53 +79,19 @@ class AudioManager:
             print("⚠️  TTS skipped: no OPENAI_KEY")
             return False
         try:
-            print(f"🎙️ Streaming TTS: {script_text[:50]}...")
-            url = "https://api.openai.com/v1/audio/speech"
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-            payload = {
-                "model": "tts-1",
-                "input": script_text,
-                "voice": "onyx",
-                "response_format": "mp3"
-            }
-            # Stream the response — start writing to file as chunks arrive
-            with requests.post(url, headers=headers, json=payload,
-                               stream=True, timeout=30) as response:
-                if response.status_code != 200:
-                    print(f"❌ TTS API Error: {response.status_code}")
-                    return False
-
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.mp3')
-                temp_path = temp_file.name
-                bytes_written = 0
-                playback_started = False
-
-                for chunk in response.iter_content(chunk_size=4096):
-                    if chunk:
-                        temp_file.write(chunk)
-                        temp_file.flush()
-                        bytes_written += len(chunk)
-                        # Start playback after first ~32KB so pygame has enough to decode
-                        if not playback_started and bytes_written >= 32768:
-                            temp_file.close()
-                            self._play_audio(temp_path)
-                            self.current_audio_path = temp_path
-                            playback_started = True
-                            print("▶️ TTS streaming playback started early!")
-                            # Re-open to continue writing
-                            temp_file = open(temp_path, 'ab')
-
-                temp_file.close()
-                if not playback_started:
-                    # File too small (short script) — play now
-                    self._play_audio(temp_path)
-                    self.current_audio_path = temp_path
-                    print("▶️ TTS playback started (short audio)")
-                print(f"✅ TTS stream complete ({bytes_written} bytes)")
-                return True
+            print(f"🎙️ Generating TTS: {script_text[:50]}...")
+            audio_data = self._generate_audio(script_text)
+            if not audio_data:
+                print("❌ Failed to generate audio")
+                return False
+            temp_path = self._save_to_temp(audio_data)
+            if not temp_path:
+                print("❌ Failed to save audio")
+                return False
+            self._play_audio(temp_path)
+            self.current_audio_path = temp_path
+            print("✅ TTS playback started")
+            return True
         except Exception as e:
             print(f"❌ TTS failed: {e}")
             return False
