@@ -2063,29 +2063,21 @@ class SoftwareRenderCamera(QWidget):
         elapsed = _t.time() - getattr(self, 'analyzing_start_time', _t.time())
         phase = getattr(self, 'analysis_phase', 0)
 
-        # PHASE 0 (0-27s): Text analysis     → 0% to 70%
-        # PHASE 1 (27+s): Audio + image gen  → 70% to 95%
-        # PHASE 2: Complete                  → 100%
+        # PHASE 0: Text analysis (0-100% over ~18s)
+        # We switch state immediately when Text Analysis finishes, so 
+        # the entire visible progress bar duration is just this phase.
         PHASE0_DURATION = 18.0
-        PHASE1_DURATION = 12.0
-        if phase == 0:
-            raw = min(elapsed / PHASE0_DURATION, 1.0)
-            progress = raw * 0.68  # 0% → 68%
-        elif phase == 1:
-            phase1_elapsed = elapsed - PHASE0_DURATION
-            raw = min(max(phase1_elapsed, 0) / PHASE1_DURATION, 1.0)
-            progress = 0.68 + raw * 0.27  # 68% → 95%
-        else:
-            progress = 1.0  # Done
+        raw = min(elapsed / PHASE0_DURATION, 1.0)
+        
+        # Add a tiny bit of easing so it hangs at 99% if network is slow, 
+        # instead of snapping to 100% too early.
+        progress = raw * 0.99 if raw < 1.0 else 0.99
+        if phase > 0:
+            progress = 1.0  # Actually done
 
         # Phase labels
-        phase_labels = [
-            "正在解析文物...",
-            "生成導覽語音中...",
-            "分析完成"
-        ]
-        phase_icon = ["🔍", "🔊", "✓"][phase]
-        status_text = phase_labels[min(phase, 2)]
+        status_text = "正在解析文物..." if progress < 1.0 else "分析完成"
+
 
         # --- Dotted outer ring (decorative) ---
         outer_border = QColor(theme_color)
