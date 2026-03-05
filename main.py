@@ -168,7 +168,8 @@ class ConfigManager(QThread):
 
 class GeminiWorker(QThread):
     """后台调用 API 的线程：文字分析 + 图像生成"""
-    finished = pyqtSignal(dict)
+    text_ready = pyqtSignal(dict)   # Emitted as soon as text analysis is done (before image gen)
+    finished = pyqtSignal(dict)     # Emitted when image gen is also complete
     
     def __init__(self, image_data, time_scale=3, history_scale=2):
         super().__init__()
@@ -446,6 +447,11 @@ Combine the results from all agents into this exact JSON structure:
             if not final_result.get("imageStrength"): final_result["imageStrength"] = 0.65
             if not final_result.get("era"): final_result["era"] = "未知年代"
             
+
+            # ✅ [PARALLEL OPTIMIZATION] Emit text_ready NOW — before image generation
+            # This allows TTS generation and LISTEN state to start ~20s earlier
+            print("📢 [text_ready] 文字分析完成，立刻通知主線程切換狀態並播音")
+            self.text_ready.emit(dict(final_result))  # Send a copy
 
             # Step 2: 圖像生成 (Gemini 2.5 Flash Image - Img2Img)
             vision_prompt = final_result.get("visionPrompt", "Historical artifact style illustration")
@@ -1184,38 +1190,32 @@ class SoftwareRenderCamera(QWidget):
         
         # 启动后台线程 [Phase 3: Pass Scales]
         self.worker = GeminiWorker(b64_data, self.time_scale, self.history_scale)
-        self.worker.finished.connect(self.on_analysis_finished)
+        self.worker.text_ready.connect(self.on_text_ready)       # NEW: early text signal
+        self.worker.finished.connect(self.on_analysis_finished)  # existing: image ready
         self.worker.start()
         
-    def on_analysis_finished(self, result):
-        """API 返回处理"""
-        print("🤖 分析完成:", result)
+    def on_text_ready(self, result):
+        """
+        Called as soon as text analysis is done (~20s) — before image generation.
+        Switch to LISTEN and play audio immediately. Image will arrive later via finished().
+        """
+        print("⚡ [on_text_ready] 切換 LISTEN + 播音")
         self.analysis_result = result
-        
-        # 處理回傳圖片
-        if "generated_image" in result:
-            try:
-                img_data = base64.b64decode(result["generated_image"])
-                qimg = QImage.fromData(img_data)
-                self.generated_pixmap = QPixmap.fromImage(qimg)
-                print("🖼️ 已加載生成圖片")
-            except Exception as e:
-                print(f"❌ 圖片加載失敗: {e}")
-                
-        # Reset to first page
+
+        # Reset to first page and switch state immediately
         self.script_page = 0
         self.current_state = self.STATE_LISTEN
         self.interaction_count += 1
-        
+
         # Record listen start time
         import time as _time
         self.listen_start_time = _time.time()
-        
+
         # Calculate interaction duration
         duration_seconds = None
         if self.interaction_start_time:
             duration_seconds = round(_time.time() - self.interaction_start_time)
-        
+
         # [Supabase] Log analysis result to database
         if SUPABASE_AVAILABLE:
             supabase_log_history(
@@ -1227,16 +1227,14 @@ class SoftwareRenderCamera(QWidget):
                 completed=True,
                 interaction_count=self.interaction_count
             )
-        
-        # Play audio: ambience + TTS narration
+
+        # Play audio: ambience + TTS narration (doesn't need image)
         if self.audio_manager:
-            # 1. Play background ambience (looping)
             ambience_category = result.get("ambienceCategory", "SOUND_QUIET")
             if ambience_category:
                 print(f"🎵 Starting ambience: {ambience_category}")
                 self.audio_manager.play_ambience(ambience_category)
-            
-            # 2. Play TTS narration (on top of ambience)
+
             if "scriptPrompt" in result:
                 script_text = result["scriptPrompt"]
                 if script_text:
@@ -1244,6 +1242,29 @@ class SoftwareRenderCamera(QWidget):
                     success = self.audio_manager.generate_and_play_audio(script_text)
                     if not success:
                         print("❌ Audio generation failed, continuing without audio")
+
+        self.update()  # Redraw immediately
+
+    def on_analysis_finished(self, result):
+        """
+        Called when image generation is also complete.
+        By this time the user is already in LISTEN state hearing the audio.
+        We just load the image so it's ready for the REVEAL state.
+        """
+        print("🖼️ [on_analysis_finished] 圖片生成完成，載入備用")
+        # Only update analysis_result if we get a full result (with image)
+        self.analysis_result = result
+
+        # Load the generated image for REVEAL state
+        if "generated_image" in result:
+            try:
+                img_data = base64.b64decode(result["generated_image"])
+                qimg = QImage.fromData(img_data)
+                self.generated_pixmap = QPixmap.fromImage(qimg)
+                print("🖼️ 圖片已載入，用戶進入對焦頁時即可顯示")
+            except Exception as e:
+                print(f"❌ 圖片加載失敗: {e}")
+        self.update()
 
     def update_frame(self):
         """
