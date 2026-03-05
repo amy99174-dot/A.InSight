@@ -1647,8 +1647,6 @@ class SoftwareRenderCamera(QWidget):
             tilt_rect = QRect(0, int(cy + self.circle_radius * 0.75), cx * 2, int(24 * fs))
             painter.drawText(tilt_rect, Qt.AlignCenter, "傾斜看見更多細節")
             painter.restore()
-        else:
-            active_lr, active_dial, active_confirm = False, False, False
 
         # Position: right edge of circle
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
