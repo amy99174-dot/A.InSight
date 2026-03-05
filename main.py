@@ -1607,15 +1607,10 @@ class SoftwareRenderCamera(QWidget):
         """
         state = self.current_state
         script_pages = []
-        if self.analysis_result:
+        if self.analysis_result and self.current_state == self.STATE_LISTEN:
             raw_script = self.analysis_result.get("scriptPrompt", "")
-            import textwrap
             if raw_script:
-                chunks = [p.strip() for p in raw_script.replace('\\n', '\n').split('\n') if p.strip()]
-                if not chunks:
-                    script_pages = [raw_script]
-                else:
-                    script_pages = chunks
+                script_pages = self.split_text_into_pages(raw_script, max_chars=55)
         script_page = self.script_page
         is_last_page = (len(script_pages) > 0 and script_page == len(script_pages) - 1)
 
