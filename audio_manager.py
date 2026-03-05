@@ -98,10 +98,9 @@ class AudioManager:
             # Prefer mpg123 (true stdin streaming, plays as bytes arrive)
             if shutil.which("mpg123"):
                 print(f"🎙️ [mpg123] Streaming TTS: {script_text[:50]}...")
-                # Use hw:CARD=sndrpihifiberry or default-based device
-                # -a plughw:1,0 forces mpg123 to use the I2S MAX98357A amplifier
+                # Use default ALSA device so dmix can mix with pygame ambience
                 proc = subprocess.Popen(
-                    ["mpg123", "--quiet", "-a", "plughw:1,0", "-"],
+                    ["mpg123", "--quiet", "-"],
                     stdin=subprocess.PIPE,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL
