@@ -2065,7 +2065,7 @@ class SoftwareRenderCamera(QWidget):
         # PHASE 0 (0-27s): Text analysis     → 0% to 70%
         # PHASE 1 (27+s): Audio + image gen  → 70% to 95%
         # PHASE 2: Complete                  → 100%
-        PHASE0_DURATION = 27.0
+        PHASE0_DURATION = 18.0
         PHASE1_DURATION = 12.0
         if phase == 0:
             raw = min(elapsed / PHASE0_DURATION, 1.0)
