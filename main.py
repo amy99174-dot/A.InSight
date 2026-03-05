@@ -1633,9 +1633,20 @@ class SoftwareRenderCamera(QWidget):
         elif state == self.STATE_LISTEN:
             active_lr, active_dial, active_confirm = True, False, is_last_page
         elif state == self.STATE_FOCUSING:
-            active_lr, active_dial, active_confirm = False, True, True
+            active_lr, active_dial, active_confirm = False, True, False  # Confirm hollow per user request
         elif state == self.STATE_REVEAL:
             active_lr, active_dial, active_confirm = False, False, True
+
+        # --- Tilt hint text for REVEAL state ---
+        if state == self.STATE_REVEAL:
+            tilt_color = QColor(255, 255, 255, 160)
+            font_size = int(9 * fs)
+            painter.save()
+            painter.setPen(tilt_color)
+            painter.setFont(QFont("Arial", font_size))
+            tilt_rect = QRect(0, int(cy + self.circle_radius * 0.75), cx * 2, int(24 * fs))
+            painter.drawText(tilt_rect, Qt.AlignCenter, "傾斜看見更多細節")
+            painter.restore()
         else:
             active_lr, active_dial, active_confirm = False, False, False
 
