@@ -47,9 +47,32 @@ class AudioManager:
             "SOUND_LOW": "https://storage.googleapis.com/my-rpg-game-sounds/LOW.mp3",
             "SOUND_HUM": "https://storage.googleapis.com/my-rpg-game-sounds/HUM.mp3",
             "SOUND_FIRE": "https://storage.googleapis.com/my-rpg-game-sounds/FIRE.mp3",
+            "SOUND_SCIFI_RELIC": "https://storage.googleapis.com/my-rpg-game-sounds/QUIET.mp3",
+            "SOUND_PALACE_HALL": "https://storage.googleapis.com/my-rpg-game-sounds/LOW.mp3",
+            "SOUND_TEMPLE_INCENSE": "https://storage.googleapis.com/my-rpg-game-sounds/HUM.mp3",
+            "SOUND_CRAFT_CERAMIC": "https://storage.googleapis.com/my-rpg-game-sounds/CLANK.mp3",
+            "SOUND_CRAFT_STONE": "https://storage.googleapis.com/my-rpg-game-sounds/CLANK.mp3",
+            "SOUND_CAVE_RUMBLE": "https://storage.googleapis.com/my-rpg-game-sounds/LOW.mp3",
         }
-        
-        print("🔊 AudioManager initialized with ambience support")
+
+        # Pre-download cache: category -> local temp file path
+        self._ambience_cache: dict = {}
+        self._start_prefetch()
+
+        print("🔊 AudioManager initialized with ambience support (pre-fetching...)")
+
+    def _start_prefetch(self):
+        """Pre-download all ambience sounds in the background at startup"""
+        import threading as _t
+        def _prefetch():
+            print("⬇️  [Prefetch] Starting background ambience download...")
+            for category, url in self.AMBIENCE_URLS.items():
+                if category not in self._ambience_cache:
+                    path = self._download_ambience(url, category)
+                    if path:
+                        self._ambience_cache[category] = path
+            print("✅ [Prefetch] All ambience sounds cached!")
+        _t.Thread(target=_prefetch, daemon=True).start()
     
     def generate_and_play_audio(self, script_text: str) -> bool:
         if not self.api_key:
@@ -183,11 +206,13 @@ class AudioManager:
                     print(f"⚠️ Unknown ambience category: {category}")
                     continue
                 
-                # Download sound file
-                sound_path = self._download_ambience(url, category)
+                # Download sound file — use cache if available
+                sound_path = self._ambience_cache.get(category) or self._download_ambience(url, category)
                 if not sound_path:
                     continue
-                
+                # Store in cache for next time
+                self._ambience_cache[category] = sound_path
+
                 try:
                     # Load sound
                     sound = pygame.mixer.Sound(sound_path)
