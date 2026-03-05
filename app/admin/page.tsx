@@ -130,30 +130,28 @@ export default function AdminPage() {
         })).sort((a, b) => b.count - a.count).slice(0, 5));
 
         // 4. Story Preference (HistoryScale Distribution)
-        // 1: 軼聞 (Anecdote), 2: 通史 (General), 3: 正史 (Academic)
-        const scaleCount: Record<string, number> = { '軼聞': 0, '通史': 0, '正史': 0 };
+        const scaleCount: Record<string, number> = { '傳說': 0, '野史': 0, '正史': 0 };
         data.forEach(item => {
             const hScale = item.input_settings?.historyScale;
-            if (hScale === 1) scaleCount['軼聞']++;
-            else if (hScale === 2) scaleCount['通史']++;
+            if (hScale === 1) scaleCount['傳說']++;
+            else if (hScale === 2) scaleCount['野史']++;
             else if (hScale === 3) scaleCount['正史']++;
         });
 
         setStoryPrefData([
-            { name: '軼聞 (Mystery)', value: scaleCount['軼聞'] },
-            { name: '通史 (General)', value: scaleCount['通史'] },
-            { name: '正史 (Academic)', value: scaleCount['正史'] },
+            { name: '傳說', value: scaleCount['傳說'] },
+            { name: '野史', value: scaleCount['野史'] },
+            { name: '正史', value: scaleCount['正史'] },
         ]);
 
         // 5. Time Phase Preference (TimeScale Distribution)
-        // 1: 起因, 2: 鑄造, 3: 使用, 4: 流轉, 5: 未來
         const timeCount: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
         const timeLabels: Record<number, string> = {
-            1: '起因 (靈感)',
-            2: '鑄造 (誕生)',
-            3: '使用 (全盛)',
-            4: '流轉 (遺棄)',
-            5: '未來 (命運)'
+            1: '誕生前',
+            2: '誕生',
+            3: '全盛',
+            4: '出土',
+            5: '未來'
         };
 
         data.forEach(item => {
@@ -398,7 +396,7 @@ export default function AdminPage() {
             {/* Level 3: Preference Charts (Side-by-Side) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                 {/* 3.1 Story Preference */}
-                <ChartCard title="敘事風格偏好 (Storytelling Preference)" icon={<PieIcon className="w-5 h-5" />}>
+                <ChartCard title="參數偏好：史實度" icon={<PieIcon className="w-5 h-5" />}>
                     <div className="h-[300px] w-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -424,7 +422,7 @@ export default function AdminPage() {
                 </ChartCard>
 
                 {/* 3.2 Time Phase Preference */}
-                <ChartCard title="時空相位偏好 (Time Phase Preference)" icon={<Clock className="w-5 h-5" />}>
+                <ChartCard title="參數偏好：時間軸" icon={<Clock className="w-5 h-5" />}>
                     <div className="h-[300px] w-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
@@ -452,7 +450,7 @@ export default function AdminPage() {
 
             {/* Level 4: Era Trends */}
             <div className="mb-8">
-                <ChartCard title="歷史斷代分佈 (Era Distribution)" icon={<Activity className="w-5 h-5" />}>
+                <ChartCard title="最受歡迎朝代" icon={<Activity className="w-5 h-5" />}>
                     <div className="h-[350px] w-full">
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={eraData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
@@ -477,7 +475,7 @@ export default function AdminPage() {
                     <div className="flex items-center gap-2">
                         <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
                             <Database className="w-5 h-5 text-gray-500" />
-                            監控日誌
+                            資料總庫
                         </h2>
                         <span className="text-sm text-gray-500 font-normal">
                             (共 {filteredLogs.length} 筆{logs.length !== filteredLogs.length ? `，篩選自 ${logs.length} 筆` : ''})

@@ -2,6 +2,7 @@ import React from 'react';
 import { STEPS, DEFAULT_CONFIG } from '../../lib/defaults';
 import { Volume2, VolumeX, Crosshair, Activity, Zap, Signal } from 'lucide-react';
 import { KeyholeViewer } from '../KeyholeViewer';
+import { HardwareHints } from '../HardwareHints';
 import { ScannerSkinPropsV2 } from '../../types/scanner_v2';
 
 export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
@@ -57,6 +58,32 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
     const focusProgress = Math.min(Math.abs(focusRotation) / 100, 1);
     const currentScriptPageText = scriptPages && scriptPages[scriptPage] ? scriptPages[scriptPage] : "...";
 
+    // Determine Hardware Hint States based on current step
+    const getHintStates = () => {
+        switch (step) {
+            case STEPS.BOOT:
+                return { leftRight: false, dial: false, confirm: true };
+            case STEPS.PROXIMITY:
+                return { leftRight: false, dial: false, confirm: true };
+            case STEPS.LOCKED:
+                return { leftRight: false, dial: false, confirm: true };
+            case STEPS.TUNING:
+                return { leftRight: true, dial: true, confirm: true };
+            case STEPS.ANALYZING:
+                return { leftRight: false, dial: false, confirm: false };
+            case STEPS.LISTEN:
+                const isLastPage = scriptPages && scriptPage === scriptPages.length - 1;
+                return { leftRight: true, dial: false, confirm: isLastPage };
+            case STEPS.FOCUSING:
+                return { leftRight: false, dial: true, confirm: true };
+            case STEPS.REVEAL:
+                return { leftRight: false, dial: false, confirm: true };
+            default:
+                return { leftRight: false, dial: false, confirm: false };
+        }
+    };
+    const hintStates = getHintStates();
+
     // --- V2 Container Style with Mac Fix ---
     const v2ContainerStyle: React.CSSProperties = {
         width: '380px',
@@ -83,6 +110,14 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
         >
             {/* LAYER 0: Background/Video */}
             {children}
+
+            {/* Hardware operation hints */}
+            <HardwareHints
+                activeLeftRight={hintStates.leftRight}
+                activeDial={hintStates.dial}
+                activeConfirm={hintStates.confirm}
+                colorClass={colorStyle.className}
+            />
 
             {/* Industrial Overlay Grid - Fits inside 380px Circle */}
             <div className="absolute inset-0 z-10 pointer-events-none">
@@ -297,6 +332,13 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
                 {step === STEPS.REVEAL && historyImage && (
                     <div className="w-full h-full relative">
                         <KeyholeViewer imageSrc={historyImage} position={orientation} />
+
+                        <div className="absolute bottom-16 w-full text-center z-30 pointer-events-none">
+                            <div className="text-[12px] text-white/70 tracking-widest animate-pulse font-mono">
+                                傾斜看見更多細節
+                            </div>
+                        </div>
+
                         <div className="absolute bottom-8 w-full flex justify-center pointer-events-auto">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onTrigger && onTrigger(); }}

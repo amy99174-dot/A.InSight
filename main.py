@@ -1576,6 +1576,10 @@ class SoftwareRenderCamera(QWidget):
             painter.drawEllipse(center_x - self.circle_radius, center_y - self.circle_radius, 
                                 self.circle_radius * 2, self.circle_radius * 2)
 
+            # [HardwareHints] Draw hardware control hint icons on right side of circle
+            if self.current_state != self.STATE_SLEEP:
+                self.draw_hardware_hints(painter, center_x, center_y, fs)
+
             # 3. 文字資訊 (Use dynamic theme color)
             primary_hex_bottom = self.config_manager.get_color("primary_color", "#ffffff")
             status_color = QColor(primary_hex_bottom)
@@ -1594,6 +1598,152 @@ class SoftwareRenderCamera(QWidget):
         except Exception as e:
             print("❌ paintEvent 發生嚴重錯誤:")
             traceback.print_exc()
+
+    def draw_hardware_hints(self, painter, cx, cy, fs=1.0):
+        """
+        Draw hardware control icons on the right edge of the circular viewport.
+        3 icons (stacked vertically): Left/Right button, Dial, Confirm button.
+        Solid = active, Outline = inactive.
+        """
+        state = self.current_state
+        script_pages = []
+        if self.analysis_result:
+            raw_script = self.analysis_result.get("scriptPrompt", "")
+            import textwrap
+            if raw_script:
+                chunks = [p.strip() for p in raw_script.replace('\\n', '\n').split('\n') if p.strip()]
+                if not chunks:
+                    script_pages = [raw_script]
+                else:
+                    script_pages = chunks
+        script_page = self.script_page
+        is_last_page = (len(script_pages) > 0 and script_page == len(script_pages) - 1)
+
+        # Determine active states per current state
+        if state == self.STATE_BOOT:
+            active_lr, active_dial, active_confirm = False, False, True
+        elif state == self.STATE_PROXIMITY:
+            active_lr, active_dial, active_confirm = False, False, True
+        elif state == self.STATE_LOCKED:
+            active_lr, active_dial, active_confirm = False, False, True
+        elif state == self.STATE_TUNING:
+            active_lr, active_dial, active_confirm = True, True, True
+        elif state == self.STATE_ANALYZING:
+            active_lr, active_dial, active_confirm = False, False, False
+        elif state == self.STATE_LISTEN:
+            active_lr, active_dial, active_confirm = True, False, is_last_page
+        elif state == self.STATE_FOCUSING:
+            active_lr, active_dial, active_confirm = False, True, True
+        elif state == self.STATE_REVEAL:
+            active_lr, active_dial, active_confirm = False, False, True
+        else:
+            active_lr, active_dial, active_confirm = False, False, False
+
+        # Position: right edge of circle
+        primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
+        color_active = QColor(primary_hex)
+        color_inactive = QColor(255, 255, 255, 60)  # 60/255 ~ 24% opacity
+
+        icon_sz = int(22 * fs)  # Icon bounding box
+        gap = int(12 * fs)      # Gap between icons
+        total_h = icon_sz * 3 + gap * 2
+
+        # Position the icons 8px inside the circle's right edge
+        ix = cx + int(self.circle_radius * 0.72)
+        iy = cy - total_h // 2
+
+        painter.save()
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        for i, (active, icon_type) in enumerate([(active_lr, 'lr'), (active_dial, 'dial'), (active_confirm, 'confirm')]):
+            color = color_active if active else color_inactive
+            y_off = iy + i * (icon_sz + gap)
+
+            if icon_type == 'lr':
+                # Left/Right: full circle (left) + crescent (right)
+                # Left circle
+                lc_r = int(icon_sz * 0.38)
+                lc_x = ix + int(icon_sz * 0.32)
+                lc_y = y_off + icon_sz // 2
+                painter.setPen(QPen(color, 1.5))
+                if active:
+                    painter.setBrush(QBrush(color))
+                else:
+                    painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(lc_x - lc_r, lc_y - lc_r, lc_r * 2, lc_r * 2)
+                # Crescent: draw a circle but clip out part with a QPainterPath
+                cr_r = int(icon_sz * 0.38)
+                cr_x = ix + int(icon_sz * 0.68)
+                cr_y = y_off + icon_sz // 2
+                crescent_path = QPainterPath()
+                crescent_path.addEllipse(cr_x - cr_r, cr_y - cr_r, cr_r * 2, cr_r * 2)
+                # Subtract the left circle area from the crescent
+                subtract_path = QPainterPath()
+                subtract_path.addEllipse(lc_x - lc_r + 2, lc_y - lc_r, lc_r * 2, lc_r * 2)
+                crescent_final = crescent_path.subtracted(subtract_path)
+                painter.setPen(QPen(color, 1.5))
+                if active:
+                    painter.fillPath(crescent_final, color)
+                painter.setPen(QPen(color, 1.5))
+                painter.setBrush(Qt.NoBrush)
+                painter.drawPath(crescent_final)
+
+            elif icon_type == 'dial':
+                # Rotary dial: gear-like circle
+                gc_r = int(icon_sz * 0.42)
+                gc_x = ix + icon_sz // 2
+                gc_y = y_off + icon_sz // 2
+                # Draw gear teeth as a series of radial rects
+                tooth_count = 10
+                tooth_outer = gc_r
+                tooth_inner = int(gc_r * 0.78)
+                painter.setPen(QPen(color, 1.5))
+                painter.setBrush(QBrush(color) if active else Qt.NoBrush)
+                # Draw main circle
+                if active:
+                    painter.setBrush(QBrush(color))
+                    painter.drawEllipse(gc_x - tooth_inner, gc_y - tooth_inner, tooth_inner * 2, tooth_inner * 2)
+                for t in range(tooth_count):
+                    angle_start = (360 / tooth_count) * t
+                    angle_end = angle_start + (360 / tooth_count) * 0.55  # tooth arc coverage
+                    # Draw arc segment as a filled wedge (tooth)
+                    tooth_path = QPainterPath()
+                    tooth_path.moveTo(gc_x + tooth_inner * math.cos(math.radians(angle_start + 2)),
+                                      gc_y + tooth_inner * math.sin(math.radians(angle_start + 2)))
+                    tooth_path.lineTo(gc_x + tooth_outer * math.cos(math.radians(angle_start)),
+                                      gc_y + tooth_outer * math.sin(math.radians(angle_start)))
+                    tooth_path.lineTo(gc_x + tooth_outer * math.cos(math.radians(angle_end)),
+                                      gc_y + tooth_outer * math.sin(math.radians(angle_end)))
+                    tooth_path.lineTo(gc_x + tooth_inner * math.cos(math.radians(angle_end - 2)),
+                                      gc_y + tooth_inner * math.sin(math.radians(angle_end - 2)))
+                    tooth_path.closeSubpath()
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(QBrush(color))
+                    painter.fillPath(tooth_path, color)
+                # Inner hole
+                hole_r = int(gc_r * 0.30)
+                if active:
+                    painter.setPen(Qt.NoPen)
+                    painter.setBrush(QBrush(QColor(0, 0, 0)))  # black hole
+                else:
+                    painter.setPen(QPen(color, 1.2))
+                    painter.setBrush(Qt.NoBrush)
+                painter.drawEllipse(gc_x - hole_r, gc_y - hole_r, hole_r * 2, hole_r * 2)
+
+            elif icon_type == 'confirm':
+                # Confirm: Two equal-size circles stacked (snowman)
+                sc_r = int(icon_sz * 0.27)
+                sc_x = ix + icon_sz // 2
+                # Top circle
+                sc_top_y = y_off + int(icon_sz * 0.3)
+                # Bottom circle
+                sc_bot_y = y_off + int(icon_sz * 0.72)
+                painter.setPen(QPen(color, 1.5))
+                painter.setBrush(QBrush(color) if active else Qt.NoBrush)
+                painter.drawEllipse(sc_x - sc_r, sc_top_y - sc_r, sc_r * 2, sc_r * 2)
+                painter.drawEllipse(sc_x - sc_r, sc_bot_y - sc_r, sc_r * 2, sc_r * 2)
+
+        painter.restore()
 
     def draw_proximity_state(self, painter, cx, cy, fs=1.0):
         """

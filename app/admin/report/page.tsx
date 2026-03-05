@@ -165,21 +165,21 @@ export default function ReportPage() {
     ];
 
     // Story Preference
-    const scaleCount = { '軼聞': 0, '通史': 0, '正史': 0 };
+    const scaleCount = { '傳說': 0, '野史': 0, '正史': 0 };
     logs.forEach(l => {
         const h = l.input_settings?.historyScale;
-        if (h === 1) scaleCount['軼聞']++;
-        else if (h === 2) scaleCount['通史']++;
+        if (h === 1) scaleCount['傳說']++;
+        else if (h === 2) scaleCount['野史']++;
         else if (h === 3) scaleCount['正史']++;
     });
     const storyData = [
-        { name: '軼聞 (趣味)', value: scaleCount['軼聞'] },
-        { name: '通史 (中性)', value: scaleCount['通史'] },
-        { name: '正史 (學術)', value: scaleCount['正史'] }
+        { name: '傳說', value: scaleCount['傳說'] },
+        { name: '野史', value: scaleCount['野史'] },
+        { name: '正史', value: scaleCount['正史'] }
     ];
 
     // Time Phase Preference
-    const timeLabels: Record<number, string> = { 1: '起因', 2: '鑄造', 3: '使用', 4: '流轉', 5: '未來' };
+    const timeLabels: Record<number, string> = { 1: '誕生前', 2: '誕生', 3: '全盛', 4: '出土', 5: '未來' };
     const timeCount: Record<number, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
     logs.forEach(l => {
         const t = l.input_settings?.timeScale;
@@ -244,7 +244,7 @@ export default function ReportPage() {
                     </ResponsiveContainer>
                 </ChartCard>
 
-                <ChartCard title="年代分布" icon={Calendar}>
+                <ChartCard title="最受歡迎朝代" icon={Calendar}>
                     <ResponsiveContainer width="100%" height={300}>
                         <PieChart>
                             <Pie data={eraData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="count" nameKey="name" label={({ name, percent }: any) => `${name} ${(percent * 100).toFixed(0)}%`}>
@@ -338,7 +338,7 @@ export default function ReportPage() {
 
             {/* Row 4: Preferences */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <ChartCard title="觀眾敘事偏好（史實度）" icon={Target}>
+                <ChartCard title="參數偏好：史實度" icon={Target}>
                     <ResponsiveContainer width="100%" height={250}>
                         <PieChart>
                             <Pie data={storyData} cx="50%" cy="50%" innerRadius={50} outerRadius={90} dataKey="value" nameKey="name" label={({ name, percent }: any) => percent > 0 ? `${name} ${(percent * 100).toFixed(0)}%` : ''}>
@@ -350,7 +350,7 @@ export default function ReportPage() {
                     </ResponsiveContainer>
                 </ChartCard>
 
-                <ChartCard title="觀眾時間軸偏好" icon={TrendingUp}>
+                <ChartCard title="參數偏好：時間軸" icon={TrendingUp}>
                     <ResponsiveContainer width="100%" height={250}>
                         <BarChart data={timeData}>
                             <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />

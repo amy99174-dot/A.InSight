@@ -2,6 +2,7 @@ import React from 'react';
 import { DEFAULT_CONFIG } from '../../lib/defaults';
 import { Volume2, VolumeX } from 'lucide-react';
 import { KeyholeViewer } from '../KeyholeViewer';
+import { HardwareHints } from '../HardwareHints';
 import { ScannerSkinPropsV2 } from '../../types/scanner_v2';
 
 // --- Helper Functions (Copied from ScannerDisplay.tsx) ---
@@ -71,6 +72,33 @@ export default function ClassicSkinV2(props: ScannerSkinPropsV2) {
     const focusProgress = Math.min(Math.abs(focusRotation) / 100, 1);
     const currentScriptPageText = scriptPages && scriptPages[scriptPage] ? scriptPages[scriptPage] : "...";
 
+    // Determine Hardware Hint States based on current step
+    const getHintStates = () => {
+        switch (step) {
+            case STEPS.BOOT:
+                return { leftRight: false, dial: false, confirm: true }; // Press to start
+            case STEPS.PROXIMITY:
+                return { leftRight: false, dial: false, confirm: true }; // User requested confirm solid
+            case STEPS.LOCKED:
+                return { leftRight: false, dial: false, confirm: true }; // Press to scan
+            case STEPS.TUNING:
+                return { leftRight: true, dial: true, confirm: true }; // Dial to tune, L/R to switch, Confirm to scan
+            case STEPS.ANALYZING:
+                return { leftRight: false, dial: false, confirm: false }; // Waiting
+            case STEPS.LISTEN:
+                // User requested Confirm only hollow normally, but solid on the LAST page
+                const isLastPage = scriptPages && scriptPage === scriptPages.length - 1;
+                return { leftRight: true, dial: false, confirm: isLastPage }; // Dial not specified, assuming L/R for page
+            case STEPS.FOCUSING:
+                return { leftRight: false, dial: true, confirm: true }; // Dial to focus, Confirm to finish
+            case STEPS.REVEAL:
+                return { leftRight: false, dial: false, confirm: true }; // Confirm to restart
+            default:
+                return { leftRight: false, dial: false, confirm: false };
+        }
+    };
+    const hintStates = getHintStates();
+
     return (
         <div
             className="screen-container cursor-pointer camera-layer"
@@ -82,6 +110,14 @@ export default function ClassicSkinV2(props: ScannerSkinPropsV2) {
 
             {/* Scan Line Texture */}
             <div className="absolute inset-0 scan-line-bg opacity-10 pointer-events-none"></div>
+
+            {/* Hardware operation hints */}
+            <HardwareHints
+                activeLeftRight={hintStates.leftRight}
+                activeDial={hintStates.dial}
+                activeConfirm={hintStates.confirm}
+                colorClass={getDynamicStyle(primaryColor, 'text-white', 'color').className}
+            />
 
             {/* LAYER 1: Global HUD */}
             <div className="absolute inset-0 pointer-events-none">
@@ -351,8 +387,14 @@ export default function ClassicSkinV2(props: ScannerSkinPropsV2) {
                     <div className="absolute inset-0 rounded-full bg-black">
                         <KeyholeViewer imageSrc={historyImage} position={orientation} />
 
+                        <div className="absolute bottom-16 w-full text-center z-30 pointer-events-none">
+                            <div className="text-[12px] text-white/70 tracking-widest animate-pulse font-mono">
+                                傾斜看見更多細節
+                            </div>
+                        </div>
+
                         {/* Overlay Click-to-Reset */}
-                        <div className="absolute bottom-12 w-full text-center z-30 pointer-events-auto">
+                        <div className="absolute bottom-6 w-full text-center z-30 pointer-events-auto">
                             <div
                                 className={`text-[10px] bg-black text-white px-3 py-1 rounded-full border border-white/20 inline-block cursor-pointer pointer-events-auto ${isEditable ? getInteractionProps('text_content.revealHint').className : ''}`}
                                 onClick={(e) => {

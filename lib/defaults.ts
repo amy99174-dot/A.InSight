@@ -11,17 +11,17 @@ export const STEPS = {
 };
 
 export const TIME_SCALE_LABELS: Record<number, string> = {
-    1: "起因 / 靈感 (抽象自然)",
-    2: "鑄造 / 誕生 (工匠視角)",
-    3: "使用 / 全盛 (歷史靜物)",
-    4: "流轉 / 遺棄 (出土塵封)",
-    5: "未來 / 命運 (科幻遺跡)"
+    1: "誕生前",
+    2: "誕生",
+    3: "全盛",
+    4: "出土",
+    5: "未來"
 };
 
 export const HISTORY_SCALE_LABELS: Record<number, string> = {
-    1: "軼聞 (神秘低語)",
-    2: "通史 (文化習俗)",
-    3: "正史 (考據學術)"
+    1: "傳說",
+    2: "野史",
+    3: "正史"
 };
 
 // Default Configuration (Can be fetched from DB later)
