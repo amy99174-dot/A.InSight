@@ -1669,6 +1669,9 @@ class SoftwareRenderCamera(QWidget):
             active_lr, active_dial, active_confirm = False, True, False  # Confirm hollow per user request
         elif state == self.STATE_REVEAL:
             active_lr, active_dial, active_confirm = False, False, True
+        else:
+            # Fallback for any unhandled state (e.g. STATE_SUCCESS=99, STATE_FAIL=-1)
+            active_lr, active_dial, active_confirm = False, False, False
 
         # --- Tilt hint text for REVEAL state ---
         if state == self.STATE_REVEAL:
