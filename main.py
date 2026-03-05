@@ -166,6 +166,30 @@ class ConfigManager(QThread):
             return default
 
 
+
+class AudioWorker(QThread):
+    """Background thread for TTS generation and ambience download — never blocks UI"""
+
+    def __init__(self, audio_manager, ambience_category, script_text):
+        super().__init__()
+        self.audio_manager = audio_manager
+        self.ambience_category = ambience_category
+        self.script_text = script_text
+
+    def run(self):
+        try:
+            if self.ambience_category:
+                print(f"🎵 [AudioWorker] Starting ambience: {self.ambience_category}")
+                self.audio_manager.play_ambience(self.ambience_category)
+            if self.script_text:
+                print("🔊 [AudioWorker] Generating TTS narration...")
+                success = self.audio_manager.generate_and_play_audio(self.script_text)
+                if not success:
+                    print("❌ [AudioWorker] TTS failed")
+        except Exception as e:
+            print(f"❌ [AudioWorker] Error: {e}")
+
+
 class GeminiWorker(QThread):
     """后台调用 API 的线程：文字分析 + 图像生成"""
     text_ready = pyqtSignal(dict)   # Emitted as soon as text analysis is done (before image gen)
@@ -1228,22 +1252,15 @@ class SoftwareRenderCamera(QWidget):
                 interaction_count=self.interaction_count
             )
 
-        # Play audio: ambience + TTS narration (doesn't need image)
+        # Launch audio in background thread — NEVER block the UI thread
         if self.audio_manager:
             ambience_category = result.get("ambienceCategory", "SOUND_QUIET")
-            if ambience_category:
-                print(f"🎵 Starting ambience: {ambience_category}")
-                self.audio_manager.play_ambience(ambience_category)
+            script_text = result.get("scriptPrompt", "")
+            print("🚀 Launching AudioWorker in background (non-blocking)...")
+            self.audio_worker = AudioWorker(self.audio_manager, ambience_category, script_text)
+            self.audio_worker.start()
 
-            if "scriptPrompt" in result:
-                script_text = result["scriptPrompt"]
-                if script_text:
-                    print("🔊 Generating audio narration...")
-                    success = self.audio_manager.generate_and_play_audio(script_text)
-                    if not success:
-                        print("❌ Audio generation failed, continuing without audio")
-
-        self.update()  # Redraw immediately
+        self.update()  # UI switches to LISTEN state IMMEDIATELY
 
     def on_analysis_finished(self, result):
         """
