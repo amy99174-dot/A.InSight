@@ -31,7 +31,6 @@ class AudioManager:
         
         # TTS playback
         self.current_audio_path = None
-        self.tts_process = None  # mpg123 subprocess for streaming TTS
         
         # Background ambience (using Sound objects on channels)
         self.ambience_sounds = []  # List of (Sound, temp_path) tuples
@@ -76,71 +75,22 @@ class AudioManager:
         _t.Thread(target=_prefetch, daemon=True).start()
     
     def generate_and_play_audio(self, script_text: str) -> bool:
-        """Stream TTS from OpenAI API directly into mpg123 for zero-wait playback.
-        Falls back to pygame download-and-play if mpg123 is unavailable."""
         if not self.api_key:
             print("⚠️  TTS skipped: no OPENAI_KEY")
             return False
         try:
-            import subprocess, shutil
-            url = "https://api.openai.com/v1/audio/speech"
-            headers = {
-                "Content-Type": "application/json",
-                "Authorization": f"Bearer {self.api_key}"
-            }
-            payload = {
-                "model": "tts-1",
-                "input": script_text,
-                "voice": "onyx",
-                "response_format": "mp3"
-            }
-
-            # Prefer mpg123 (true stdin streaming, plays as bytes arrive)
-            if shutil.which("mpg123"):
-                print(f"🎙️ [mpg123] Streaming TTS: {script_text[:50]}...")
-                # Use default ALSA device so dmix can mix with pygame ambience
-                proc = subprocess.Popen(
-                    ["mpg123", "--quiet", "-"],
-                    stdin=subprocess.PIPE,
-                    stdout=subprocess.DEVNULL,
-                    stderr=subprocess.DEVNULL
-                )
-                self.tts_process = proc
-                with requests.post(url, headers=headers, json=payload,
-                                   stream=True, timeout=30) as response:
-                    if response.status_code != 200:
-                        print(f"❌ TTS API Error: {response.status_code}")
-                        proc.kill()
-                        self.tts_process = None
-                        return False
-                    print("▶️ [mpg123] Streaming started — audio plays as bytes arrive")
-                    for chunk in response.iter_content(chunk_size=8192):
-                        if chunk:
-                            try:
-                                if proc.poll() is None:  # still running
-                                    proc.stdin.write(chunk)
-                            except BrokenPipeError:
-                                break  # mpg123 was killed (stop() called)
-                    try:
-                        proc.stdin.close()
-                    except Exception:
-                        pass
-                    proc.wait()
-                self.tts_process = None
-                print("✅ [mpg123] TTS playback complete")
-                return True
-
-            # Fallback: download full file then play with pygame
-            print(f"🎙️ [pygame] Generating TTS (mpg123 not found): {script_text[:50]}...")
+            print(f"🎙️ Generating TTS: {script_text[:50]}...")
             audio_data = self._generate_audio(script_text)
             if not audio_data:
+                print("❌ Failed to generate audio")
                 return False
             temp_path = self._save_to_temp(audio_data)
             if not temp_path:
+                print("❌ Failed to save audio")
                 return False
             self._play_audio(temp_path)
             self.current_audio_path = temp_path
-            print("✅ [pygame] TTS playback started")
+            print("✅ TTS playback started")
             return True
         except Exception as e:
             print(f"❌ TTS failed: {e}")
@@ -224,19 +174,10 @@ class AudioManager:
     
     def stop(self):
         """Stop TTS narration only (keep ambience playing)"""
-        # Stop mpg123 streaming process if active
-        if self.tts_process and self.tts_process.poll() is None:
-            try:
-                self.tts_process.terminate()
-                self.tts_process = None
-                print("⏹️ TTS (mpg123) stopped")
-            except Exception as e:
-                print(f"⚠️ mpg123 stop failed: {e}")
-        # Also stop pygame music (fallback)
         try:
             if pygame.mixer.music.get_busy():
                 pygame.mixer.music.stop()
-                print("⏹️ TTS (pygame) stopped")
+                print("⏹️ TTS stopped")
         except Exception as e:
             print(f"⚠️ Stop failed: {e}")
     
