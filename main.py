@@ -1230,6 +1230,9 @@ class SoftwareRenderCamera(QWidget):
     def start_analysis(self):
         """启动 AI 分析"""
         self.current_state = self.STATE_ANALYZING
+        import time as _t
+        self.analyzing_start_time = _t.time()
+        self.analysis_phase = 0  # 0=文字分析, 1=語音生成+圖片, 2=完成
         print(f"🤖 开始 AI 分析 (T={self.time_scale}, H={self.history_scale})...")
         
         # 将 QPixmap 转为 Base64
@@ -1252,6 +1255,7 @@ class SoftwareRenderCamera(QWidget):
         """
         print("⚡ [on_text_ready] 切換 LISTEN + 播音")
         self.analysis_result = result
+        self.analysis_phase = 1  # Phase: audio generating
 
         # Reset to first page and switch state immediately
         self.script_page = 0
@@ -1298,6 +1302,7 @@ class SoftwareRenderCamera(QWidget):
         print("🖼️ [on_analysis_finished] 圖片生成完成，載入備用")
         # Only update analysis_result if we get a full result (with image)
         self.analysis_result = result
+        self.analysis_phase = 2  # Phase: complete
 
         # Load the generated image for REVEAL state
         if "generated_image" in result:
@@ -2044,40 +2049,104 @@ class SoftwareRenderCamera(QWidget):
             self.update()
     
     def draw_analyzing_state(self, painter, cx, cy, fs=1.0):
-        """[Phase 5A] ANALYZING state with dotted circle animation"""
+        """[Phase 5A] ANALYZING state with progress bar and phase-based status text"""
         painter.save()
         painter.setRenderHint(QPainter.Antialiasing)
-        
+        import time as _t
+
         painter.fillRect(self.rect(), QColor(0, 0, 0, 204))
         primary_hex = self.config_manager.get_color("primary_color", "#ffffff")
         theme_color = QColor(primary_hex)
+
+        # --- Time-based progress calculation ---
+        elapsed = _t.time() - getattr(self, 'analyzing_start_time', _t.time())
+        phase = getattr(self, 'analysis_phase', 0)
+
+        # PHASE 0 (0-27s): Text analysis     → 0% to 70%
+        # PHASE 1 (27+s): Audio + image gen  → 70% to 95%
+        # PHASE 2: Complete                  → 100%
+        PHASE0_DURATION = 27.0
+        PHASE1_DURATION = 12.0
+        if phase == 0:
+            raw = min(elapsed / PHASE0_DURATION, 1.0)
+            progress = raw * 0.68  # 0% → 68%
+        elif phase == 1:
+            phase1_elapsed = elapsed - PHASE0_DURATION
+            raw = min(max(phase1_elapsed, 0) / PHASE1_DURATION, 1.0)
+            progress = 0.68 + raw * 0.27  # 68% → 95%
+        else:
+            progress = 1.0  # Done
+
+        # Phase labels
+        phase_labels = [
+            "正在解析文物...",
+            "生成導覽語音中...",
+            "分析完成"
+        ]
+        phase_icon = ["🔍", "🔊", "✓"][phase]
+        status_text = phase_labels[min(phase, 2)]
+
+        # --- Dotted outer ring (decorative) ---
         outer_border = QColor(theme_color)
         outer_border.setAlpha(26)
         painter.setPen(QPen(outer_border, 1))
         painter.setBrush(Qt.NoBrush)
         outer_r = int(140 * fs)
         painter.drawEllipse(cx - outer_r, cy - outer_r, outer_r * 2, outer_r * 2)
-        import time
-        t = time.time() % 2
-        opacity = 0.2 if t < 0.67 else (0.6 if t < 1.33 else 1.0)
+
+        # Blinking dashed ring animation
+        t_anim = _t.time() % 2
+        opacity = 0.2 if t_anim < 0.67 else (0.6 if t_anim < 1.33 else 1.0)
         dotted_color = QColor(theme_color)
         dotted_color.setAlphaF(opacity)
         dotted_pen = QPen(dotted_color, 2)
         dotted_pen.setDashPattern([3, 6])
         painter.setPen(dotted_pen)
         painter.setBrush(Qt.NoBrush)
-        dot_r = int(100 * fs)
+        dot_r = int(108 * fs)
         painter.drawEllipse(cx - dot_r, cy - dot_r, dot_r * 2, dot_r * 2)
-        painter.setPen(Qt.white)
+
+        # --- Progress Arc ---
+        arc_r = int(85 * fs)
+        arc_w = int(6 * fs)
+
+        # Background track
+        track_color = QColor(theme_color)
+        track_color.setAlpha(40)
+        painter.setPen(QPen(track_color, arc_w, Qt.SolidLine, Qt.RoundCap))
+        painter.setBrush(Qt.NoBrush)
+        painter.drawEllipse(cx - arc_r, cy - arc_r, arc_r * 2, arc_r * 2)
+
+        # Foreground progress arc
+        if progress > 0:
+            arc_color = QColor(theme_color)
+            arc_color.setAlpha(220)
+            painter.setPen(QPen(arc_color, arc_w, Qt.SolidLine, Qt.RoundCap))
+            span = int(-progress * 360 * 16)
+            painter.drawArc(cx - arc_r, cy - arc_r, arc_r * 2, arc_r * 2, 90 * 16, span)
+
+        # --- Percentage Text (center) ---
+        pct_text = f"{int(progress * 100)}%"
+        painter.setPen(QColor(255, 255, 255, 230))
+        painter.setFont(QFont("Arial", int(18 * fs), QFont.Bold))
+        painter.drawText(QRect(cx - int(50 * fs), cy - int(15 * fs), int(100 * fs), int(26 * fs)),
+                         Qt.AlignCenter, pct_text)
+
+        # --- Title ---
         txt_title = self.config_manager.get_text("analyzingTitle", "解析中")
-        painter.setFont(QFont("Arial", int(14 * fs), QFont.Bold))
-        painter.drawText(QRect(cx - int(60 * fs), int(cy - 20 * fs), int(120 * fs), int(20 * fs)), Qt.AlignCenter, txt_title)
-        txt_analysis = self.config_manager.get_text("analyzingText", "正在分析歷史資料")
-        label_color = QColor(255, 255, 255, 179)
-        painter.setPen(label_color)
-        painter.setFont(QFont("Arial", int(9 * fs)))
-        painter.drawText(QRect(cx - int(80 * fs), int(cy + 5 * fs), int(160 * fs), int(20 * fs)), Qt.AlignCenter, txt_analysis)
+        painter.setPen(Qt.white)
+        painter.setFont(QFont("Arial", int(13 * fs), QFont.Bold))
+        painter.drawText(QRect(cx - int(70 * fs), int(cy - 55 * fs), int(140 * fs), int(22 * fs)),
+                         Qt.AlignCenter, txt_title)
+
+        # --- Phase status text ---
+        painter.setPen(QColor(255, 255, 255, 160))
+        painter.setFont(QFont("Arial", int(8 * fs)))
+        painter.drawText(QRect(cx - int(90 * fs), int(cy + 16 * fs), int(180 * fs), int(18 * fs)),
+                         Qt.AlignCenter, status_text)
+
         painter.restore()
+
 
     def draw_focusing_state(self, painter, cx, cy, fs=1.0):
         """[Phase 5B] FOCUSING state with 3 concentric blinking circles and result image"""
