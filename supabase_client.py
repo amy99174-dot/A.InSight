@@ -8,7 +8,7 @@ import os
 import requests
 
 # API host (same as ConfigManager - Mac's local IP)
-API_HOST = os.environ.get('API_HOST', '10.130.205.184')
+API_HOST = os.environ.get('API_HOST', '10.104.33.184')
 LOG_URL = f"http://{API_HOST}:3000/api/log"
 
 
