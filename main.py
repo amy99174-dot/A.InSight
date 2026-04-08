@@ -755,8 +755,8 @@ class SoftwareRenderCamera(QWidget):
         print("✅ 摄像头已启动")
         
         # [Phase 4.4] Config Manager - Sync with Web Editor
-        # Read API host from environment variable or default to Mac IP
-        api_host = os.environ.get('API_HOST', '10.104.33.184')
+        # Read API host from environment variable or default to Mac's mDNS Hostname
+        api_host = os.environ.get('API_HOST', 'chenyiqingdeMacBook-Air.local')
         api_url = f"http://{api_host}:3000/api/config"
         print(f"🌐 Config API: {api_url}")
         
