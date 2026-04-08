@@ -613,63 +613,6 @@ Combine the results from all agents into this exact JSON structure:
 
 
 
-class ConfigManager(QThread):
-    """
-    后台同步 Web 编辑器配置的管理器
-    每 2 秒轮询一次 API
-    """
-    config_updated = pyqtSignal(dict)
-    
-    def __init__(self, api_url="http://localhost:3000/api/config"):
-        super().__init__()
-        self.api_url = api_url
-        self.current_config = {}
-        self.running = True
-        
-    def run(self):
-        print(f"🔄 ConfigManager Started: Polling {self.api_url}")
-        while self.running:
-            try:
-                resp = requests.get(self.api_url, timeout=1)
-                if resp.status_code == 200:
-                    new_config = resp.json()
-                    # Simple comparison to avoid unnecessary repaints
-                    if json.dumps(new_config, sort_keys=True) != json.dumps(self.current_config, sort_keys=True):
-                        self.current_config = new_config
-                        print("✨ Config Updated from Web!")
-                        self.config_updated.emit(new_config)
-            except Exception as e:
-                # Silently fail on network error to avoid spamming console
-                pass
-            
-            # Sleep for 2 seconds
-            self.msleep(2000)
-            
-    def stop(self):
-        self.running = False
-        self.wait()
-        
-    def get_text(self, key, default=""):
-        """Safely get text from config.text_content"""
-        try:
-            return self.current_config.get("text_content", {}).get(key, default)
-        except:
-            return default
-            
-    def get_color(self, key, default="#ffffff"):
-        """Safely get color from config.ui_theme"""
-        try:
-            return self.current_config.get("ui_theme", {}).get(key, default)
-        except:
-            return default
-
-    def get_theme_value(self, key, default=None):
-        try:
-            return self.current_config.get("ui_theme", {}).get(key, default)
-        except:
-            return default
-
-
 class SoftwareRenderCamera(QWidget):
     """纯软件渲染的相机显示"""
     
