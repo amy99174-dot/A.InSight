@@ -349,10 +349,10 @@ export default function ScenarioBuilder() {
                         <div className="p-8 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
                             {/* Step Selector */}
                             <div className="mb-6 flex gap-2 flex-wrap justify-center w-full max-w-2xl">
-                                {Object.entries(STEPS).map(([key, value]) => (
+                                {Object.entries(STEPS).filter(([key]) => key !== 'PROXIMITY').map(([key, value]) => (
                                     <button
                                         key={key}
-                                        onClick={() => setCurrentStep(value)}
+                                        onClick={() => setCurrentStep(value as string)}
                                         className={`px-3 py-1.5 text-[10px] font-bold tracking-widest rounded-lg transition-all ${currentStep === value
                                             ? 'bg-indigo-600 text-white shadow-sm'
                                             : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:border-indigo-200'}`}
