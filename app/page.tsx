@@ -391,7 +391,7 @@ export default function Home() {
             else navigator.vibrate(20);
         }
         switch (step) {
-            case STEPS.BOOT: setStep(STEPS.PROXIMITY); break;
+            case STEPS.BOOT: setStep(STEPS.LOCKED); break; // skipped PROXIMITY
             case STEPS.PROXIMITY: setStep(STEPS.LOCKED); break;
             case STEPS.LOCKED:
                 const img = captureImage();

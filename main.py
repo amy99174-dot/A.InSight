@@ -853,15 +853,16 @@ class SoftwareRenderCamera(QWidget):
     def mousePressEvent(self, event):
         """处理点击事件 (Aligned with Web App Flow)"""
         
-        # 1. BOOT -> PROXIMITY -> LOCKED
-        if self.current_state in [self.STATE_BOOT, self.STATE_PROXIMITY]:
-            # Record interaction start when entering PROXIMITY
-            if self.current_state == self.STATE_BOOT:
-                import time as _time
-                self.interaction_start_time = _time.time()
-            self.current_state += 1
+        # 1. BOOT -> LOCKED (PROXIMITY removed per user request)
+        if self.current_state == self.STATE_BOOT:
+            # Record interaction start
+            import time as _time
+            self.interaction_start_time = _time.time()
+            # Skip PROXIMITY, go straight to LOCKED
+            self.current_state = self.STATE_LOCKED
             print(f"🖱️ 狀態切換: {self.get_state_name()}")
             return
+
 
         # 2. LOCKED (拍照)
         if self.current_state == self.STATE_LOCKED:
