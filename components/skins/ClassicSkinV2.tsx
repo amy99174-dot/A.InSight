@@ -1,5 +1,5 @@
 import React from 'react';
-import { DEFAULT_CONFIG } from '../../lib/defaults';
+import { DEFAULT_CONFIG, TIME_SCALE_LABELS, HISTORY_SCALE_LABELS } from '../../lib/defaults';
 import { Volume2, VolumeX } from 'lucide-react';
 import { KeyholeViewer } from '../KeyholeViewer';
 import { HardwareHints } from '../HardwareHints';
@@ -64,9 +64,11 @@ export default function ClassicSkinV2(props: ScannerSkinPropsV2) {
     };
 
     const getHistoryLabel = (val: number) => {
-        if (val === 3) return "高度";
-        if (val === 2) return "中度";
-        return "低度";
+        return HISTORY_SCALE_LABELS[val] || HISTORY_SCALE_LABELS[2];
+    };
+    
+    const getTimeLabel = (val: number) => {
+        return TIME_SCALE_LABELS[val] || TIME_SCALE_LABELS[3];
     };
 
     const focusProgress = Math.min(Math.abs(focusRotation) / 100, 1);
@@ -280,7 +282,7 @@ export default function ClassicSkinV2(props: ScannerSkinPropsV2) {
                     <div className="center-xy flex flex-col text-center z-10 gap-2 text-white">
                         <div className="flex flex-col border-b border-white/20 pb-1 w-20">
                             <span {...getInteractionProps('text_content.tuningRingOuter')} className={`text-[8px] opacity-60 pointer-events-auto ${isEditable ? getInteractionProps('text_content.tuningRingOuter').className : ''}`}>{txt.tuningRingOuter || "時間軸"}</span>
-                            <span className="text-xl font-bold">L-0{timeScale}</span>
+                            <span className="text-xl font-bold">{getTimeLabel(timeScale)}</span>
                         </div>
                         <div className="flex flex-col w-20">
                             <span {...getInteractionProps('text_content.tuningRingInner')} className={`text-[8px] opacity-60 pointer-events-auto ${isEditable ? getInteractionProps('text_content.tuningRingInner').className : ''}`}>{txt.tuningRingInner || "史實度"}</span>

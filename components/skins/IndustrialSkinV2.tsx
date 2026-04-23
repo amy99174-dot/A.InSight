@@ -1,5 +1,5 @@
 import React from 'react';
-import { STEPS, DEFAULT_CONFIG } from '../../lib/defaults';
+import { STEPS, DEFAULT_CONFIG, TIME_SCALE_LABELS, HISTORY_SCALE_LABELS } from '../../lib/defaults';
 import { Volume2, VolumeX, Crosshair, Activity, Zap, Signal } from 'lucide-react';
 import { KeyholeViewer } from '../KeyholeViewer';
 import { HardwareHints } from '../HardwareHints';
@@ -260,7 +260,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
                         {/* Indicator Line - No Glow */}
                         <div className="absolute left-0 w-full h-[2px] bg-current transition-all duration-300" style={{ bottom: `${(timeScale / 9) * 100}%` }}></div>
                     </div>
-                    <span className="text-xl font-bold font-mono">0{timeScale}</span>
+                    <span className="text-xl font-bold font-mono">{TIME_SCALE_LABELS[timeScale] || TIME_SCALE_LABELS[3]}</span>
                 </div>
 
                 {/* History Slider */}
@@ -274,7 +274,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
                         </div>
                         <div className="absolute left-0 w-full h-[2px] bg-current transition-all duration-300" style={{ bottom: `${(historyScale / 3) * 100}%` }}></div>
                     </div>
-                    <span className="text-lg font-bold font-mono">{historyScale === 3 ? "HI" : historyScale === 2 ? "MID" : "LO"}</span>
+                    <span className="text-lg font-bold font-mono">{HISTORY_SCALE_LABELS[historyScale] || HISTORY_SCALE_LABELS[2]}</span>
                 </div>
             </div>
 
