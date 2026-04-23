@@ -132,7 +132,7 @@ export default function ScenarioBuilder() {
                 {activeTab === 'visuals' && (
                     <div className="space-y-6 animate-in slide-in-from-right duration-300">
                         <section>
-                            <h3 className="text-xs font-bold text-indigo-600 mb-4 uppercase tracking-widest border-b border-gray-200 pb-2">
+                            <h3 className="text-xs font-bold text-[#6CB4A8] mb-4 uppercase tracking-widest border-b border-[#E8D4AF] pb-2">
                                 主題與濾鏡
                             </h3>
 
@@ -150,27 +150,27 @@ export default function ScenarioBuilder() {
                                             handleDeepConfigChange('ui_theme.primary_color', theme.color);
                                             handleDeepConfigChange('ui_theme.camera_filter', theme.filter);
                                         }}
-                                        className="bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg p-3 text-left transition-all hover:border-indigo-300 hover:shadow-sm"
+                                        className="bg-[#E8D4AF]/20 hover:bg-[#E8D4AF]/30 border border-[#E8D4AF] rounded-lg p-3 text-left transition-all hover:border-[#6CB4A8] hover:shadow-sm"
                                     >
-                                        <div className="text-[10px] text-gray-500 mb-1 font-medium">{theme.label}</div>
-                                        <div className="w-full h-2 rounded-full border border-gray-200" style={{ backgroundColor: theme.color }}></div>
+                                        <div className="text-[10px] text-[#442916]/70 mb-1 font-medium">{theme.label}</div>
+                                        <div className="w-full h-2 rounded-full border border-[#E8D4AF]" style={{ backgroundColor: theme.color }}></div>
                                     </button>
                                 ))}
                             </div>
 
                             {/* Layout Mode Selector */}
                             <div className="mb-6">
-                                <label className="text-[10px] text-gray-500 block mb-2 uppercase tracking-widest font-bold">介面佈局 (Layout Mode)</label>
+                                <label className="text-[10px] text-[#442916]/70 block mb-2 uppercase tracking-widest font-bold">介面佈局 (Layout Mode)</label>
                                 <div className="flex gap-2">
                                     <button
                                         onClick={() => handleDeepConfigChange('ui_theme.layout_mode', 'classic')}
-                                        className={`flex-1 py-3 border rounded-lg text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode !== 'industrial' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-500 border-gray-300 hover:border-indigo-300'}`}
+                                        className={`flex-1 py-3 border rounded-lg text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode !== 'industrial' ? 'bg-[#6CB4A8] text-white border-[#6CB4A8] shadow-sm' : 'bg-white text-[#442916]/70 border-[#A84714]/30 hover:border-[#6CB4A8]'}`}
                                     >
                                         Classic Radar
                                     </button>
                                     <button
                                         onClick={() => handleDeepConfigChange('ui_theme.layout_mode', 'industrial')}
-                                        className={`flex-1 py-3 border rounded-lg text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode === 'industrial' ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' : 'bg-white text-gray-500 border-gray-300 hover:border-indigo-300'}`}
+                                        className={`flex-1 py-3 border rounded-lg text-[10px] font-bold uppercase transition-all ${config.ui_theme?.layout_mode === 'industrial' ? 'bg-[#6CB4A8] text-white border-[#6CB4A8] shadow-sm' : 'bg-white text-[#442916]/70 border-[#A84714]/30 hover:border-[#6CB4A8]'}`}
                                     >
                                         Industrial HUD
                                     </button>
@@ -179,7 +179,7 @@ export default function ScenarioBuilder() {
 
                             <div className="space-y-4">
                                 <div>
-                                    <label className="text-[10px] text-gray-500 block mb-2 font-medium">主色調 (Hex)</label>
+                                    <label className="text-[10px] text-[#442916]/70 block mb-2 font-medium">主色調 (Hex)</label>
                                     <div className="flex gap-2">
                                         <input
                                             type="color"
@@ -191,17 +191,17 @@ export default function ScenarioBuilder() {
                                             type="text"
                                             value={config.ui_theme?.primary_color || ''}
                                             onChange={(e) => handleDeepConfigChange('ui_theme.primary_color', e.target.value)}
-                                            className="flex-1 bg-white border border-gray-300 rounded-lg px-3 text-xs text-gray-800 font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                            className="flex-1 bg-white border border-[#A84714]/30 rounded-lg px-3 text-xs text-[#442916] font-mono focus:outline-none focus:ring-2 focus:ring-[#6CB4A8]/50"
                                         />
                                     </div>
                                 </div>
 
                                 <div>
-                                    <label className="text-[10px] text-gray-500 block mb-2 font-medium">相機濾鏡</label>
+                                    <label className="text-[10px] text-[#442916]/70 block mb-2 font-medium">相機濾鏡</label>
                                     <select
                                         value={config.ui_theme?.camera_filter || 'none'}
                                         onChange={(e) => handleDeepConfigChange('ui_theme.camera_filter', e.target.value)}
-                                        className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-xs text-gray-800 font-mono outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                        className="w-full bg-white border border-[#A84714]/30 rounded-lg px-3 py-2 text-xs text-[#442916] font-mono outline-none focus:ring-2 focus:ring-[#6CB4A8]/50"
                                     >
                                         <option value="none">無 (原色)</option>
                                         <option value="grayscale">黑白 (Noir)</option>
@@ -217,40 +217,40 @@ export default function ScenarioBuilder() {
                 {/* --- BRAIN TAB --- */}
                 {activeTab === 'brain' && (
                     <div className="space-y-6 animate-in slide-in-from-right duration-300">
-                        <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg text-[10px] text-indigo-700 mb-4">
+                        <div className="p-3 bg-[#6CB4A8]/10 border border-[#6CB4A8]/30 rounded-lg text-[10px] text-[#442916] mb-4">
                             此處設定用於辨識古物與講述故事的 AI 人格。
                         </div>
 
                         <section className="space-y-4">
                             <div>
-                                <label className="text-[10px] text-gray-500 block mb-2 uppercase font-medium">角色身分</label>
+                                <label className="text-[10px] text-[#442916]/70 block mb-2 uppercase font-medium">角色身分</label>
                                 <input
                                     type="text"
                                     value={config.ai_brain?.role || ''}
                                     onChange={(e) => handleDeepConfigChange('ai_brain.role', e.target.value)}
                                     placeholder="例如：資深考古學家"
-                                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    className="w-full bg-white border border-[#A84714]/30 rounded-lg px-3 py-2 text-[#442916] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#6CB4A8]/50"
                                 />
                             </div>
 
                             <div>
-                                <label className="text-[10px] text-gray-500 block mb-2 uppercase font-medium">說話語氣</label>
+                                <label className="text-[10px] text-[#442916]/70 block mb-2 uppercase font-medium">說話語氣</label>
                                 <input
                                     type="text"
                                     value={config.ai_brain?.tone || ''}
                                     onChange={(e) => handleDeepConfigChange('ai_brain.tone', e.target.value)}
                                     placeholder="例如：正式、學術、神秘"
-                                    className="w-full bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                                    className="w-full bg-white border border-[#A84714]/30 rounded-lg px-3 py-2 text-[#442916] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#6CB4A8]/50"
                                 />
                             </div>
 
                             <div>
-                                <label className="text-[10px] text-gray-500 block mb-2 uppercase font-medium">視覺生成關鍵字</label>
+                                <label className="text-[10px] text-[#442916]/70 block mb-2 uppercase font-medium">視覺生成關鍵字</label>
                                 <textarea
                                     value={config.ai_brain?.vision_style_keywords || ''}
                                     onChange={(e) => handleDeepConfigChange('ai_brain.vision_style_keywords', e.target.value)}
                                     placeholder="用於生成歷史圖像的風格關鍵字..."
-                                    className="w-full h-20 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                                    className="w-full h-20 bg-white border border-[#A84714]/30 rounded-lg px-3 py-2 text-[#442916] font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#6CB4A8]/50 resize-none"
                                 />
                             </div>
                         </section>
@@ -262,19 +262,19 @@ export default function ScenarioBuilder() {
                     <div className="space-y-6 animate-in slide-in-from-right duration-300">
                         {selectedField ? (
                             <div className="space-y-4">
-                                <div className="border-b border-gray-200 pb-2 mb-2">
-                                    <label className="text-[10px] uppercase tracking-widest text-indigo-600 mb-1 block font-bold">已選欄位</label>
-                                    <div className="text-sm font-mono text-gray-800 break-words">{selectedField.split('.').pop()}</div>
+                                <div className="border-b border-[#E8D4AF] pb-2 mb-2">
+                                    <label className="text-[10px] uppercase tracking-widest text-[#6CB4A8] mb-1 block font-bold">已選欄位</label>
+                                    <div className="text-sm font-mono text-[#442916] break-words">{selectedField.split('.').pop()}</div>
                                 </div>
                                 <textarea
                                     value={(config.text_content as any)[selectedField.split('.').pop() as string] || ""}
                                     onChange={(e) => handleDeepConfigChange(`text_content.${selectedField.split('.').pop()}`, e.target.value)}
-                                    className="w-full h-32 bg-white border border-gray-300 rounded-lg px-3 py-2 text-gray-800 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/50 resize-none"
+                                    className="w-full h-32 bg-white border border-[#A84714]/30 rounded-lg px-3 py-2 text-[#442916] font-mono text-sm focus:outline-none focus:ring-2 focus:ring-[#6CB4A8]/50 resize-none"
                                     placeholder="編輯文字內容..."
                                 />
                             </div>
                         ) : (
-                            <div className="text-center py-10 text-gray-400 text-xs">
+                            <div className="text-center py-10 text-[#442916]/50 text-xs">
                                 請點擊預覽畫面中的文字進行編輯。
                             </div>
                         )}
@@ -286,15 +286,15 @@ export default function ScenarioBuilder() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 p-8 font-sans text-gray-800">
+        <div className="min-h-screen bg-[#E8D4AF]/30 p-8 font-sans text-[#442916]">
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900 tracking-tight flex items-center gap-3">
-                        <Settings className="w-8 h-8 text-indigo-600" />
+                    <h1 className="text-3xl font-bold text-[#442916] tracking-tight flex items-center gap-3">
+                        <Settings className="w-8 h-8 text-[#6CB4A8]" />
                         A.InSight UI 編輯器
                     </h1>
-                    <p className="text-gray-500 mt-1 ml-11 flex items-center gap-2">
+                    <p className="text-[#442916]/70 mt-1 ml-11 flex items-center gap-2">
                         Scenario Builder &amp; Visual Designer
                         {autoSaved && (
                             <span className="text-[10px] bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded-full font-medium animate-in fade-in duration-300">
@@ -306,7 +306,7 @@ export default function ScenarioBuilder() {
                 <div className="flex items-center gap-3">
                     <Link
                         href="/admin"
-                        className="px-5 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm hover:shadow-md hover:bg-gray-50 text-sm font-medium transition-all flex items-center gap-2"
+                        className="px-5 py-2.5 bg-white border border-[#A84714]/30 rounded-lg shadow-sm hover:shadow-md hover:bg-[#E8D4AF]/20 text-sm font-medium transition-all flex items-center gap-2"
                     >
                         <ArrowLeft className="w-4 h-4" />
                         數據中心
@@ -315,7 +315,7 @@ export default function ScenarioBuilder() {
                         onClick={() => setIsMonitoring(!isMonitoring)}
                         className={`px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${isMonitoring
                             ? 'bg-red-100 text-red-700 border border-red-200 animate-pulse'
-                            : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 shadow-sm'}`}
+                            : 'bg-white border border-[#A84714]/30 text-[#A84714] hover:bg-[#E8D4AF]/20 shadow-sm'}`}
                     >
                         {isMonitoring ? <MonitorPlay className="w-4 h-4" /> : <Camera className="w-4 h-4" />}
                         {isMonitoring ? '監控中' : '遠端監控'}
@@ -323,7 +323,7 @@ export default function ScenarioBuilder() {
                     <button
                         onClick={handleSave}
                         disabled={isSaving}
-                        className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-sm disabled:opacity-50 transition-all"
+                        className="flex items-center gap-2 bg-[#6CB4A8] hover:bg-[#6CB4A8] text-white text-sm font-medium px-5 py-2.5 rounded-lg shadow-sm disabled:opacity-50 transition-all"
                     >
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                         {isSaving ? "儲存中..." : "儲存變更"}
@@ -336,17 +336,17 @@ export default function ScenarioBuilder() {
 
                 {/* LEFT: Preview Stage (2/3 width) */}
                 <div className="lg:col-span-2">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                    <div className="bg-white rounded-xl shadow-sm border border-[#E8D4AF] overflow-hidden">
                         {/* Card Header */}
-                        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-                            <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-                                <span className="p-1.5 bg-indigo-50 text-indigo-600 rounded"><Palette className="w-5 h-5" /></span>
+                        <div className="px-6 py-4 border-b border-[#E8D4AF]/50 bg-[#E8D4AF]/20">
+                            <h2 className="text-lg font-semibold text-[#442916] flex items-center gap-2">
+                                <span className="p-1.5 bg-[#6CB4A8]/10 text-[#6CB4A8] rounded"><Palette className="w-5 h-5" /></span>
                                 即時預覽
                             </h2>
                         </div>
 
                         {/* Preview Content */}
-                        <div className="p-8 flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
+                        <div className="p-8 flex flex-col items-center justify-center bg-gradient-to-b from-[#E8D4AF]/20 to-[#E8D4AF]/30">
                             {/* Step Selector */}
                             <div className="mb-6 flex gap-2 flex-wrap justify-center w-full max-w-2xl">
                                 {Object.entries(STEPS).filter(([key]) => key !== 'PROXIMITY').map(([key, value]) => (
@@ -354,8 +354,8 @@ export default function ScenarioBuilder() {
                                         key={key}
                                         onClick={() => setCurrentStep(value as string)}
                                         className={`px-3 py-1.5 text-[10px] font-bold tracking-widest rounded-lg transition-all ${currentStep === value
-                                            ? 'bg-indigo-600 text-white shadow-sm'
-                                            : 'bg-white text-gray-500 border border-gray-200 hover:bg-gray-50 hover:border-indigo-200'}`}
+                                            ? 'bg-[#6CB4A8] text-white shadow-sm'
+                                            : 'bg-white text-[#442916]/70 border border-[#E8D4AF] hover:bg-[#E8D4AF]/20 hover:border-[#6CB4A8]/30'}`}
                                     >
                                         {key}
                                     </button>
@@ -363,7 +363,7 @@ export default function ScenarioBuilder() {
                             </div>
 
                             {/* Hardware Simulator */}
-                            <div className="relative w-[500px] h-[500px] border-8 border-gray-900 rounded-full shadow-2xl bg-black overflow-hidden ring-1 ring-gray-300 shrink-0">
+                            <div className="relative w-[500px] h-[500px] border-8 border-[#442916] rounded-full shadow-2xl bg-black overflow-hidden ring-1 ring-[#A84714]/30 shrink-0">
                                 <ScannerDisplay
                                     step={currentStep}
                                     config={config}
@@ -425,24 +425,24 @@ export default function ScenarioBuilder() {
 
                 {/* RIGHT: Inspector Panel (1/3 width) */}
                 <div className="lg:col-span-1">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden sticky top-8">
+                    <div className="bg-white rounded-xl shadow-sm border border-[#E8D4AF] overflow-hidden sticky top-8">
                         {/* Tabs */}
-                        <div className="flex border-b border-gray-200">
+                        <div className="flex border-b border-[#E8D4AF]">
                             <button
                                 onClick={() => setActiveTab('visuals')}
-                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'visuals' ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'visuals' ? 'border-[#6CB4A8] text-[#6CB4A8] bg-[#6CB4A8]/10' : 'border-transparent text-[#442916]/50 hover:text-[#A84714]'}`}
                             >
                                 <Palette size={14} /> 視覺
                             </button>
                             <button
                                 onClick={() => setActiveTab('brain')}
-                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'brain' ? 'border-purple-600 text-purple-600 bg-purple-50/50' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'brain' ? 'border-[#A84714] text-[#A84714] bg-[#A84714]/10' : 'border-transparent text-[#442916]/50 hover:text-[#A84714]'}`}
                             >
                                 <Brain size={14} /> AI
                             </button>
                             <button
                                 onClick={() => setActiveTab('texts')}
-                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'texts' ? 'border-amber-500 text-amber-600 bg-amber-50/50' : 'border-transparent text-gray-400 hover:text-gray-600'}`}
+                                className={`flex-1 py-4 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-b-2 transition-all ${activeTab === 'texts' ? 'border-[#F3B86B] text-[#F3B86B] bg-[#F3B86B]/10' : 'border-transparent text-[#442916]/50 hover:text-[#A84714]'}`}
                             >
                                 <Type size={14} /> 文字
                             </button>
