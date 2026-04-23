@@ -200,10 +200,10 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             <div className={`absolute inset-0 ${step === STEPS.BOOT ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 {/* Title: Perfectly Centered */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-end gap-1">
-                    <span className={`text-2xl font-black tracking-tighter whitespace-nowrap ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>{txt.bootText || "正在探測歷史訊號"}</span>
+                    <span {...getInteractionProps(\'text_content.bootText\')} className={`text-2xl font-black tracking-tighter whitespace-nowrap pointer-events-auto ${colorStyle.className} ${isEditable ? getInteractionProps(\'text_content.bootText\').className : \'\'}`} style={{ color: colorStyle.style?.color }}>{txt.bootText || "正在探測歷史訊號"}</span>
                 </div>
                 {/* Subtext: Positioned below center */}
-                <div {...getInteractionProps('text_content.bootSubtext')} className="absolute top-1/2 left-1/2 -translate-x-1/2 mt-8 text-sm font-bold tracking-widest text-center w-full">
+                <div {...getInteractionProps('text_content.bootSubtext')} className={`absolute top-1/2 left-1/2 -translate-x-1/2 mt-8 text-sm font-bold tracking-widest text-center w-full pointer-events-auto ${isEditable ? getInteractionProps('text_content.bootSubtext').className : ''}`}>
                     {txt.bootSubtext || "尋找中..."}
                 </div>
             </div>
@@ -221,8 +221,8 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
 
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-1">
                     {/* Match Classic: Title and Subtext */}
-                    <div {...getInteractionProps('text_content.proximityTitle')} className="text-xl font-bold">{txt.proximityTitle || "訊號偵測"}</div>
-                    <div {...getInteractionProps('text_content.proximitySubtext')} className="text-[9px] border-t border-white/50 w-full pt-1 mt-1 text-center">{txt.proximitySubtext || "接近目標中"}</div>
+                    <div {...getInteractionProps('text_content.proximityTitle')} className={`text-xl font-bold pointer-events-auto ${isEditable ? getInteractionProps('text_content.proximityTitle').className : ''}`}>{txt.proximityTitle || "訊號偵測"}</div>
+                    <div {...getInteractionProps('text_content.proximitySubtext')} className={`text-[9px] border-t border-white/50 w-full pt-1 mt-1 text-center pointer-events-auto ${isEditable ? getInteractionProps('text_content.proximitySubtext').className : ''}`}>{txt.proximitySubtext || "接近目標中"}</div>
                 </div>
                 <div className="absolute bottom-16 w-full text-center text-white">
                     <span className="text-2xl font-bold font-mono">0.8</span>
@@ -236,13 +236,13 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
                 {/* Solid Star Removed as requested */}
                 {/* Centered and Enlarged Title */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                    <div className={`text-xl px-2 inline-block rounded-sm font-bold border bg-black/90 ${colorStyle.className}`}
-                        style={{ color: colorStyle.style?.color, borderColor: colorStyle.style?.color }}>
+                    <div {...getInteractionProps(\'text_content.lockedTitle\')} className={`text-xl px-2 inline-block rounded-sm font-bold border bg-black/90 pointer-events-auto ${colorStyle.className} ${isEditable ? getInteractionProps(\'text_content.lockedTitle\').className : \'\'}`}
+                        style={{ color: colorStyle.style?.color, borderColor: colorStyle.style?.color }}\>
                         {txt.lockedTitle || "鎖定目標"}
                     </div>
                 </div>
                 <div className="absolute bottom-[30%] w-full text-center text-white">
-                    <div {...getInteractionProps('text_content.lockedSubtext')} className="text-[10px]">{txt.lockedSubtext || "[ 按下快門捕捉 ]"}</div>
+                    <div {...getInteractionProps('text_content.lockedSubtext')} className={`text-[10px] pointer-events-auto ${isEditable ? getInteractionProps('text_content.lockedSubtext').className : ''}`}>{txt.lockedSubtext || "[ 按下快門捕捉 ]"}</div>
                 </div>
             </div>
 
@@ -250,7 +250,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             <div className={`absolute inset-0 flex items-center justify-center gap-8 bg-black/90 ${step === STEPS.TUNING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 {/* Time Scale Slider */}
                 <div className={`flex flex-col items-center gap-2 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
-                    <span {...getInteractionProps('text_content.tuningRingOuter')} className="text-[8px] tracking-widest opacity-70">{txt.tuningRingOuter || "TIME"}</span>
+                    <span {...getInteractionProps('text_content.tuningRingOuter')} className={`text-[8px] tracking-widest opacity-70 pointer-events-auto ${isEditable ? getInteractionProps('text_content.tuningRingOuter').className : ''}`}>{txt.tuningRingOuter || "TIME"}</span>
                     <div className="w-8 h-32 border border-current/30 relative bg-black/50">
                         {/* Split Opacity Fill: Left 10% vs Right 40% (Theme Color) */}
                         <div className="absolute bottom-0 left-0 w-full transition-all duration-300" style={{ height: `${(timeScale / 9) * 100}%` }}>
@@ -265,7 +265,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
 
                 {/* History Slider */}
                 <div className={`flex flex-col items-center gap-2 ${colorStyle.className}`} style={{ color: colorStyle.style?.color }}>
-                    <span {...getInteractionProps('text_content.tuningRingInner')} className="text-[8px] tracking-widest opacity-70">{txt.tuningRingInner || "DATA"}</span>
+                    <span {...getInteractionProps('text_content.tuningRingInner')} className={`text-[8px] tracking-widest opacity-70 pointer-events-auto ${isEditable ? getInteractionProps('text_content.tuningRingInner').className : ''}`}>{txt.tuningRingInner || "DATA"}</span>
                     <div className="w-8 h-32 border border-current/30 relative bg-black/50">
                         {/* Split Opacity Fill: Left 10% vs Right 40% (Theme Color) */}
                         <div className="absolute bottom-0 left-0 w-full transition-all duration-300" style={{ height: `${(historyScale / 3) * 100}%` }}>
@@ -282,7 +282,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             {/* ANALYZING */}
             <div className={`absolute inset-0 flex flex-col items-center justify-center ${step === STEPS.ANALYZING ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 <div className="center-xy flex flex-col text-center bg-black/80 p-4 rounded-full text-white">
-                    <div {...getInteractionProps('text_content.analyzingTitle')} className="text-sm font-bold mb-1">{txt.analyzingTitle || "解析中"}</div>
+                    <div {...getInteractionProps('text_content.analyzingTitle')} className={`text-sm font-bold mb-1 pointer-events-auto ${isEditable ? getInteractionProps('text_content.analyzingTitle').className : ''}`}>{txt.analyzingTitle || "解析中"}</div>
                     <div className="text-[9px] opacity-60 text-stone-300">{analysisText}</div>
                     <div className="mt-2 font-mono text-xl">{isProcessing ? "..." : "解析完成"}</div>
                 </div>
@@ -320,9 +320,9 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
                     {/* Inner Solid Star Removed as requested */}
                     {/* Background Box Removed as requested */}
                     <div className="flex flex-col items-center">
-                        <div {...getInteractionProps('text_content.focusTitle')} className="text-[10px] mb-1">{txt.focusTitle || "對焦"}</div>
+                        <div {...getInteractionProps('text_content.focusTitle')} className={`text-[10px] mb-1 pointer-events-auto ${isEditable ? getInteractionProps('text_content.focusTitle').className : ''}`}>{txt.focusTitle || "對焦"}</div>
                         <span className="text-2xl font-bold">{Math.round(focusProgress * 100)}<span className="text-[10px]">%</span></span>
-                        <div {...getInteractionProps('text_content.focusHint')} className="text-[10px] opacity-70 mt-1">{txt.focusHint || "[ 旋轉對焦 ]"}</div>
+                        <div {...getInteractionProps('text_content.focusHint')} className={`text-[10px] opacity-70 mt-1 pointer-events-auto ${isEditable ? getInteractionProps('text_content.focusHint').className : ''}`}>{txt.focusHint || "[ 旋轉對焦 ]"}</div>
                     </div>
                 </div>
             </div>
