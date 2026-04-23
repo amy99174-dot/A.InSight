@@ -286,15 +286,15 @@ export default function ScenarioBuilder() {
     };
 
     return (
-        <div className="min-h-screen bg-[#E8D4AF]/30 p-8 font-sans text-[#442916]">
+        <div className="min-h-screen bg-[#442916]/50 p-8 font-sans text-[#442916]">
             {/* Header */}
             <div className="mb-8 flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold text-[#442916] tracking-tight flex items-center gap-3">
+                    <h1 className="text-3xl font-bold text-[#F3B86B] tracking-tight flex items-center gap-3">
                         <Settings className="w-8 h-8 text-[#6CB4A8]" />
                         A.InSight UI 編輯器
                     </h1>
-                    <p className="text-[#442916]/70 mt-1 ml-11 flex items-center gap-2">
+                    <p className="text-[#E8D4AF] mt-1 ml-11 flex items-center gap-2">
                         Scenario Builder &amp; Visual Designer
                         {autoSaved && (
                             <span className="text-[10px] bg-green-100 text-green-700 border border-green-300 px-2 py-0.5 rounded-full font-medium animate-in fade-in duration-300">
