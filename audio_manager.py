@@ -55,8 +55,17 @@ class AudioManager:
             "SOUND_CAVE_RUMBLE": "https://storage.googleapis.com/my-rpg-game-sounds/LOW.mp3",
         }
 
-        # Pre-download cache: category -> local temp file path
+        # Persistent sounds directory on main disk (not /tmp)
+        self._sounds_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'sounds')
+        os.makedirs(self._sounds_dir, exist_ok=True)
+
+        # Pre-download cache: category -> local file path
         self._ambience_cache: dict = {}
+        # Pre-load already-downloaded sounds from disk
+        for category in self.AMBIENCE_URLS:
+            cached_path = os.path.join(self._sounds_dir, f'{category}.mp3')
+            if os.path.exists(cached_path):
+                self._ambience_cache[category] = cached_path
         self._start_prefetch()
 
         print("🔊 AudioManager initialized with ambience support (pre-fetching...)")
@@ -254,15 +263,12 @@ class AudioManager:
             response = requests.get(url, timeout=15)
             
             if response.status_code == 200:
-                # Save to temp file
-                temp_file = tempfile.NamedTemporaryFile(
-                    delete=False, 
-                    suffix=f'_{category}.mp3'
-                )
-                temp_file.write(response.content)
-                temp_file.close()
-                print(f"✅ Downloaded {category} ({len(response.content)} bytes)")
-                return temp_file.name
+                # Save to persistent sounds directory (not /tmp)
+                save_path = os.path.join(self._sounds_dir, f'{category}.mp3')
+                with open(save_path, 'wb') as f:
+                    f.write(response.content)
+                print(f"✅ Downloaded {category} ({len(response.content)} bytes) -> {save_path}")
+                return save_path
             else:
                 print(f"❌ Failed to download {category}: HTTP {response.status_code}")
                 return None
