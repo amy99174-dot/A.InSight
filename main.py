@@ -234,6 +234,9 @@ class GeminiWorker(QThread):
             self.image_data = image_data
         self.time_scale = time_scale
         self.history_scale = history_scale
+        # [Fallback] 主線程可輪詢這些屬性來偵測信號是否被丟失
+        self._text_result = None
+        self._finished_result = None
         
     def run(self):
         try:
@@ -502,6 +505,7 @@ Combine the results from all agents into this exact JSON structure:
             # ✅ [PARALLEL OPTIMIZATION] Emit text_ready NOW — before image generation
             # This allows TTS generation and LISTEN state to start ~20s earlier
             print("📢 [text_ready] 文字分析完成，立刻通知主線程切換狀態並播音")
+            self._text_result = dict(final_result)  # Fallback: 主線程可直接讀取
             self.text_ready.emit(dict(final_result))  # Send a copy
 
             # Step 2: 圖像生成 (Gemini 2.5 Flash Image - Img2Img)
@@ -1265,7 +1269,20 @@ class SoftwareRenderCamera(QWidget):
         [Phase 1] 架構重構：
         不再於此處建立 QPixmap，僅發出重繪請求。
         繪圖邏輯全部移至 paintEvent 以利用硬體加速與流暢動畫。
+        
+        [Fallback] 檢查 GeminiWorker 是否已完成但信號未被處理
+        （Pi Zero 2W 的 Qt 事件迴圈可能因 30fps timer 飽和而丟失跨線程信號）
         """
+        # Fallback: 如果處於 ANALYZING 且 worker 已經完成文字分析，手動觸發狀態切換
+        if (self.current_state == self.STATE_ANALYZING 
+            and hasattr(self, 'worker') and self.worker is not None
+            and hasattr(self.worker, '_text_result')):
+            pending = self.worker._text_result
+            if pending is not None:
+                print("⚡ [FALLBACK] 偵測到 text_ready 信號未處理，手動觸發 on_text_ready")
+                self.worker._text_result = None  # Clear to prevent re-trigger
+                self.on_text_ready(pending)
+        
         self.update()
 
     def paintEvent(self, event):
