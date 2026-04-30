@@ -200,7 +200,7 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
             <div className={`absolute inset-0 ${step === STEPS.BOOT ? 'opacity-100 z-20' : 'opacity-0 z-0 pointer-events-none'}`}>
                 {/* Title: Perfectly Centered */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-end gap-1">
-                    <span {...getInteractionProps(\'text_content.bootText\')} className={`text-2xl font-black tracking-tighter whitespace-nowrap pointer-events-auto ${colorStyle.className} ${isEditable ? getInteractionProps(\'text_content.bootText\').className : \'\'}`} style={{ color: colorStyle.style?.color }}>{txt.bootText || "正在探測歷史訊號"}</span>
+                    <span {...getInteractionProps('text_content.bootText')} className={`text-2xl font-black tracking-tighter whitespace-nowrap pointer-events-auto ${colorStyle.className} ${isEditable ? getInteractionProps('text_content.bootText').className : ''}`} style={{ color: colorStyle.style?.color }}>{txt.bootText || "正在探測歷史訊號"}</span>
                 </div>
                 {/* Subtext: Positioned below center */}
                 <div {...getInteractionProps('text_content.bootSubtext')} className={`absolute top-1/2 left-1/2 -translate-x-1/2 mt-8 text-sm font-bold tracking-widest text-center w-full pointer-events-auto ${isEditable ? getInteractionProps('text_content.bootSubtext').className : ''}`}>
@@ -236,8 +236,8 @@ export default function IndustrialSkinV2(props: ScannerSkinPropsV2) {
                 {/* Solid Star Removed as requested */}
                 {/* Centered and Enlarged Title */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center">
-                    <div {...getInteractionProps(\'text_content.lockedTitle\')} className={`text-xl px-2 inline-block rounded-sm font-bold border bg-black/90 pointer-events-auto ${colorStyle.className} ${isEditable ? getInteractionProps(\'text_content.lockedTitle\').className : \'\'}`}
-                        style={{ color: colorStyle.style?.color, borderColor: colorStyle.style?.color }}\>
+                    <div {...getInteractionProps('text_content.lockedTitle')} className={`text-xl px-2 inline-block rounded-sm font-bold border bg-black/90 pointer-events-auto ${colorStyle.className} ${isEditable ? getInteractionProps('text_content.lockedTitle').className : ''}`}
+                        style={{ color: colorStyle.style?.color, borderColor: colorStyle.style?.color }}>
                         {txt.lockedTitle || "鎖定目標"}
                     </div>
                 </div>
