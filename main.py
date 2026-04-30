@@ -42,11 +42,15 @@ except ImportError as e:
     SUPABASE_AVAILABLE = False
 
 import threading
+import queue
 import sys
 import os
 import math
 import traceback
 from PyQt5.QtCore import QThread, pyqtSignal, QBuffer
+
+# Thread-safe queue for cross-thread text_ready events (more reliable than Qt signals on Pi)
+_analysis_queue = queue.Queue()
 
 # 简单的 API Key 读取
 def get_api_key():
@@ -506,6 +510,7 @@ Combine the results from all agents into this exact JSON structure:
             # This allows TTS generation and LISTEN state to start ~20s earlier
             print("📢 [text_ready] 文字分析完成，立刻通知主線程切換狀態並播音")
             self._text_result = dict(final_result)  # Fallback: 主線程可直接讀取
+            _analysis_queue.put(("text_ready", dict(final_result)))  # Queue-based fallback
             self.text_ready.emit(dict(final_result))  # Send a copy
 
             # Step 2: 圖像生成 (Gemini 2.5 Flash Image - Img2Img)
@@ -1273,7 +1278,16 @@ class SoftwareRenderCamera(QWidget):
         [Fallback] 檢查 GeminiWorker 是否已完成但信號未被處理
         （Pi Zero 2W 的 Qt 事件迴圈可能因 30fps timer 飽和而丟失跨線程信號）
         """
-        # Fallback: 如果處於 ANALYZING 且 worker 已經完成文字分析，手動觸發狀態切換
+        # [Queue Fallback] 優先從 queue 取得跨線程事件（比 Qt 信號更可靠）
+        try:
+            event_type, result = _analysis_queue.get_nowait()
+            if event_type == 'text_ready' and self.current_state == self.STATE_ANALYZING:
+                print("⚡ [QUEUE] 從 queue 取得 text_ready 事件，切換狀態")
+                self.on_text_ready(result)
+        except queue.Empty:
+            pass
+
+        # [Fallback] 如果處於 ANALYZING 且 worker 已經完成文字分析，手動觸發狀態切換
         if (self.current_state == self.STATE_ANALYZING 
             and hasattr(self, 'worker') and self.worker is not None
             and hasattr(self.worker, '_text_result')):
