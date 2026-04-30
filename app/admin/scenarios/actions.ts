@@ -1,15 +1,19 @@
 'use server';
 
-import fs from 'fs/promises';
-import path from 'path';
+import { supabase } from '@/lib/supabase';
 import { revalidatePath } from 'next/cache';
-
-const CONFIG_FILE_PATH = path.join(process.cwd(), 'scenarios.json');
 
 export async function updateScenario(newConfig: any) {
     try {
-        console.log("Saving scenario config to:", CONFIG_FILE_PATH);
-        await fs.writeFile(CONFIG_FILE_PATH, JSON.stringify(newConfig, null, 2), 'utf-8');
+        console.log("Saving scenario config to Supabase...");
+        
+        const { error } = await supabase
+            .from('scenario_config')
+            .upsert({ id: 1, config: newConfig });
+
+        if (error) {
+            throw error;
+        }
 
         // Revalidate the home page so it reflects the new config on next visit
         revalidatePath('/', 'layout');
