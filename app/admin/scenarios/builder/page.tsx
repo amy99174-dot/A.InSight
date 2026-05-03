@@ -209,6 +209,24 @@ export default function ScenarioBuilder() {
                                         <option value="contrast">高反差 (Cyber)</option>
                                     </select>
                                 </div>
+
+                                {/* Screen Rotation Toggle */}
+                                <div>
+                                    <label className="text-[10px] text-[#442916]/70 block mb-2 font-medium">硬體螢幕旋轉</label>
+                                    <div className="flex items-center justify-between p-3 bg-[#E8D4AF]/20 border border-[#E8D4AF] rounded-lg">
+                                        <div>
+                                            <span className="text-xs text-[#442916] font-medium">180° 翻轉</span>
+                                            <p className="text-[9px] text-[#442916]/50 mt-0.5">螢幕倒裝安裝時開啟</p>
+                                        </div>
+                                        <button
+                                            onClick={() => handleDeepConfigChange('ui_theme.rotate_screen', !(config.ui_theme as any)?.rotate_screen)}
+                                            className={`relative w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${(config.ui_theme as any)?.rotate_screen !== false ? 'bg-[#6CB4A8]' : 'bg-gray-300'}`}
+                                        >
+                                            <span className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200 ${(config.ui_theme as any)?.rotate_screen !== false ? 'translate-x-5' : 'translate-x-1'}`} />
+                                        </button>
+                                    </div>
+                                    <p className="text-[9px] text-[#442916]/40 mt-1">Pi 會在 2 秒內自動套用</p>
+                                </div>
                             </div>
                         </section>
                     </div>

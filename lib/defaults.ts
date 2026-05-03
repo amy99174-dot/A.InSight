@@ -39,7 +39,8 @@ export const DEFAULT_CONFIG = {
         accent_color: "#39ff14", // Neon Green for accents/audit
         camera_filter: "none",   // grayscale, sepia, contrast
         bg_overlay_opacity: 0.3,
-        layout_mode: "classic" // classic, industrial
+        layout_mode: "classic", // classic, industrial
+        rotate_screen: true,     // 180° rotation for upside-down mounted screen
     },
 
     // [New] AI Narrative Brain

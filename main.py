@@ -1318,8 +1318,12 @@ class SoftwareRenderCamera(QWidget):
             painter.setRenderHint(QPainter.Antialiasing)
 
             # 180° rotation (for upside-down mounted screen)
-            # Controlled by ROTATE_180 env variable: set to "0" to disable
-            if os.environ.get('ROTATE_180', '1') != '0':
+            # Controlled by ui_theme.rotate_screen from Web UI builder
+            # Env var ROTATE_180=0 can force-disable as emergency override
+            should_rotate = self.config_manager.get_theme_value('rotate_screen', True)
+            if os.environ.get('ROTATE_180', '') == '0':
+                should_rotate = False
+            if should_rotate:
                 painter.translate(self.width() / 2, self.height() / 2)
                 painter.rotate(180)
                 painter.translate(-self.width() / 2, -self.height() / 2)
