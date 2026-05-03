@@ -7,9 +7,16 @@ import threading
 import os
 import requests
 
-# API host (same as ConfigManager - Mac's local mDNS Hostname)
-API_HOST = os.environ.get('API_HOST', 'chenyiqingdeMacBook-Air.local')
-LOG_URL = f"http://{API_HOST}:3000/api/log"
+# Derive log URL from API_URL (Vercel or local Mac dev server)
+# API_URL is set in ecosystem.config.js, e.g. "https://a-in-sight.vercel.app/api/config"
+_api_url = os.environ.get('API_URL', '')
+if _api_url:
+    # Strip the /api/config suffix and replace with /api/log
+    LOG_URL = _api_url.replace('/api/config', '/api/log')
+else:
+    # Fallback to Mac local dev server (for local development without ecosystem.config.js)
+    API_HOST = os.environ.get('API_HOST', 'chenyiqingdeMacBook-Air.local')
+    LOG_URL = f"http://{API_HOST}:3000/api/log"
 
 
 def log_history(result: dict, time_scale: int, history_scale: int,
