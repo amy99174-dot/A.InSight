@@ -37,10 +37,9 @@ export const DEFAULT_CONFIG = {
         primary_color: "#ffffff", // Default White
         secondary_color: "#000000",
         accent_color: "#39ff14", // Neon Green for accents/audit
-        camera_filter: "none",   // grayscale, sepia, contrast
-        bg_overlay_opacity: 0.3,
         layout_mode: "classic", // classic, industrial
         screen_rotation: 180,    // Hardware screen rotation: 0, 90, 180, 270
+        camera_rotation: 0,      // Physical camera rotation: 0, 90, 180, 270
     },
 
     // [New] AI Narrative Brain

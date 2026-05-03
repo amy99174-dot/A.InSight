@@ -234,6 +234,30 @@ export default function ScenarioBuilder() {
                                     <p className="text-[9px] text-[#442916]/40 mt-1.5">Pi 會在 2 秒內自動套用</p>
                                 </div>
 
+                                {/* Camera Rotation */}
+                                <div>
+                                    <label className="text-[10px] text-[#442916]/70 block mb-2 font-medium">實體鏡頭旋轉 (Camera Feed)</label>
+                                    <div className="grid grid-cols-4 gap-1.5">
+                                        {[0, 90, 180, 270].map((deg) => {
+                                            const isActive = ((config.ui_theme as any)?.camera_rotation ?? 0) === deg;
+                                            const icons: Record<number, string> = { 0: '↑', 90: '→', 180: '↓', 270: '←' };
+                                            return (
+                                                <button
+                                                    key={deg}
+                                                    onClick={() => handleDeepConfigChange('ui_theme.camera_rotation', deg)}
+                                                    className={`py-2.5 rounded-lg text-xs font-bold border transition-all flex flex-col items-center gap-1 ${isActive
+                                                        ? 'bg-[#6CB4A8] text-white border-[#6CB4A8] shadow-sm'
+                                                        : 'bg-white text-[#442916]/70 border-[#A84714]/30 hover:border-[#6CB4A8] hover:bg-[#E8D4AF]/20'}`}
+                                                >
+                                                    <span className="text-base leading-none">{icons[deg]}</span>
+                                                    <span>{deg}°</span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <p className="text-[9px] text-[#442916]/40 mt-1.5">調整攝影機畫面的物理旋轉 (解決線材佈置問題)</p>
+                                </div>
+
                             </div>
                         </section>
                     </div>

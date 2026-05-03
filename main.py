@@ -1170,6 +1170,13 @@ class SoftwareRenderCamera(QWidget):
         try:
             frame = self.camera.capture_array("main")
             if frame is not None:
+                # [Camera Rotation] Apply physical camera rotation
+                cam_rot = self.config_manager.get_theme_value("camera_rotation", 0)
+                if cam_rot != 0:
+                    # np.rot90 default is counter-clockwise, use negative for clockwise
+                    frame = np.rot90(frame, k=-(cam_rot // 90))
+
+
                 height, width, channels = frame.shape
                 if not frame.flags['C_CONTIGUOUS']:
                     frame = np.ascontiguousarray(frame)
@@ -1413,6 +1420,11 @@ class SoftwareRenderCamera(QWidget):
                         # 如果覺得卡頓，後續可移至 Thread。
                         image = self.camera.capture_array("main")
                         if image is not None:
+                            # [Camera Rotation] Apply physical camera rotation
+                            cam_rot = self.config_manager.get_theme_value("camera_rotation", 0)
+                            if cam_rot != 0:
+                                image = np.rot90(image, k=-(cam_rot // 90))
+
                             if should_log:
                                 print(f"[DEBUG] Camera Image Shape: {image.shape}")
                             
