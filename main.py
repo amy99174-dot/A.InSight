@@ -1093,6 +1093,8 @@ class SoftwareRenderCamera(QWidget):
                     self.update()
             else:
                 if self.history_scale > 1:
+                    rotation_deg = self.config_manager.get_theme_value('screen_rotation', 0)
+                    if isinstance(rotation_deg, bool): rotation_deg = 180 if rotation_deg else 0
                     self.history_scale -= 1
                     print(f"⬇️ History Scale: {self.history_scale}/3")
                     self.update()
@@ -1317,16 +1319,22 @@ class SoftwareRenderCamera(QWidget):
             painter = QPainter(self)
             painter.setRenderHint(QPainter.Antialiasing)
 
-            # 180° rotation (for upside-down mounted screen)
-            # Controlled by ui_theme.rotate_screen from Web UI builder
-            # Env var ROTATE_180=0 can force-disable as emergency override
-            should_rotate = self.config_manager.get_theme_value('rotate_screen', True)
+            # Screen rotation (0, 90, 180, 270°) from Web UI builder config
+            # Supports legacy boolean rotate_screen field for backward compatibility
+            # Env var ROTATE_180=0 force-disables rotation as emergency override
+            _rot = self.config_manager.get_theme_value('screen_rotation', None)
+            if _rot is None:
+                _legacy = self.config_manager.get_theme_value('rotate_screen', True)
+                _rot = 180 if _legacy else 0
+            if isinstance(_rot, bool):
+                _rot = 180 if _rot else 0
             if os.environ.get('ROTATE_180', '') == '0':
-                should_rotate = False
-            if should_rotate:
+                _rot = 0
+            if _rot:
                 painter.translate(self.width() / 2, self.height() / 2)
-                painter.rotate(180)
+                painter.rotate(int(_rot))
                 painter.translate(-self.width() / 2, -self.height() / 2)
+
 
             # 1. 繪製背景 (全黑)
             painter.fillRect(self.rect(), Qt.black)

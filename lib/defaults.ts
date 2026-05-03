@@ -40,7 +40,7 @@ export const DEFAULT_CONFIG = {
         camera_filter: "none",   // grayscale, sepia, contrast
         bg_overlay_opacity: 0.3,
         layout_mode: "classic", // classic, industrial
-        rotate_screen: true,     // 180° rotation for upside-down mounted screen
+        screen_rotation: 180,    // Hardware screen rotation: 0, 90, 180, 270
     },
 
     // [New] AI Narrative Brain
